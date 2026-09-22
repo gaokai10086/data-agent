@@ -1,0 +1,272 @@
+# 智能问数项目结构说明
+
+本文档用于说明项目中各个目录和关键文件的职责。修改代码前，先确认改动属于哪一层；新增功能时，优先放入职责匹配的目录，而不是继续堆积到入口文件中。
+
+## 1. 系统定位
+
+本项目是一个面向企业数据仓库的 Data Agent：
+
+```text
+自然语言问题
+    ↓
+Streamlit 交互界面
+    ↓ HTTP / SSE
+FastAPI 接口层
+    ↓
+ChatService
+    ↓
+LangGraph Agent
+    ├─ 意图识别
+    ├─ 关键词提取
+    ├─ 字段 / 指标 / 枚举值 / SQL 示例召回
+    ├─ 上下文组装
+    ├─ SQL 生成
+    ├─ SQL 校验与纠错
+    ├─ SQL 执行
+    └─ 结构化结果展示
+```
+
+项目的核心目标不是“让模型生成一条 SQL”，而是让 SQL 生成过程可检索、可验证、可纠错、可审计。
+
+## 2. 根目录文件
+
+| 文件 | 职责 |
+| --- | --- |
+| `main.py` | FastAPI 应用入口，注册路由、中间件和生命周期管理 |
+| `web_ui.py` | Streamlit 前端入口，负责聊天交互、SSE 展示和报告导出 |
+| `meta_approval_ui.py` | 字段语义审批页面，业务人员通过/驳回模型候选 |
+
+`app/web/metric_management_view.py` 保存指标提交与查看视图，嵌入 `web_ui.py`
+「元数据管理 → 指标管理」二级导航。业务人员提交指标后，系统只校验 Schema 事实，
+不引入人工审批。
+
+`app/web/sql_example_management_view.py` 保存金标 SQL 的录入与查看视图，嵌入
+`web_ui.py`「元数据管理 → 金标 SQL 管理」二级导航，负责 Few-shot SQL 资产的维护。
+录入与修改会先做只读安全检查和 `EXPLAIN` 校验，确认 SQL 能在 DW 上生成执行计划
+后才写入 Qdrant，避免把无法执行的错误样例留进索引。
+计算范式使用固定枚举，涉及底表由后端根据 DW 物理表清单从 SQL 原文自动识别，
+不要求业务人员手填，避免漏表或填错别名。
+| `start_all.py` | 本地开发时一键启动 FastAPI 和 Streamlit |
+| `pyproject.toml` | Python 项目元数据和依赖声明 |
+| `.env` | 本机运行配置，包含真实凭证，必须被 Git 忽略 |
+| `.env.example` | 环境变量模板，可以提交到 Git |
+| `.gitignore` | 定义不应提交的本地配置、缓存、日志和运行产物 |
+
+`start_all.py` 适合本地演示，不应直接视为生产部署方案。生产环境应使用容器、进程管理器或云平台的环境变量管理能力。
+
+## 3. `app/agent/`：Agent 核心
+
+这是智能问数的核心目录。
+
+| 文件 / 目录 | 职责 |
+| --- | --- |
+| `graph.py` | 定义 LangGraph 状态机、节点、条件路由、重试和熔断 |
+| `state.py` | 定义单次请求流转的动态状态，例如问题、关键词、SQL、错误和结果 |
+| `context.py` | 定义运行时资源，例如数据库、向量库和 Embedding 客户端 |
+| `llm.py` | 统一创建和缓存大模型客户端 |
+| `nodes/` | 每个文件实现 Agent 图中的一个业务节点 |
+
+### `nodes/` 节点流程
+
+```text
+intent_detection
+    ├─ direct_answer
+    └─ extract_keywords
+          ├─ column_recall
+          ├─ value_recall
+          ├─ metric_recall
+          └─ example_recall
+                    ↓
+          merge_retrieved_info
+                    ↓
+          resolve_table_relations
+                    ↓
+          filter_table_info
+                    ↓
+               add_context
+                    ↓
+              generate_sql
+                    ↓
+              validate_sql
+               ├─ execute_sql → present_result
+               ├─ correct_sql → validate_sql
+               └─ translate_error
+```
+
+主要节点说明：
+
+- `intent_detection.py`：区分闲聊和数据库查询，避免所有问题都进入查库链路。
+- `direct_answer.py`：处理问候、能力介绍等非数据库问题。
+- `extract_keywords.py`：从自然语言中提取业务关键词。
+- `column_recall.py`：召回可能对应的数据库字段，解决 Schema Linking 问题。
+- `metric_recall.py`：召回业务指标定义，避免只按字段名猜指标口径。
+- `value_recall.py`：从 Elasticsearch 检索“华东”“女”等业务枚举值。
+- `example_recall.py`：召回相似的金标 SQL，用于 Few-shot 上下文。
+- `merge_retrieved_info.py`：汇总多路检索结果。
+- `resolve_table_relations.py`：根据候选表查询 Meta 中已确认的 Join 关系。
+- `filter_table_info.py`：根据指标、值召回和 Join 关系确定性压缩候选表，保留关键字段。
+- 指标筛选已改为在 `merge_retrieved_info.py` 中用召回分数与关键词命中确定性完成，不再走 LLM。
+- `add_context.py`：把检索结果整理成 Prompt 上下文。
+- `generate_sql.py`：根据问题、Schema、指标、值和示例生成 SQL。
+- `validate_sql.py`：通过 `EXPLAIN` 做基础 SQL 预检查。
+- `correct_sql.py`：根据数据库错误让模型修正 SQL。
+- `execute_sql.py`：执行最终 SQL，获取真实数据。
+- `present_result.py`：生成带来源表、SQL 和结构化数据的 BI 报告。
+- `translate_error.py`：多次修复失败后，把技术错误转换成用户可理解的提示。
+
+## 4. `app/api/`：接口层
+
+接口层只负责 HTTP 协议、参数校验和依赖装配，不应承载复杂的 Agent 业务逻辑。
+
+| 文件 / 目录 | 职责 |
+| --- | --- |
+| `routers/chat_router.py` | `POST /api/query`，以 SSE 流式返回 Agent 事件 |
+| `routers/example_router.py` | 金标 SQL 样本上传接口 |
+| `deps.py` | FastAPI 依赖注入，提供 Session、Repository、Client 和 Service |
+| `example.py` | 另一套金标 SQL 接口实现，当前与 `example_router.py` 存在重叠，后续应合并 |
+
+## 5. `app/service/`：业务服务层
+
+Service 负责业务用例编排，连接 API、Agent 和数据访问层。
+
+| 文件 | 职责 |
+| --- | --- |
+| `chat_service.py` | 创建 State 和 Context，启动 LangGraph，并转发流式事件 |
+| `example_service.py` | 审计、标注、向量化和保存金标 SQL |
+| `meta_knowledge_service.py` | 从数据库 Schema 构建元数据、指标和枚举值知识库 |
+| `column_semantic_draft_service.py` | 生成字段语义候选、执行人工审核并发布到 Meta |
+| `metric_submission_service.py` | 业务人员提交指标，系统技术校验后直接发布 |
+| `sql_validation_service.py` | 统一的只读 SQL 判断与表字段解析，供指标与金标 SQL 复用 |
+| `column_index_rebuild_service.py` | 从 Meta 已发布字段重建 Qdrant 字段索引 |
+| `metric_index_rebuild_service.py` | 从 Meta 已发布指标重建 Qdrant 指标索引 |
+| `value_index_rebuild_service.py` | 从 Meta 已发布字段按安全策略重建 ES 枚举值索引 |
+
+## 6. `app/repositories/`：数据访问层
+
+Repository 封装具体的数据访问逻辑，让业务层不直接依赖 SQL、Qdrant 或 Elasticsearch API。
+
+| 目录 | 职责 |
+| --- | --- |
+| `repositories/mysql/` | 访问元数据库和业务数仓 |
+| `repositories/qdrant/` | 字段、指标和金标 SQL 的向量保存与检索 |
+| `repositories/es/` | 业务枚举值和关键词倒排检索 |
+
+其中：
+
+- `dw_mysql_repository.py`：查询数据库信息、执行 `EXPLAIN`、执行 SQL。
+- `meta_mysql_repository.py`：保存和查询表、字段、指标元数据。
+- `base_repository_qdrant.py`：Qdrant 通用操作封装。
+
+## 7. `app/clients/`：外部系统客户端
+
+Client 负责创建和管理外部系统连接；Repository 负责具体的数据访问动作。
+
+| 文件 | 职责 |
+| --- | --- |
+| `mysql_client.py` | 创建 MySQL 异步连接池和 Session |
+| `qdrant_client.py` | 创建 Qdrant 客户端 |
+| `es_client.py` | 创建 Elasticsearch 客户端 |
+| `embedding_client.py` | 创建智谱 Embedding 客户端 |
+
+## 8. `app/models/` 与 `app/schemas/`
+
+### `app/models/`
+
+描述内部数据结构或外部存储结构：
+
+- `models/mysql/`：元数据库 ORM 模型。
+- `models/qdrant/`：Qdrant Payload 和向量数据结构。
+- `models/es/`：Elasticsearch 文档结构。
+
+### `app/schemas/`
+
+描述 API 的输入和输出协议，例如 `schemas/chat.py` 中的查询请求体。Schema 主要用于接口参数校验，不等同于数据库 Model。
+
+## 9. `app/core/`：基础设施和横切能力
+
+| 文件 / 目录 | 职责 |
+| --- | --- |
+| `lifespan.py` | FastAPI 启动和关闭时初始化、释放外部资源 |
+| `middleware.py` | 请求级中间件，例如生成 Request ID |
+| `context.py` | 保存请求级上下文 |
+| `logging.py` | 统一日志、轮转和 Request ID 注入 |
+| `datasource/base.py` | 抽象数据源接口 |
+| `datasource/mysql_connector.py` | MySQL 数据源的具体实现 |
+
+`datasource/` 的抽象使未来可以增加 PostgreSQL、Snowflake 等数据源，而不必重写上层 Agent 流程。
+
+`app/web/` 保存 Streamlit 可复用视图。`meta_governance_view.py` 同时供
+`web_ui.py` 的侧边栏导航和 `meta_approval_ui.py` 独立入口使用，避免审批逻辑复制两份。
+
+## 10. `app/prompt/` 与 `prompts/`
+
+- `app/prompt/prompt_loader.py`：加载 Prompt 文件。
+- `prompts/`：保存意图识别、关键词提取、SQL 生成、SQL 纠错、审计和上下文过滤 Prompt。
+
+Prompt 独立成文件后，可以单独进行版本管理、A/B 测试和效果评估，而不必修改 Python 业务代码。
+
+## 11. `app/scripts/`：离线脚本
+
+| 文件 | 职责 |
+| --- | --- |
+| `build_meta_knowledge.py` | 扫描数据库 Schema，构建元数据、Qdrant 和 ES 索引 |
+| `sync_dw_schema_to_meta.py` | 同步 DW 表、字段、主外键与 Join 关系到 Meta |
+| `rebuild_column_index.py` | 从 Meta 重建 Qdrant 字段语义向量索引 |
+| `rebuild_metric_index.py` | 删除旧指标索引并按 Meta 已发布指标重建 |
+| `rebuild_value_index.py` | 从 Meta 重建 ES 枚举值倒排索引 |
+| `app/evaluation/` | Text-to-SQL 评测集、执行器与准确率报告，使用说明见 [EVALUATION.md](EVALUATION.md) |
+| `seed_initial_business_assets.py` | 发布销售额、订单数量两条初始指标及其血缘和示例 |
+| `generate_column_semantic_drafts.py` | 为高价值字段生成待审核语义草稿 |
+| `review_column_semantic_drafts.py` | 查看、通过或驳回字段语义草稿 |
+| `seed_gold_examples.py` | 批量写入金标 SQL 示例 |
+| `clean_sql_examples_qdrant.py` | 清理 SQL 示例向量数据 |
+
+这些脚本不属于在线请求链路，主要用于初始化、重建和运维知识库。
+
+## 数仓表关系
+
+当前电商 DW 的表粒度、主外键、Join 约束和典型查询路径见：[DW_ERD.md](DW_ERD.md)。在设计指标、构建 `column_metric` 或修改 Text-to-SQL Prompt 前，应先以该文档和真实 DDL 为依据。
+
+## 12. `app/tests/`：测试与本地数据准备
+
+当前目录同时包含两类代码：
+
+- 测试：`test_audit_dry_run.py`、`test_nodes_step_by_step.py`、`test_qdrant_root.py` 等。
+- 数据准备：`init_chinese_dw.py`、`inspect_dw_schema.py`。
+
+后续建议把数据准备脚本迁移到 `app/scripts/`，让测试目录只保留自动化测试。
+
+## 13. 不应提交的文件
+
+以下内容属于本机运行产物，不是项目源码：
+
+- `.env`、`.env.legacy`：真实凭证。
+- `.venv/`：本地虚拟环境。
+- `__pycache__/`、`*.pyc`：Python 缓存。
+- `*.log`：运行日志，可能包含用户问题、SQL 或错误信息。
+- `archives/`：本地对话归档。
+- `.idea/`、`.DS_Store`：IDE 或操作系统生成的文件。
+
+## 14. 修改代码时的判断顺序
+
+1. 这是 HTTP 协议问题吗？放到 `app/api/`。
+2. 这是一个业务用例吗？放到 `app/service/`。
+3. 这是 Agent 控制流或节点逻辑吗？放到 `app/agent/`。
+4. 这是数据库或搜索引擎访问吗？放到 `app/repositories/`。
+5. 这是连接外部系统吗？放到 `app/clients/`。
+6. 这是数据结构定义吗？放到 `app/models/` 或 `app/schemas/`。
+7. 这是启动、日志、请求上下文等通用能力吗？放到 `app/core/`。
+8. 这是离线初始化或数据构建吗？放到 `app/scripts/`。
+9. 这是验证行为的代码吗？放到 `app/tests/`。
+
+## 15. 当前已知架构问题
+
+这份文档描述的是当前代码，而不是声称项目已经生产就绪。当前仍需后续治理：
+
+- `app/api/example.py` 与 `app/api/routers/example_router.py` 功能重叠，应保留一套。
+- `EXPLAIN` 不是完整的 SQL 安全控制，还需要 AST 白名单、只读账号、超时、行数和数据权限限制。
+- `app/tests/` 中测试和数据准备脚本尚未完全分离。
+- 需要补充 Text-to-SQL 金标评测、执行正确率、延迟和成本指标。
+- `web_ui.py` 的自定义 HTML 表格需要对外部数据进行 HTML 转义。
+
+最后更新：2026-09-15

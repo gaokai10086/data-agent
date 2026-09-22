@@ -1,0 +1,16 @@
+# Local credentials and runtime configuration
+.env
+.env.legacy
+Api.env
+conf/app_config.yaml
+
+# Runtime artifacts
+archives/
+logs/
+
+# Python tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.venv/
