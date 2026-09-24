@@ -54,6 +54,13 @@ class ColumnInfoMySQL(Base):
         JSON,
         comment="列别名"
     )
+    value_type: Mapped[str] = mapped_column(
+        String(16),
+        default="open",
+        server_default="open",
+        nullable=False,
+        comment="取值类型：closed=封闭枚举（人工维护值），open=开放枚举（模型推导）",
+    )
     table_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("table_info.id", ondelete="CASCADE"),

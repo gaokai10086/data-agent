@@ -71,6 +71,41 @@ class DBInfoState(TypedDict):
     version: str    # 如 "8.0.32"
 
 
+class ResultAnalysisState(TypedDict, total=False):
+    """SQL 结果的结构化分析，用于图表决策。"""
+    summary: str
+    columns: list[str]
+    metrics: list[str]
+    dimensions: list[str]
+    row_count: int
+
+
+class ChartPlanState(TypedDict, total=False):
+    """图表决策结果，可能来自规则，也可能来自 LLM 辅助判断。"""
+    chart_type: str
+    x_column: str | None
+    y_columns: list[str]
+    reason: str
+    source: str
+
+
+class ChartConfigState(TypedDict, total=False):
+    """最终图表配置。"""
+    chart_type: str
+    title: str
+    x_column: str | None
+    y_columns: list[str]
+    data: list[dict[str, Any]]
+    options: dict[str, Any]
+
+
+class InsightState(TypedDict, total=False):
+    """业务洞察结果：事实计算 + LLM 摘要。"""
+    summary: str
+    facts: list[dict[str, Any]]
+    source: str
+
+
 class DataAgentState(TypedDict):
     """
     智能问数全局状态总线 (Global State Pipeline)
@@ -103,6 +138,13 @@ class DataAgentState(TypedDict):
 
     # ================ 5. 数据执行与结果输出层 (新增) ================
     sql_result: list[dict[str, Any]] | str | None  # SQL 在业务库执行后返回的真实数据结果 (list[dict])
+
+    # ================ 6. 结果分析与图表生成层 ================
+    result_analysis: ResultAnalysisState | None
+    chart_plan: ChartPlanState | None
+    chart_config: ChartConfigState | None
+    insight: InsightState | None
+    report_emitted: bool | None
 
 
 if __name__ == '__main__':

@@ -6,25 +6,25 @@
 
 完整的目录和文件职责说明见：
 
-👉 [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
+👉 [docs/项目结构说明.md](docs/项目结构说明.md)
 
 ## 数仓 ER 图
 
 DW 表的粒度、主外键和推荐 Join 路径见：
 
-👉 [docs/DW_ERD.md](docs/DW_ERD.md)
+👉 [docs/数仓表关系图.md](docs/数仓表关系图.md)
 
 ## 业务指标口径
 
 已确认指标的业务定义、计算规则和 SQL 模板见：
 
-👉 [docs/BUSINESS_RULES.md](docs/BUSINESS_RULES.md)
+👉 [docs/业务指标口径.md](docs/业务指标口径.md)
 
 ## Meta 数据库
 
 智能问数控制平面的表设计、职责和初始化方式见：
 
-👉 [docs/META_DATABASE_DESIGN.md](docs/META_DATABASE_DESIGN.md)
+👉 [docs/Meta数据库设计.md](docs/Meta数据库设计.md)
 
 ## 快速开始
 

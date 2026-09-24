@@ -16,7 +16,11 @@ import json
 import requests
 import streamlit as st
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
+
+import altair as alt
+import pandas as pd
 
 from app.web.meta_governance_view import render_meta_governance_page
 from app.web.metric_management_view import render_metric_management_page
@@ -30,6 +34,98 @@ st.set_page_config(
 )
 
 API_BASE = "http://localhost:8000/api"
+
+
+def _prepare_chart_df(rows: list[dict]) -> pd.DataFrame:
+    """把图表数据转换成 Altair 可直接使用的 DataFrame。"""
+    df = pd.DataFrame(rows)
+    for column in df.columns:
+        # SSE 传输时 Decimal 会被序列化成字符串，pandas 3.0 默认又是 StringDtype，
+        # 这里统一尝试还原成数值，否则 Altair 会把金额列当成文本，图表无法绘制。
+        if pd.api.types.is_numeric_dtype(df[column]):
+            continue
+        converted = pd.to_numeric(df[column], errors="coerce")
+        if len(converted) and converted.notna().all():
+            df[column] = converted
+    return df
+
+
+def _render_chart(chart_config: dict) -> None:
+    """根据后端生成的 chart_config 渲染图表。"""
+    if not chart_config:
+        return
+    chart_type = chart_config.get("chart_type") or "table"
+    if chart_type == "table":
+        return
+
+    rows = chart_config.get("data") or []
+    if not rows:
+        return
+    df = _prepare_chart_df(rows)
+
+    title = chart_config.get("title") or ""
+    x_column = chart_config.get("x_column")
+    y_columns = chart_config.get("y_columns") or []
+    if not x_column or x_column not in df.columns:
+        return
+    y_columns = [column for column in y_columns if column in df.columns]
+    if not y_columns:
+        return
+
+    if chart_type == "pie":
+        chart = (
+            alt.Chart(df)
+            .mark_arc()
+            .encode(
+                theta=alt.Theta(field=y_columns[0], type="quantitative"),
+                color=alt.Color(field=x_column, type="nominal", legend=alt.Legend(title=x_column)),
+                tooltip=[x_column, y_columns[0]],
+            )
+            .properties(width=420, height=420)
+        )
+        if title:
+            chart = chart.properties(title=title)
+        st.altair_chart(chart, width="stretch")
+        return
+
+    if len(y_columns) == 1:
+        y_field = y_columns[0]
+        base = (
+            alt.Chart(df)
+            .encode(
+                x=alt.X(field=x_column, type="nominal", title=x_column),
+                tooltip=[x_column, y_field],
+            )
+        )
+        if chart_type == "line":
+            chart = base.mark_line(point=True).encode(
+                y=alt.Y(field=y_field, type="quantitative", title=y_field)
+            )
+        else:
+            chart = base.mark_bar().encode(
+                y=alt.Y(field=y_field, type="quantitative", title=y_field)
+            )
+    else:
+        melted = df.melt(
+            id_vars=[x_column],
+            value_vars=y_columns,
+            var_name="指标",
+            value_name="数值",
+        )
+        base = (
+            alt.Chart(melted)
+            .encode(
+                x=alt.X(field=x_column, type="nominal", title=x_column),
+                y=alt.Y(field="数值", type="quantitative"),
+                color=alt.Color(field="指标", type="nominal"),
+                tooltip=[x_column, "指标", "数值"],
+            )
+        )
+        chart = base.mark_line(point=True) if chart_type == "line" else base.mark_bar()
+
+    if title:
+        chart = chart.properties(title=title)
+    st.altair_chart(chart, width="stretch")
 
 
 # ==============================================================================
@@ -47,6 +143,8 @@ def render_bi_report_card(report_data: dict, container=None):
         sql_code = report_data.get("sql", "")
         source_tables = report_data.get("source_tables", [])
         row_count = report_data.get("row_count", len(table_data))
+        insight = report_data.get("insight") or {}
+        insight_summary = insight.get("summary")
 
         # ======================================================
         # 板块 1: 📈 数据来源与底层 SQL 审计
@@ -61,10 +159,14 @@ def render_bi_report_card(report_data: dict, container=None):
 
         st.markdown("---")
 
+        if insight_summary:
+            st.markdown(f"> 💡 **业务洞察**：{insight_summary}")
+
         # ======================================================
         # 板块 2: 📊 数据分析结果 (纯 HTML <table> 居中高质感渲染)
         # ======================================================
         st.markdown("#### 📊 数据分析结果")
+        _render_chart(report_data.get("chart_config"))
         if table_data and isinstance(table_data, list):
             headers = list(table_data[0].keys())
 

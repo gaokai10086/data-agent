@@ -22,7 +22,7 @@ python -m app.scripts.sync_dw_schema_to_meta
 
 字段业务语义采用“模型推导候选 → 人工审核 → 发布”的治理闭环。模型只写
 `column_semantic_draft`，只有审核通过才会更新 `column_info`。命令和规则见：
-[COLUMN_SEMANTIC_GOVERNANCE.md](COLUMN_SEMANTIC_GOVERNANCE.md)。
+[字段语义治理](字段语义治理.md)。
 
 ## 2. 与 DW 的职责边界
 
@@ -38,7 +38,7 @@ meta：智能问数控制平面
   └─ 指标与字段的血缘、示例
 ```
 
-真实 DW 的 ER 图见：[DW_ERD.md](DW_ERD.md)。业务口径见：[BUSINESS_RULES.md](BUSINESS_RULES.md)。
+真实 DW 的 ER 图见：[数仓表关系图](数仓表关系图.md)。业务口径见：[业务指标口径](业务指标口径.md)。
 
 ## 3. 表清单
 
@@ -148,7 +148,7 @@ Qdrant
 Data Agent：指标解释、数据发现、Text-to-SQL
 ```
 
-初始指标资产（销售额、订单数量）的发布口径和命令见：[INITIAL_BUSINESS_ASSETS.md](INITIAL_BUSINESS_ASSETS.md)。
+初始指标资产（销售额、订单数量）的发布口径见：[业务指标口径](业务指标口径.md)。
 
 后续业务人员可以在 Web 页面「元数据管理 → 指标管理」中提交新指标。提交时系统会校验
 事实表、度量字段、时间字段、过滤字段和维度字段是否真实存在，校验通过后写入

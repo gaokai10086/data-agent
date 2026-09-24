@@ -88,3 +88,21 @@ def decide(table_name: str, column_name: str, data_type: str = "") -> SamplingDe
         return SamplingDecision(False, "未列入业务枚举白名单，需数据开发审核后加入")
 
     return SamplingDecision(True, "命中业务枚举白名单，允许采样")
+
+
+def is_safe_to_index(table_name: str, column_name: str, data_type: str = "") -> SamplingDecision:
+    """仅执行安全拒绝规则（数值、时间、PII、标识符），不做白名单限制。
+
+    用于 value_type=closed 的字段：是否索引由业务人员决定，但 PII 与标识符
+    仍然必须被强制排除，避免个人隐私进入倒排索引。
+    """
+    normalized_type = (data_type or "").upper()
+    for prefix in NUMERIC_TYPE_PREFIXES:
+        if normalized_type.startswith(prefix):
+            return SamplingDecision(False, f"数据类型为 {normalized_type}，数值型不建立值索引")
+
+    for pattern, reason in DENIED_NAME_PATTERNS:
+        if re.search(pattern, column_name, flags=re.IGNORECASE):
+            return SamplingDecision(False, reason)
+
+    return SamplingDecision(True, "通过安全校验")

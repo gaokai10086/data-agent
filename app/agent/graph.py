@@ -34,6 +34,11 @@ from app.agent.nodes.generate_sql import generate_sql
 from app.agent.nodes.validate_sql import validate_sql
 from app.agent.nodes.correct_sql import correct_sql
 from app.agent.nodes.execute_sql import execute_sql
+from app.agent.nodes.result_analysis import result_analysis
+from app.agent.nodes.chart_decision import chart_decision
+from app.agent.nodes.chart_generate import chart_generate
+from app.agent.nodes.insight_generation import insight_generation
+from app.agent.nodes.join_final_outputs import join_final_outputs
 from app.agent.nodes.present_result import present_result  # 独立展示节点
 from app.agent.nodes.translate_error import translate_error
 
@@ -94,6 +99,11 @@ graph_builder.add_node("validate_sql", validate_sql)
 graph_builder.add_node("correct_sql", correct_sql)
 graph_builder.add_node("translate_error", translate_error)
 graph_builder.add_node("execute_sql", execute_sql)
+graph_builder.add_node("result_analysis", result_analysis)
+graph_builder.add_node("chart_decision", chart_decision)
+graph_builder.add_node("chart_generate", chart_generate)
+graph_builder.add_node("insight_generation", insight_generation)
+graph_builder.add_node("join_final_outputs", join_final_outputs)
 graph_builder.add_node("present_result", present_result)
 
 # 2. 编排边：起点 -> 意图判断
@@ -144,8 +154,17 @@ graph_builder.add_edge("correct_sql", "validate_sql")
 # 熔断报错翻译后结束
 graph_builder.add_edge("translate_error", END)
 
-# 6. 编排边：执行取数 -> 结果展示与协议推送 -> 抵达终点
-graph_builder.add_edge("execute_sql", "present_result")
+# 6. 编排边：执行取数 -> 结果分析 -> 图表决策 -> 图表生成 -> 最终展示
+graph_builder.add_edge("execute_sql", "result_analysis")
+graph_builder.add_edge("result_analysis", "chart_decision")
+graph_builder.add_edge("chart_decision", "chart_generate")
+
+# 业务洞察与图表生成并行
+graph_builder.add_edge("result_analysis", "insight_generation")
+
+graph_builder.add_edge("chart_generate", "join_final_outputs")
+graph_builder.add_edge("insight_generation", "join_final_outputs")
+graph_builder.add_edge("join_final_outputs", "present_result")
 graph_builder.add_edge("present_result", END)
 
 # 编译图

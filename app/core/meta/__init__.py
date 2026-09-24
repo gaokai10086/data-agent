@@ -5,6 +5,7 @@ from app.core.meta.value_sampling_policy import (
     MAX_SAMPLE_VALUES,
     SamplingDecision,
     decide,
+    is_safe_to_index,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "MAX_SAMPLE_VALUES",
     "SamplingDecision",
     "decide",
+    "is_safe_to_index",
 ]

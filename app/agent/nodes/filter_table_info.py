@@ -4,6 +4,7 @@ from langgraph.runtime import Runtime
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
 from app.core.logging import logger
+from app.core.meta.display_intent import matches_display_pattern, required_display_patterns
 
 KEY_ROLES = {"primary_key", "foreign_key"}
 
@@ -53,6 +54,25 @@ def _protect_relations(protected: dict[str, set[str]], relations: list[dict]) ->
         _protect(protected, str(relation.get("target_table") or ""), str(relation.get("target_column") or ""))
 
 
+def _protect_display_intent(
+    protected: dict[str, set[str]], table_infos: list[dict], query: str
+) -> None:
+    """保护用户问题中明确要求展示的字段，避免被压缩掉。
+
+    例如问题里出现「商品名称」，必须保留 product_name，
+    否则模型只能拿 product_id 硬凑，输出会不符合用户要求。
+    """
+    patterns = required_display_patterns(query)
+    if not patterns:
+        return
+    for table in table_infos:
+        table_name = str(table.get("name") or "")
+        for column in table.get("columns", []):
+            column_name = str(column.get("name") or "")
+            if matches_display_pattern(column_name, patterns):
+                _protect(protected, table_name, column_name)
+
+
 async def filter_table_info(
     state: DataAgentState,
     runtime: Runtime[DataAgentContext],
@@ -71,6 +91,7 @@ async def filter_table_info(
         _protect_metric(protected, metric)
     _protect_values(protected, retrieved_values)
     _protect_relations(protected, table_relations)
+    _protect_display_intent(protected, table_infos, state.get("query", ""))
 
     # 没有强证据时不做激进压缩，保持原有候选，避免把有效 Schema 裁空。
     if not protected:

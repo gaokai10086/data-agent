@@ -2,6 +2,7 @@
 import re
 
 from app.models.mysql.column_info_mysql import ColumnInfoMySQL
+from app.core.meta.display_intent import DISPLAY_INTENT_RULES
 from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 
@@ -14,6 +15,17 @@ FORBIDDEN_SQL_PATTERN = re.compile(
 # 避免把 CTE 或子查询产生的派生别名（如 order_count）误判成物理字段。
 QUALIFIED_COLUMN_PATTERN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b")
 
+# FROM / JOIN 后面可能被误识别为别名的关键字
+RESERVED_ALIAS_WORDS = frozenset({
+    "on", "where", "group", "order", "having", "limit", "as", "using",
+    "left", "right", "inner", "outer", "full", "cross", "join", "and", "or",
+})
+
+TABLE_ALIAS_PATTERN = re.compile(
+    r"\b(?:FROM|JOIN)\s+`?([A-Za-z_][A-Za-z0-9_]*)`?"
+    r"(?:\s+(?:AS\s+)?`?([A-Za-z_][A-Za-z0-9_]*)`?)?",
+    flags=re.IGNORECASE,
+)
 
 class SQLSafetyPolicy:
     """只读 SQL 安全规则，供所有需要录入或校验 SQL 的入口复用。"""
@@ -87,16 +99,34 @@ class SQLValidationService:
         }
         violations: list[str] = []
 
-        qualified_columns = {
-            match.group(2) for match in QUALIFIED_COLUMN_PATTERN.finditer(sql)
-        }
-        illegal_columns = sorted(
-            column for column in (used_columns - allowed_columns) if column in qualified_columns
-        )
+        # 只校验「物理表别名.字段名」形式，避免把 CTE 或派生表的别名误判成非法字段。
+        physical_tables = await self.dw_repository.get_all_table_names()
+        table_aliases = self._collect_physical_table_aliases(sql, physical_tables)
+        illegal_columns = sorted({
+            column
+            for alias, column in QUALIFIED_COLUMN_PATTERN.findall(sql)
+            if alias.lower() in table_aliases and column not in allowed_columns
+        })
         if illegal_columns:
             violations.append(f"引用了不在候选 Schema 中的字段: {', '.join(illegal_columns)}")
 
         query_text = (query or "").strip()
+
+        for keywords, column_patterns in DISPLAY_INTENT_RULES:
+            if not any(keyword in query_text for keyword in keywords):
+                continue
+            matched = any(
+                column.endswith(pattern) or column == pattern
+                for column in used_columns
+                for pattern in column_patterns
+            )
+            if not matched:
+                violations.append(
+                    f"问题要求返回「{'/'.join(keywords)}」，"
+                    f"但 SQL 未使用对应的可读名称字段（如 {'/'.join(column_patterns)}），"
+                    f"禁止只用编码字段代替"
+                )
+
         for value in retrieved_values or []:
             column_name = str(value.get("column_name") or "")
             table_name = str(value.get("table_name") or "")
@@ -128,3 +158,17 @@ class SQLValidationService:
                 )
 
         return list(dict.fromkeys(violations))
+
+    @staticmethod
+    def _collect_physical_table_aliases(sql: str, physical_tables: list[str]) -> set[str]:
+        """收集 SQL 中真实物理表的别名（含表名自身），用于区分 CTE 别名。"""
+        physical_lower = {name.lower() for name in physical_tables}
+        aliases: set[str] = set()
+        for match in TABLE_ALIAS_PATTERN.finditer(sql):
+            table_name, alias = match.group(1), match.group(2)
+            if table_name.lower() not in physical_lower:
+                continue
+            aliases.add(table_name.lower())
+            if alias and alias.lower() not in RESERVED_ALIAS_WORDS:
+                aliases.add(alias.lower())
+        return aliases

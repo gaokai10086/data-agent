@@ -109,6 +109,22 @@ class ReviewReport:
     previous: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class FieldView:
+    """已发布字段语义的视图对象。"""
+
+    column_id: str
+    table_name: str
+    column_name: str
+    qualified_name: str
+    data_type: str
+    role: str
+    description: str
+    alias: list[str]
+    examples: list[str]
+    value_type: str
+
+
 class ColumnSemanticDraftService:
     def __init__(
         self,
@@ -441,6 +457,140 @@ class ColumnSemanticDraftService:
                 )
             )
         return views
+
+    async def list_fields(self, table_name: str | None = None) -> list[FieldView]:
+        """列出已发布字段语义，可按表名过滤。"""
+        pairs = await self.meta_repository.list_columns_with_tables()
+        views: list[FieldView] = []
+        for table, column in pairs:
+            if table_name and table.name != table_name:
+                continue
+            views.append(
+                FieldView(
+                    column_id=column.id,
+                    table_name=table.name,
+                    column_name=column.name or "",
+                    qualified_name=f"{table.name}.{column.name}",
+                    data_type=column.type or "",
+                    role=column.role or "",
+                    description=column.description or "",
+                    alias=[str(item) for item in (column.alias or [])],
+                    examples=[str(item) for item in (column.examples or [])],
+                    value_type=column.value_type or "open",
+                )
+            )
+        return views
+
+    @staticmethod
+    def build_value_diff(column, dw_values: list) -> dict[str, list[str]]:
+        """对比 Meta 已登记枚举值与 DW 实际取值。"""
+        registered = [str(item) for item in (column.examples or [])]
+        registered_set = set(registered)
+        dw_text = [str(item) for item in dw_values]
+        dw_set = set(dw_text)
+        return {
+            "registered": registered,
+            "in_dw": dw_text,
+            "unregistered": [value for value in dw_text if value not in registered_set],
+            "missing_in_dw": [value for value in registered if value not in dw_set],
+        }
+
+    async def update_field(
+        self,
+        column_id: str,
+        reviewer: str,
+        review_comment: str | None = None,
+        description: str | None = None,
+        alias: list[str] | None = None,
+        examples: list[str] | None = None,
+        role: str | None = None,
+        value_type: str | None = None,
+    ) -> ReviewReport:
+        """直接修改已发布字段语义，并写入一条人工修改的审计记录。"""
+        self._require_reviewer(reviewer)
+        if role is not None and role not in ALLOWED_PUBLISH_ROLES:
+            raise RuntimeError(
+                f"非法字段角色 [{role}]，仅允许：{'、'.join(sorted(ALLOWED_PUBLISH_ROLES))}"
+            )
+        if value_type is not None and value_type not in {"closed", "open"}:
+            raise RuntimeError(f"非法取值类型 [{value_type}]，仅允许 closed 或 open")
+
+        column = await self.meta_repository.get_column_by_id(column_id)
+        if column is None:
+            raise RuntimeError(f"未找到字段 [{column_id}]")
+        table = await self.meta_repository.get_table_by_id(column.table_id)
+        qualified_name = f"{table.name}.{column.name}" if table else (column.name or column_id)
+
+        previous = {
+            "description": column.description,
+            "alias": column.alias or [],
+            "examples": column.examples or [],
+            "role": column.role,
+            "value_type": column.value_type or "open",
+        }
+        published: dict[str, Any] = {}
+        changed = False
+
+        if description is not None:
+            new_description = description.strip()
+            if new_description != (column.description or ""):
+                column.description = new_description
+                published["description"] = new_description
+                changed = True
+        if alias is not None:
+            new_alias = self._normalize_terms(alias)
+            if new_alias != list(column.alias or []):
+                column.alias = new_alias
+                published["alias"] = new_alias
+                changed = True
+        if examples is not None:
+            new_examples = self._normalize_terms(examples)
+            if new_examples != [str(item) for item in (column.examples or [])]:
+                column.examples = new_examples
+                published["examples"] = new_examples
+                changed = True
+        if role is not None and role != column.role:
+            column.role = role
+            published["role"] = role
+            changed = True
+        if value_type is not None and value_type != (column.value_type or "open"):
+            column.value_type = value_type
+            published["value_type"] = value_type
+            changed = True
+
+        if changed:
+            await self.meta_repository.save_column(column)
+
+        draft = ColumnSemanticDraftMySQL(
+            column_id=column.id,
+            revision=await self.meta_repository.get_next_semantic_draft_revision(column.id),
+            status="approved",
+            candidate_description=column.description or "",
+            candidate_alias=[str(item) for item in (column.alias or [])],
+            candidate_value_examples=[str(item) for item in (column.examples or [])],
+            candidate_role=column.role,
+            evidence={
+                "source": "manual_edit",
+                "table_name": table.name if table else "",
+                "column_name": column.name,
+            },
+            model_name="manual",
+            prompt_version="manual_edit_v1",
+            reviewer=reviewer,
+            review_comment=review_comment,
+            reviewed_at=datetime.now(),
+            published_content=published,
+        )
+        await self.meta_repository.save_semantic_draft(draft)
+
+        return ReviewReport(
+            draft_id=draft.id,
+            qualified_name=qualified_name,
+            status="approved",
+            reviewer=reviewer,
+            published=published,
+            previous=previous,
+        )
 
     # ==================== 内部工具 ====================
 

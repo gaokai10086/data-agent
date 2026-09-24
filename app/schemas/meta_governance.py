@@ -44,3 +44,36 @@ class SemanticDraftRejectRequest(BaseModel):
 
     reviewer: str = Field(min_length=1, description="审核人姓名")
     review_comment: str | None = Field(default=None, description="驳回原因")
+
+
+class SemanticFieldView(BaseModel):
+    """已发布字段语义的展示模型。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    column_id: str
+    table_name: str
+    column_name: str
+    qualified_name: str
+    data_type: str
+    role: str
+    description: str
+    alias: list[str] = Field(default_factory=list)
+    examples: list[str] = Field(default_factory=list)
+    value_type: str = Field(default="open", description="closed=封闭枚举，open=开放枚举")
+
+
+class SemanticFieldUpdateRequest(BaseModel):
+    """直接修改已发布字段语义的请求，审核人必填。"""
+
+    reviewer: str = Field(min_length=1, description="修改人姓名")
+    review_comment: str | None = Field(default=None, description="修改原因")
+    description: str | None = Field(default=None, description="新的字段说明")
+    alias: list[str] | None = Field(default=None, description="新的字段别名")
+    examples: list[str] | None = Field(default=None, description="新的枚举样例")
+    role: Literal["primary_key", "foreign_key", "measure", "dimension"] | None = Field(
+        default=None, description="修正字段角色"
+    )
+    value_type: Literal["closed", "open"] | None = Field(
+        default=None, description="closed=封闭枚举（人工维护值），open=开放枚举（模型推导）"
+    )

@@ -39,6 +39,34 @@ def _extract_metadata_mapping(table_infos: List[Dict[str, Any]]) -> Dict[str, st
     return dynamic_mapping
 
 
+def _localize_chart_config(
+    chart_config: dict,
+    column_mapping: Dict[str, str],
+    formatted_rows: List[Dict[str, Any]],
+) -> dict:
+    """把图表配置本地化：数据列与坐标轴字段改成中文，并去掉冗余标题。
+
+    图表标题不再重复描述「指标 按 维度」这类显而易见的信息，
+    坐标轴本身已经表达了这层含义。
+    """
+    chart_type = chart_config.get("chart_type")
+    if not chart_type or chart_type == "table":
+        return chart_config
+
+    localized = dict(chart_config)
+    localized["data"] = formatted_rows
+    localized["title"] = ""
+
+    x_column = chart_config.get("x_column")
+    if x_column:
+        localized["x_column"] = column_mapping.get(x_column, x_column)
+    localized["y_columns"] = [
+        column_mapping.get(column, column)
+        for column in (chart_config.get("y_columns") or [])
+    ]
+    return localized
+
+
 async def _infer_column_names_by_llm(query: str, missing_columns: List[str]) -> Dict[str, str]:
     """针对 SQL 计算衍生列（如 count、sum 别名），调用 LLM 动态推断其最贴切的中文表头"""
     llm = get_llm(provider="deepseek", model_tier="flash", temperature=0.0)
@@ -67,6 +95,10 @@ async def _infer_column_names_by_llm(query: str, missing_columns: List[str]) -> 
 
 async def present_result(state: DataAgentState, runtime: Runtime[DataAgentContext]) -> Dict[str, Any]:
     writer = getattr(runtime, "stream_writer", None)
+    # 并行分支汇聚时，某些 LangGraph 版本可能多次触发本节点。
+    # 用 State 标记保证 bi_report 只向下游推送一次。
+    if state.get("report_emitted"):
+        return {}
     if writer:
         writer({"stage": "生成结构化报告"})
 
@@ -74,6 +106,10 @@ async def present_result(state: DataAgentState, runtime: Runtime[DataAgentContex
     sql = state.get("sql", "")
     sql_result: List[Dict[str, Any]] = state.get("sql_result", [])
     table_infos = state.get("table_infos", [])
+    result_analysis = state.get("result_analysis") or {}
+    chart_plan = state.get("chart_plan") or {}
+    chart_config = state.get("chart_config") or {}
+    insight = state.get("insight") or {}
 
     # 1. 动态提取涉及的数据来源表名
     source_tables = [t.get("name") for t in table_infos if t.get("name")]
@@ -109,6 +145,10 @@ async def present_result(state: DataAgentState, runtime: Runtime[DataAgentContex
                     chinese_row[col_name] = v
             formatted_data.append(chinese_row)
 
+    # 图表配置本地化：坐标轴改中文，并去掉冗余标题
+    if chart_config:
+        chart_config = _localize_chart_config(chart_config, column_mapping, formatted_data)
+
     # 4. 统一通过 Stream 下发结构化协议包
     if writer:
         writer({
@@ -116,8 +156,12 @@ async def present_result(state: DataAgentState, runtime: Runtime[DataAgentContex
             "data": formatted_data,  # 1. 结构化数据结果（纯净中文列）
             "sql": sql,  # 2. 底层执行 SQL 语句
             "source_tables": source_tables,  # 2. 涉及的物理表来源审计
-            "row_count": len(formatted_data)
+            "row_count": len(formatted_data),
+            "analysis": result_analysis,
+            "chart_plan": chart_plan,
+            "chart_config": chart_config,
+            "insight": insight,
         })
 
     logger.info(f"✨ [PresentResult] 结构化报告协议下发完毕，成功动态渲染 {len(formatted_data)} 条记录")
-    return {}
+    return {"report_emitted": True}

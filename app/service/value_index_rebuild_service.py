@@ -1,7 +1,7 @@
 """从 Meta 已发布字段重建 Elasticsearch 枚举值索引。"""
 from dataclasses import dataclass, field
 
-from app.core.meta.value_sampling_policy import decide
+from app.core.meta.value_sampling_policy import is_safe_to_index
 from app.models.es.value_info_es import ValueInfoES
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.repositories.es.value_es_repository import ValueESRepository
@@ -33,14 +33,21 @@ class ValueIndexRebuildService:
 
         for table, column in table_columns:
             qualified_name = f"{table.name}.{column.name}"
-            decision = decide(table.name, column.name or "", column.type or "")
-            if not decision.allowed:
-                report.skipped_columns.append(f"{qualified_name}: {decision.reason}")
+            if (column.value_type or "open") != "closed":
+                report.skipped_columns.append(f"{qualified_name}: 非封闭枚举字段，不建立值索引")
+                continue
+
+            safety = is_safe_to_index(table.name, column.name or "", column.type or "")
+            if not safety.allowed:
+                report.skipped_columns.append(f"{qualified_name}: {safety.reason}")
                 continue
 
             examples = column.examples or []
             if isinstance(examples, str):
                 examples = [examples]
+            if not examples:
+                report.skipped_columns.append(f"{qualified_name}: 已标记封闭枚举但未维护枚举值")
+                continue
             for raw_value in examples:
                 value = str(raw_value).strip()
                 if not value:
