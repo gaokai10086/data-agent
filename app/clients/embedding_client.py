@@ -30,15 +30,12 @@ class EmbeddingClientManager:
 
         model_name = app_config.embedding.model_name
 
-        print(f"🔄 正在初始化智谱在线向量模型: {model_name} (输出维度: 1024)...")
-
         # 🌟 重点：dimensions=1024 利用 MRL 特性截断，无缝适配既有 Qdrant 集合
         self.client = ZhipuAIEmbeddings(
             model=model_name,
             api_key=api_key,
             dimensions=1024
         )
-        print("✅ 智谱在线向量客户端装载成功！")
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         """同步生成文本批处理向量（调用标准 embed_documents）"""

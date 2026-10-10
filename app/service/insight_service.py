@@ -14,6 +14,20 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
+def _format_number(value: float) -> str:
+    return f"{int(value):,}" if float(value).is_integer() else f"{value:,.2f}"
+
+
+def _display_name(name: str) -> str:
+    aliases = {
+        "month": "月份", "date": "日期", "day": "日期", "region": "大区",
+        "channel": "渠道", "store_name": "门店", "category": "品类",
+        "platform": "平台", "sales_amount": "销售额", "order_count": "订单数",
+        "user_count": "用户数",
+    }
+    return aliases.get(name.lower(), name)
+
+
 class InsightService:
     """只负责事实计算和 Prompt 构建，不直接调用模型。"""
 
@@ -50,6 +64,48 @@ class InsightService:
             })
 
         return facts
+
+    @staticmethod
+    def build_kpis(rows: list[dict[str, Any]], analysis: dict[str, Any]) -> list[dict[str, Any]]:
+        """根据结果形状生成业务 KPI，避免固定展示 sum/avg/min/max。"""
+        if not rows:
+            return []
+        metrics = [str(item) for item in (analysis.get("metrics") or [])]
+        dimensions = [str(item) for item in (analysis.get("dimensions") or [])]
+        if not metrics:
+            return []
+        metric = metrics[0]
+        metric_label = _display_name(metric)
+        numeric_rows = [
+            (row, _to_float(row.get(metric)))
+            for row in rows
+            if _to_float(row.get(metric)) is not None
+        ]
+        if not numeric_rows:
+            return []
+        values = [value for _, value in numeric_rows]
+        total = round(sum(values), 2)
+        kpis: list[dict[str, Any]] = []
+
+        if not dimensions:
+            value = values[0] if len(values) == 1 else total
+            kpis.append({"label": metric_label, "value": round(value, 2), "unit": "", "priority": 1})
+            return kpis
+
+        dimension = dimensions[0]
+        ranked = sorted(numeric_rows, key=lambda item: item[1], reverse=True)
+        top_row, top_value = ranked[0]
+        bottom_row, bottom_value = ranked[-1]
+        dimension_label = _display_name(dimension)
+        kpis.append({"label": f"{metric_label}总量", "value": total, "unit": "", "priority": 1})
+        kpis.append({"label": f"最高{dimension_label}", "value": str(top_row.get(dimension)),
+                     "description": f"{_format_number(top_value)}", "priority": 2})
+        kpis.append({"label": f"最低{dimension_label}", "value": str(bottom_row.get(dimension)),
+                     "description": f"{_format_number(bottom_value)}", "priority": 3})
+        if bottom_value not in (0, None) and top_value is not None:
+            kpis.append({"label": "最高/最低", "value": round(top_value / bottom_value, 1),
+                         "unit": "倍", "priority": 4})
+        return kpis[:4]
 
     @staticmethod
     def build_prompt(

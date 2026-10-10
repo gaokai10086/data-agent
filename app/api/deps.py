@@ -1,6 +1,6 @@
 from fastapi import Depends
 
-from app.agent.graph import graph
+from app.agent.orchestrator.graph import orchestrator_graph as graph
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.mysql_client import dw_client_manager, meta_client_manager
 from app.clients.qdrant_client import qdrant_client_manager
@@ -80,7 +80,7 @@ async def get_chat_service(
         column_qdrant_repository=Depends(get_column_qdrant_repository),
         metric_qdrant_repository=Depends(get_metric_qdrant_repository),
         value_es_repository=Depends(get_value_es_repository),
-        embedding_client=Depends(get_embedding_client),
+    embedding_client=Depends(get_embedding_client),
 ) -> ChatService:
     return ChatService(
         graph=graph,

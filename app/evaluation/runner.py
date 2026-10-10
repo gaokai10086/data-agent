@@ -2,7 +2,7 @@
 import time
 from dataclasses import dataclass, field
 
-from app.agent.graph import graph
+from app.agent.orchestrator.graph import orchestrator_graph as graph
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.es_client import es_client_manager
 from app.clients.qdrant_client import qdrant_client_manager

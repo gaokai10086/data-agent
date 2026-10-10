@@ -299,7 +299,7 @@ class ColumnSemanticDraftService:
         return related
 
     def _build_prompt(self, **kwargs: Any) -> str:
-        template = load_prompt("enrich_column_semantic_draft")
+        template = load_prompt("metadata/enrich_column_semantic_draft")
         sample_values = kwargs["sample_values"]
         return template.format(
             table_name=kwargs["table_name"],

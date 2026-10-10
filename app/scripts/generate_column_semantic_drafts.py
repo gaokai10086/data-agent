@@ -6,7 +6,7 @@
 import argparse
 import asyncio
 
-from app.agent.llm import get_llm
+from app.core.llm import get_llm
 from app.clients.mysql_client import meta_client_manager
 from app.config.app_config import app_config
 from app.core.datasource.mysql_connector import MySQLConnector
@@ -37,9 +37,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model-tier",
-        choices=("flash", "pro"),
-        default="flash",
-        help="使用 flash 或 pro 规格模型，默认 flash",
+        choices=tuple(app_config.llm.models),
+        default=app_config.llm.models[0],
+        help="使用的 DeepSeek 模型 ID，默认使用配置列表中的第一个模型",
     )
     return parser.parse_args()
 

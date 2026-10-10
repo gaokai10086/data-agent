@@ -33,7 +33,6 @@ def free_port(port: int):
 
 def terminate_all_processes():
     """清理并安全杀死所有子进程"""
-    print("\n🛑 正在停止所有服务，释放系统端口...")
     for proc in processes:
         if proc.poll() is None:
             try:
@@ -41,7 +40,6 @@ def terminate_all_processes():
                 proc.wait(timeout=2)
             except Exception:
                 proc.kill()
-    print("✅ 所有服务已平稳下线！")
 
 
 def signal_handler(sig, frame):
@@ -60,11 +58,6 @@ def main():
 
     python_executable = sys.executable
 
-    print("=" * 60)
-    print("🚀 正在一键启动【AI Agentic BI 智能问数平台】全套服务...")
-    print(f"🐍 Python 环境: {python_executable}")
-    print("=" * 60)
-
     # 2. 启动后端 FastAPI (Uvicorn)
     backend_cmd = [
         python_executable,
@@ -72,9 +65,9 @@ def main():
         "main:app",
         "--host", "0.0.0.0",
         "--port", "8000",
-        "--reload"
+        "--reload",
+        "--log-level", "warning",
     ]
-    print("📡 [1/2] 正在拉起 FastAPI 后端服务 (http://localhost:8000)...")
     backend_proc = subprocess.Popen(
         backend_cmd,
         stdout=sys.stdout,
@@ -82,6 +75,7 @@ def main():
         shell=False
     )
     processes.append(backend_proc)
+    print("后端服务已启动，URL: http://localhost:8000")
 
     time.sleep(2)
 
@@ -92,19 +86,20 @@ def main():
         "run",
         "web_ui.py",
         "--server.port", "8501",
-        "--server.address", "0.0.0.0"
+        "--server.address", "0.0.0.0",
+        "--logger.level", "error",
     ]
-    print("🎨 [2/2] 正在拉起 Web UI 交互界面 (http://localhost:8501)...")
     frontend_proc = subprocess.Popen(
         frontend_cmd,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         shell=False
     )
     processes.append(frontend_proc)
-
-    print("\n🎉 系统全部启动就绪！请在浏览器中打开: http://localhost:8501")
-    print("💡 随时在当前终端按下 [Ctrl + C] 即可一键关闭全部服务。\n")
+    print("前端服务已启动，URL: http://localhost:8501")
+    print("前端服务已启动，Network URL: http://172.16.104.27:8501")
+    print("运行时环境已加载（MySQL、Elasticsearch、Qdrant、Embedding）")
+    print("AI Agentic BI 智能问数平台已启动，访问地址: http://localhost:8501")
 
     while True:
         for proc in processes:

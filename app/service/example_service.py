@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.llm import get_llm
+from app.core.llm import get_llm
 from app.prompt.prompt_loader import load_prompt
 from app.clients.mysql_client import dw_client_manager
 from app.clients.qdrant_client import qdrant_client_manager
@@ -71,8 +71,8 @@ class ExampleService:
 
     async def audit_and_enrich_single(self, question: str, sql: str, warehouse_tables: List[str]) -> Dict[str, Any]:
         """单条样本大模型审查与打标"""
-        llm = get_llm(provider="deepseek", model_tier="flash", temperature=0.0)
-        prompt_template = load_prompt("audit_sql_example")
+        llm = get_llm(provider="deepseek", model_tier="deepseek-v4-flash", temperature=0.0)
+        prompt_template = load_prompt("data_agent/audit_sql_example")
         tables_str = ", ".join([f"`{t}`" for t in warehouse_tables])
 
         try:

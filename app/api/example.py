@@ -5,7 +5,7 @@
 核心职责：
     1. 极简入参：仅接收 question 与 sql
     2. 严格白名单：直接拉取数仓真实物理表，失败立即熔断，严禁伪造兜底名单
-    3. 生产级审计：调用 load_prompt("audit_sql_example") 驱动 LLM 严格审核
+    3. 生产级审计：调用 load_prompt("data_agent/audit_sql_example") 驱动 LLM 严格审核
     4. 准入与落库：is_valid=True 则热写入 Qdrant；不合规或系统异常则坚决拦截
 ================================================================================
 """
@@ -23,7 +23,7 @@ from app.clients.mysql_client import meta_client_manager
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.repositories.qdrant.sql_example_repository import SQLExampleQdrantRepository
 from app.models.qdrant.sql_example_info_qdrant import SQLExampleQdrant
-from app.agent.llm import llm
+from app.core.llm import llm
 from app.prompt.prompt_loader import load_prompt
 from app.core.logging import logger
 
@@ -87,7 +87,7 @@ async def upload_sql_example(req: SQLExampleCreateRequest):
 
     # 2. 载入独立提示词模板执行大模型安全审计
     try:
-        audit_template = load_prompt("audit_sql_example")
+        audit_template = load_prompt("data_agent/audit_sql_example")
         prompt = PromptTemplate(
             template=audit_template,
             input_variables=["question", "sql", "warehouse_tables"]

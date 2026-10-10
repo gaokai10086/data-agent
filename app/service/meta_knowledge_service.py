@@ -24,7 +24,7 @@ from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.models.mysql.table_info_mysql import TableInfoMySQL
 from app.models.mysql.column_info_mysql import ColumnInfoMySQL
 from app.models.mysql.metric_info_mysql import MetricInfoMySQL
-from app.agent.llm import get_llm
+from app.core.llm import get_llm
 from app.core.logging import logger
 
 
@@ -157,7 +157,7 @@ class MetaKnowledgeService:
             template=SEMANTIC_ENRICH_PROMPT,
             input_variables=["table_name", "table_comment", "columns_context"]
         )
-        llm = get_llm(provider="deepseek", model_tier="flash", temperature=0.1, streaming=False)
+        llm = get_llm(provider="deepseek", model_tier="deepseek-v4-flash", temperature=0.1, streaming=False)
         # 解耦：只进行 JSON 语法解析，由 Python 管道做清洗与模型反序列化
         chain = prompt | llm | JsonOutputParser()
 

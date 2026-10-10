@@ -2,8 +2,9 @@ from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.context import DataAgentContext
-from app.agent.state import DataAgentState
+from app.agent.data_agent.context import DataAgentContext
+from app.config.app_config import DEFAULT_LLM_MODEL, DEFAULT_LLM_PROVIDER
+from app.core.logging import logger
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
@@ -40,7 +41,7 @@ class ChatService:
         self.metric_qdrant_repository = metric_qdrant_repository
 
 
-    def _build_context(self) -> DataAgentContext:
+    def _build_context(self, *, provider: str = DEFAULT_LLM_PROVIDER, model_tier: str = DEFAULT_LLM_MODEL) -> DataAgentContext:
         """静态资源打包：把数据库、ES、Qdrant、Embedding 句柄组装成图运行上下文。"""
         return DataAgentContext(
             metric_qdrant_repository=self.metric_qdrant_repository,
@@ -49,23 +50,25 @@ class ChatService:
             embedding_client=self.embedding_client,
             meta_mysql_repository=self.meta_mysql_repository,
             dw_mysql_repository=self.dw_mysql_repository,
+            llm_provider=provider,
+            llm_model_tier=model_tier,
         )
 
-    async def stream_chat(self, query: str):
-        #  “动静分离”的数据上下文打包（DataAgentState vs DataAgentContext）
-        #  动态数据（State）：单次请求的易变业务载荷，初始化时注入用户的原始自然语言提问,后续图执行时，生成的 SQL、查出来的数据都会写回这个 State。
-        state = DataAgentState(query=query)
-        #  静态资源（Context）：将不需要大模型修改的重量级底层句柄（MySQL、ES、Qdrant、Embedding）打包为 DataAgentContext，供图节点按需调用
-        context = self._build_context()
+    async def stream_chat(self, query: str, *, provider: str = DEFAULT_LLM_PROVIDER, model_tier: str = DEFAULT_LLM_MODEL):
+        logger.info("[Chat Service] selected provider={} model={}", provider, model_tier)
+        # Orchestrator 负责意图识别和分流，子 Agent 在适配节点内接收自己的 State。
+        context = self._build_context(provider=provider, model_tier=model_tier)
         #。
-        async for chunk in self.graph.astream(input=state, context=context, stream_mode="custom"):
+        async for chunk in self.graph.astream(
+            input={"query": query}, context=context, stream_mode="custom"
+        ):
             yield chunk
 
-    async def run_once(self, query: str) -> dict:
+    async def run_once(self, query: str, *, provider: str = DEFAULT_LLM_PROVIDER, model_tier: str = DEFAULT_LLM_MODEL) -> dict:
         """非流式执行一次问数，返回最终 State，供离线评测与批量任务使用。"""
-        state = DataAgentState(query=query)
-        context = self._build_context()
-        return await self.graph.ainvoke(input=state, context=context)
+        context = self._build_context(provider=provider, model_tier=model_tier)
+        result = await self.graph.ainvoke(input={"query": query}, context=context)
+        return result.get("agent_result") or result
 
 #   为什么要把数据拆分为 DataAgentState 和 DataAgentContext 两个不同的对象
 """

@@ -8,6 +8,7 @@
     3. 支持嵌套命名空间式点号调用 (如 app_config.embedding.zhipu_api_key)
 ================================================================================
 """
+import json
 import os
 from pathlib import Path
 
@@ -70,8 +71,19 @@ class ESConfig(BaseModel):
 class LLMConfig(BaseModel):
     api_key: str
     base_url: str = "https://api.deepseek.com/v1"
-    model_flash: str = "deepseek-v4-flash"
-    model_pro: str = "deepseek-v4-pro"
+    models: list[str] = Field(default_factory=lambda: ["deepseek-v4-flash", "deepseek-v4-pro"])
+
+
+class ZhipuLLMConfig(BaseModel):
+    """智谱对话模型配置。
+
+    配置文件推荐使用模型 ID 列表；加载后会规范化为 Provider 使用的字典。
+    因为展示、路由传递和 API 调用使用同一个名称，不需要额外别名转换。
+    """
+
+    api_key: str
+    base_url: str = "https://open.bigmodel.cn/api/paas/v4"
+    models: dict[str, str] = Field(default_factory=lambda: {"glm-5.3": "glm-5.3"})
 
 
 # ----------------- 2. 根配置容器与加载器 -----------------
@@ -84,6 +96,7 @@ class AppConfig(BaseModel):
     embedding: EmbeddingConfig
     es: ESConfig
     llm: LLMConfig
+    zhipu_llm: ZhipuLLMConfig
 
     @classmethod
     def load_from_env(cls) -> "AppConfig":
@@ -99,6 +112,38 @@ class AppConfig(BaseModel):
                 "缺少必要环境变量: " + ", ".join(missing) +
                 "。请复制 .env 为 .env 后填写本机凭证。"
             )
+
+        zhipu_models_raw = os.getenv("ZHIPU_MODELS", "")
+        if zhipu_models_raw:
+            try:
+                zhipu_models = json.loads(zhipu_models_raw)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    "ZHIPU_MODELS 必须是 JSON 模型列表，例如 "
+                    '`["glm-4.6-flash","glm-5.3"]`'
+                ) from exc
+            if isinstance(zhipu_models, list) and all(
+                isinstance(model, str) and model.strip() for model in zhipu_models
+            ):
+                zhipu_models = {model: model for model in zhipu_models}
+            elif isinstance(zhipu_models, dict) and all(
+                isinstance(key, str) and isinstance(value, str)
+                for key, value in zhipu_models.items()
+            ):
+                # 兼容旧版 key -> model_id 字典格式。
+                zhipu_models = dict(zhipu_models)
+            else:
+                raise RuntimeError(
+                    "ZHIPU_MODELS 必须是 JSON 字符串列表，例如 "
+                    '`["glm-4.6-flash","glm-5.3"]`'
+                )
+        else:
+            # 兼容旧配置：只填写旧版单模型变量也可以启动。
+            zhipu_models = {
+                os.getenv("ZHIPU_MODEL_GLM_5_3", "glm-5.3"): os.getenv(
+                    "ZHIPU_MODEL_GLM_5_3", "glm-5.3"
+                )
+            }
 
         return cls(
             logging=LoggingConfig(
@@ -147,8 +192,15 @@ class AppConfig(BaseModel):
             llm=LLMConfig(
                 api_key=os.environ["DEEPSEEK_API_KEY"],
                 base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
-                model_flash=os.getenv("DEEPSEEK_MODEL_FLASH", "deepseek-v4-flash"),
-                model_pro=os.getenv("DEEPSEEK_MODEL_PRO", "deepseek-v4-pro"),
+                models=json.loads(os.getenv(
+                    "DEEPSEEK_MODELS",
+                    '["deepseek-v4-flash","deepseek-v4-pro"]',
+                )),
+            ),
+            zhipu_llm=ZhipuLLMConfig(
+                api_key=os.environ["ZHIPU_API_KEY"],
+                base_url=os.getenv("ZHIPU_LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4"),
+                models=zhipu_models,
             ),
         )
 
@@ -160,6 +212,11 @@ load_dotenv(PROJECT_ROOT / ".env")
 # 全局单例实例化暴露
 app_config: AppConfig = AppConfig.load_from_env()
 
+# 调用方未显式选择模型时使用的默认配置。
+DEFAULT_LLM_PROVIDER = os.getenv("DEFAULT_LLM_PROVIDER", "deepseek")
+DEFAULT_LLM_MODEL = os.getenv("DEFAULT_LLM_MODEL", "deepseek-v4-flash")
+
+
 
 # ----------------- 3. 独立运行自检 -----------------
 if __name__ == '__main__':
@@ -167,5 +224,5 @@ if __name__ == '__main__':
     print("✅ 配置来源: 环境变量（本地可使用 .env）")
     print(f"✅ Qdrant 向量维度: {app_config.qdrant.embedding_size}")
     print(f"✅ 智谱 Embedding 模型: {app_config.embedding.model_name}")
-    print(f"✅ LLM 基础模型: {app_config.llm.model_flash}")
+    print(f"✅ LLM 基础模型: {app_config.llm.models}")
     print("\n🎉 app_config 配置模块校验 100% 成功，即插即用！")

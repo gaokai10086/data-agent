@@ -15,6 +15,9 @@ log_format = (
     "<level>{message}</level>"
 )
 
+# 控制台面向开发过程，只展示业务消息；完整上下文仍写入文件日志。
+console_log_format = "<level>{message}</level>"
+
 
 def inject_request_id(record):
     try:
@@ -27,7 +30,11 @@ def inject_request_id(record):
 logger.remove()
 logger = logger.patch(inject_request_id)
 if app_config.logging.console.enable:
-    logger.add(sink=sys.stdout, level=app_config.logging.console.level, format=log_format)
+    logger.add(
+        sink=sys.stdout,
+        level=app_config.logging.console.level,
+        format=console_log_format,
+    )
 if app_config.logging.file.enable:
     path = Path(app_config.logging.file.path)
     path.mkdir(parents=True, exist_ok=True)

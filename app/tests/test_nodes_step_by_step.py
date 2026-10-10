@@ -5,12 +5,12 @@
 ================================================================================
 """
 import asyncio
-from app.agent.nodes.intent_detection import intent_detection
-from app.agent.nodes.extract_keywords import extract_keywords
-from app.agent.nodes.column_recall import column_recall
-from app.agent.nodes.metric_recall import metric_recall
-from app.agent.nodes.value_recall import value_recall
-from app.agent.nodes.merge_retrieved_info import merge_retrieved_info
+from app.agent.data_agent.nodes.intent_detection import intent_detection
+from app.agent.data_agent.nodes.extract_keywords import extract_keywords
+from app.agent.data_agent.nodes.column_recall import column_recall
+from app.agent.data_agent.nodes.metric_recall import metric_recall
+from app.agent.data_agent.nodes.value_recall import value_recall
+from app.agent.data_agent.nodes.merge_retrieved_info import merge_retrieved_info
 
 
 class MockStreamWriter:
