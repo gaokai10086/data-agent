@@ -5,6 +5,7 @@ from app.agent.data_agent.context import DataAgentContext
 from app.agent.data_agent.state import DataAgentState
 from app.core.logging import logger
 from app.core.meta.display_intent import matches_display_pattern, required_display_patterns
+from app.core.meta.geographic_intent import requires_city_fields
 
 KEY_ROLES = {"primary_key", "foreign_key"}
 
@@ -73,6 +74,22 @@ def _protect_display_intent(
                 _protect(protected, table_name, column_name)
 
 
+def _protect_city_intent(
+    protected: dict[str, set[str]], table_infos: list[dict], query: str
+) -> None:
+    """城市过滤字段也属于查询必需字段，不能仅保护指标默认维度。
+
+    地名具体取值交给值召回；此处只保留城市语义候选，不决定门店/用户城市。
+    """
+    if not requires_city_fields(query):
+        return
+    for table in table_infos:
+        for column in table.get("columns", []):
+            aliases = column.get("alias") or []
+            if column.get("name") == "city" or any("城市" in str(alias) for alias in aliases):
+                _protect(protected, str(table.get("name") or ""), str(column.get("name") or ""))
+
+
 async def filter_table_info(
     state: DataAgentState,
     runtime: Runtime[DataAgentContext],
@@ -92,6 +109,7 @@ async def filter_table_info(
     _protect_values(protected, retrieved_values)
     _protect_relations(protected, table_relations)
     _protect_display_intent(protected, table_infos, state.get("query", ""))
+    _protect_city_intent(protected, table_infos, state.get("query", ""))
 
     # 没有强证据时不做激进压缩，保持原有候选，避免把有效 Schema 裁空。
     if not protected:

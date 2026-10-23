@@ -7,6 +7,8 @@ from app.core.llm import get_context_llm
 from app.agent.data_agent.state import DataAgentState
 from app.core.logging import logger
 from app.prompt.prompt_loader import load_prompt
+from app.core.meta.value_grounding import prompt_value_evidence
+import yaml
 
 
 async def correct_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -32,7 +34,7 @@ async def correct_sql(state: DataAgentState, runtime: Runtime[DataAgentContext])
         #。把 query + sql + error + table_infos 四者合一，大模型就能进行高精度的因果推断
         prompt = PromptTemplate(template=load_prompt("data_agent/correct_sql"),
                                 input_variables=["query", "sql", "error", "table_infos", "metric_infos", "date_info",
-                                                 "db_info"])
+                                                 "db_info", "value_groundings"])
         #  为什么使用 StrOutputParser？
         """
         1. SQL 是纯文本，不是 JSON
@@ -45,7 +47,9 @@ async def correct_sql(state: DataAgentState, runtime: Runtime[DataAgentContext])
 
         result = await chain.ainvoke(
             {"query": query, "sql": sql, "error": error, "table_infos": table_infos, "metric_infos": metric_infos,
-             "date_info": date_info, "db_info": db_info})
+             "date_info": date_info, "db_info": db_info,
+             "value_groundings": yaml.safe_dump(prompt_value_evidence(state.get("retrieved_values", [])),
+                                                allow_unicode=True, sort_keys=False)})
         logger.info(f'校正SQL结果：{result}')
         return {"sql": result}
     except Exception as e:

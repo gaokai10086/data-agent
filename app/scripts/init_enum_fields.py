@@ -23,8 +23,10 @@ from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 CLOSED_ENUMS: tuple[str, ...] = (
     "fact_order.order_status",
     "dim_store.region",
+    "dim_store.city",
     "dim_store.channel_type",
     "dim_user.gender",
+    "dim_user.city",
     "dim_user.user_level",
     "dim_user.register_channel",
     "dim_promotion.promo_type",

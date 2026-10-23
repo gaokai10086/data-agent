@@ -54,6 +54,7 @@ async def value_recall(state: Dict[str, Any], runtime: Any = None) -> Dict[str, 
     else:
         logger.info("ℹ️ [ValueRecall] 未检测到 value_es_repository 仓储，枚举值召回步骤优雅跳过。")
 
+    recalled_values = list({item.get("id") or str(item): item for item in recalled_values}.values())
     logger.info(f"✨ [ValueRecall] 枚举值召回完毕，共锁定 {len(recalled_values)} 个匹配项。")
     emit_node_result(runtime, f"枚举值：匹配 {len(recalled_values)} 个")
 

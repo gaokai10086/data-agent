@@ -21,7 +21,7 @@ async def run_anomaly_agent(
 
     runtime.stream_writer 写出的事件会进入上层 SSE；最终返回值则进入
     OrchestratorState.agent_result，供非流式调用或后续编排使用。
-    当前阶段不查询数据库，也不生成归因报告。
+    总体核实后可进入有限维度分析，输出阶段性证据报告。
     """
     # 先告诉前端已经进入异动分支；这是进度提示，不代表解析成功。
     runtime.stream_writer({
@@ -43,14 +43,26 @@ async def run_anomaly_agent(
         "agent": "anomaly",
         **request.model_dump(),
     })
-    # 展示文案属于事件层，不写入子 Graph State。
+    verification = result["change_verification"]
+    runtime.stream_writer({
+        "type": "change_verification",
+        "agent": "anomaly",
+        **verification.model_dump(mode="json"),
+    })
+    strategy = result.get("analysis_strategy")
+    if strategy is not None:
+        runtime.stream_writer({
+            "type": "analysis_strategy", "agent": "anomaly",
+            **strategy.model_dump(mode="json"),
+        })
+    report = result.get("change_analysis_report")
+    if report is not None:
+        runtime.stream_writer({"type": "change_analysis_report", "agent": "anomaly",
+                               **report.model_dump(mode="json")})
+    # 使用 token 兼容现有 UI；不冒用旧 anomaly_result 报告卡片协议。
     runtime.stream_writer({
         "type": "token",
-        "content": (
-            f"已解析：指标={request.metric}，目标月份={request.target_period}，"
-            f"对比月份={request.comparison_period}，比较类型={request.comparison_type}，"
-            f"筛选条件={[(item.dimension, item.value) for item in request.filters]}。"
-            "当前尚未查询数据或验证下降。"
-        ),
+        "content": (report.summary if report is not None else verification.summary)
+        + " ".join(verification.warnings),
     })
     return {"agent_result": result}

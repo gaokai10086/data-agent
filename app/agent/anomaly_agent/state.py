@@ -2,7 +2,15 @@
 
 from typing import TypedDict
 
-from app.agent.anomaly_agent.schemas import AnalysisRequest, MetricContext, OverallQueryResult
+from app.agent.anomaly_agent.schemas import (
+    AnalysisPlan,
+    AnalysisRequest,
+    AnalysisStrategy,
+    BaseAnomalyResult,
+    ChangeVerification,
+    ChangeAnalysisReport,
+    MetricContext,
+)
 
 
 class AnomalyState(TypedDict, total=False):
@@ -17,5 +25,17 @@ class AnomalyState(TypedDict, total=False):
     # 从共享 Metadata 读取并归一化后的指标定义，供 Planner 生成 DataRequest。
     metric_context: MetricContext
 
-    # 总体查询得到的两个周期原始值，供变化率和后续归因节点使用。
-    overall_result: OverallQueryResult
+    # 当前版本只支持 overall_comparison；后续由路由节点扩展。
+    analysis_plan: AnalysisPlan
+
+    # 通用分析结果；具体结构由 analysis_type 对应的结果子类约束。
+    analysis_result: BaseAnomalyResult
+
+    # 变化事实核实与后续分析决策；不进行历史异常检测。
+    change_verification: ChangeVerification
+
+    # Skill 制定的分析步骤；执行节点统一继承 analysis_request 的查询范围。
+    analysis_strategy: AnalysisStrategy
+
+    # 单节点内部的动作历史、观察结果及停止原因；节点完成后统一写回。
+    change_analysis_report: ChangeAnalysisReport

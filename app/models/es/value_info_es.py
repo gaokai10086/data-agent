@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class ValueInfoES(TypedDict):
@@ -9,5 +9,7 @@ class ValueInfoES(TypedDict):
     column_name: str
     table_id: str
     table_name: str
+    aliases: NotRequired[list[str]]
+    matched_text: NotRequired[str]
 
 

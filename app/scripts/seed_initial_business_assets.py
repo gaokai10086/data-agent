@@ -1,7 +1,8 @@
 """发布销售额与订单数量两条初始业务指标。"""
 import asyncio
 
-from app.clients.mysql_client import meta_client_manager
+from app.clients.mysql_client import meta_client_manager, dw_client_manager
+from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.service.business_asset_seed_service import BusinessAssetSeedService
 
@@ -11,11 +12,12 @@ async def seed_initial_business_assets() -> None:
     print("🚀 开始发布初始业务资产：销售额、订单数量")
     print("=" * 72)
     meta_client_manager.init()
+    dw_client_manager.init()
     try:
         if meta_client_manager.session_factory is None:
             raise RuntimeError("Meta 数据库连接池初始化失败")
-        async with meta_client_manager.session_factory() as session:
-            service = BusinessAssetSeedService(MetaMySQLRepository(session))
+        async with meta_client_manager.session_factory() as session, dw_client_manager.session_factory() as dw_session:
+            service = BusinessAssetSeedService(MetaMySQLRepository(session), DWMySQLRepository(dw_session))
             report = await service.seed()
             await session.commit()
         print("✅ 初始业务资产发布完成：")
@@ -23,7 +25,7 @@ async def seed_initial_business_assets() -> None:
         print(f"   公式血缘：新增 {report.lineages_created}，已存在 {report.lineages_existing}")
         print(f"   指标示例：新增 {report.examples_created}，已存在 {report.examples_existing}")
     finally:
-        await meta_client_manager.close()
+        await asyncio.gather(meta_client_manager.close(), dw_client_manager.close())
 
 
 if __name__ == "__main__":

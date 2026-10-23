@@ -37,7 +37,7 @@ def _fallback_message(error_type: str) -> str:
     return messages.get(error_type, "暂时无法完成这次数据查询，请稍后重试或联系管理员。")
 
 
-async def _generate_friendly_message(state: DataAgentState) -> str:
+async def _generate_friendly_message(state: DataAgentState, runtime: Runtime[DataAgentContext]) -> str:
     error_type, error_stage = _classify_error(state)
     fallback = _fallback_message(error_type)
     try:
@@ -67,7 +67,7 @@ async def translate_error(state: DataAgentState, runtime: Runtime[DataAgentConte
     is_valid_query = state.get("is_valid_query")
 
     # 根据错误类型读取专用 Prompt，并调用模型生成用户可理解的提示。
-    friendly_message = await _generate_friendly_message(state)
+    friendly_message = await _generate_friendly_message(state, runtime)
 
     logger.info("错误信息业务化翻译完成")
 

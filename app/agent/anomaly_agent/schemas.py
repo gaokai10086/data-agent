@@ -3,9 +3,13 @@
 这里定义“解析出了什么”，不保存 LangGraph 的执行进度。
 """
 
+from decimal import Decimal
 from typing import Any, Literal
+from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from app.core.meta.dimension_dependencies import validate_dimension_dependencies
+from app.schemas.metric_decomposition import MetricDecomposition
 
 
 class FilterCondition(BaseModel):
@@ -25,6 +29,7 @@ class ExtractedRequest(BaseModel):
     comparison_year: int | None = None
     comparison_month: int
     filters: list[FilterCondition] = Field(default_factory=list)
+    expected_direction: Literal["decrease", "increase", "unspecified"] = "unspecified"
 
 
 class AnalysisRequest(BaseModel):
@@ -34,10 +39,12 @@ class AnalysisRequest(BaseModel):
     """
 
     metric: str
+    request_id: str = Field(default_factory=lambda: uuid4().hex)
     target_period: str
     comparison_period: str
     comparison_type: Literal["mom", "yoy", "custom"]
     filters: list[FilterCondition] = Field(default_factory=list)
+    expected_direction: Literal["decrease", "increase", "unspecified"] = "unspecified"
 
 
 class MetricDimension(BaseModel):
@@ -51,6 +58,7 @@ class MetricDimension(BaseModel):
     name: str
     column: str
     aliases: list[str] = Field(default_factory=list)
+    determines: list[str] = Field(default_factory=list)
 
 
 class MetricContext(BaseModel):
@@ -71,14 +79,188 @@ class MetricContext(BaseModel):
     filters: list[dict[str, Any]] = Field(default_factory=list)
     dimensions: list[MetricDimension] = Field(default_factory=list)
     aliases: list[str] = Field(default_factory=list)
+    decomposition: MetricDecomposition | None = None
+
+    @model_validator(mode="after")
+    def check_dimension_dependencies(self):
+        validate_dimension_dependencies([item.model_dump() for item in self.dimensions])
+        return self
 
 
-class OverallQueryResult(BaseModel):
-    """总体指标查询结果，只保存两个比较周期的原始数值。"""
+class BaseAnomalyResult(BaseModel):
+    """所有异动分析结果共享的元数据。"""
 
     request_id: str
     metric_key: str
+    schema_version: str = "1.0"
+
+
+class OverallComparisonResult(BaseAnomalyResult):
+    """一个指标在两个周期的总体值对比结果。"""
+
+    analysis_type: Literal["overall_comparison"] = "overall_comparison"
     target_period: str
     comparison_period: str
-    current_value: Any
-    comparison_value: Any
+    current_value: Decimal | None
+    comparison_value: Decimal | None
+    change_amount: Decimal | None = None
+    change_rate: Decimal | None = None
+
+
+# 兼容现有调用方；后续新增分析类型时统一使用具体结果类型。
+OverallQueryResult = OverallComparisonResult
+
+
+class AnalysisPlan(BaseModel):
+    """异动分析路由计划。当前版本只实现总体对比。"""
+
+    analysis_type: Literal["overall_comparison"] = "overall_comparison"
+
+
+class ChangeVerification(BaseModel):
+    """返回值与请求标识的变化核实；不代表 SQL 口径已验证或统计异常已检测。"""
+
+    decision: Literal["continue", "stop"]
+    reason: Literal[
+        "change_confirmed", "direction_mismatch", "no_change", "insufficient_data",
+        "result_mismatch", "invalid_period", "incomplete_period", "unsupported_result",
+    ]
+    expected_direction: Literal["decrease", "increase", "unspecified"]
+    actual_direction: Literal["decrease", "increase", "unchanged", "unknown"] = "unknown"
+    summary: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class AnalysisContext(BaseModel):
+    """Skill 的临时输入；组合已有事实，不重复写入 Graph State。"""
+
+    request: AnalysisRequest
+    metric: MetricContext
+    comparison: OverallComparisonResult
+    verification: ChangeVerification
+
+    @model_validator(mode="after")
+    def check_identity(self):
+        request, result = self.request, self.comparison
+        if (request.request_id != result.request_id
+                or self.metric.metric_key != result.metric_key
+                or request.target_period != result.target_period
+                or request.comparison_period != result.comparison_period):
+            raise ValueError("Skill 上下文的请求、指标或周期不一致")
+        return self
+
+
+class DimensionContributionStep(BaseModel):
+    """维度贡献分析步骤；指标、周期、筛选统一继承当前请求。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    step_id: str = Field(min_length=1)
+    method: Literal["dimension_contribution"] = "dimension_contribution"
+    dimension_column: str = Field(min_length=1)
+    purpose: str = Field(min_length=1)
+
+
+class ExcludedDimension(BaseModel):
+    """本次计划排除的维度及其依据，不删除用户筛选。"""
+
+    dimension_column: str
+    reason: Literal["direct_filter", "dependency_fixed", "period_scope"]
+    determined_by: str | None = None
+    detail: str
+
+
+class AnalysisStrategy(BaseModel):
+    """各 Skill 统一的输出；unavailable 是正常业务结果，不执行空计划。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str
+    status: Literal["ready", "unavailable"]
+    reason: Literal[
+        "skill_selected", "unsupported_skill", "ambiguous_skill",
+        "no_candidate_dimensions", "unresolved_filter",
+    ]
+    skill_id: str | None = None
+    skill_version: str | None = None
+    steps: list[DimensionContributionStep] = Field(default_factory=list)
+    excluded_dimensions: list[ExcludedDimension] = Field(default_factory=list)
+    summary: str
+
+    @model_validator(mode="after")
+    def check_steps(self):
+        if self.status == "ready":
+            if not self.steps or not self.skill_id or not self.skill_version or self.reason != "skill_selected":
+                raise ValueError("ready 策略必须提供 Skill、版本及分析步骤")
+        elif self.steps or self.reason == "skill_selected":
+            raise ValueError("unavailable 策略不能包含执行步骤或成功原因")
+        if len({step.step_id for step in self.steps}) != len(self.steps):
+            raise ValueError("分析步骤 ID 不能重复")
+        if len({step.dimension_column for step in self.steps}) != len(self.steps):
+            raise ValueError("分析维度不能重复")
+        return self
+
+
+class AnalysisScopeRef(BaseModel):
+    """下钻只能引用已成功观察的真实分组，不接受自由编写的筛选。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    observation_id: str = Field(min_length=1)
+    group_value: str
+
+
+class AnalysisAction(BaseModel):
+    """模型只能选择候选维度或结束，不能修改指标、周期、筛选或 SQL。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["dimension_contribution", "finish"]
+    dimension_column: str | None = None
+    scope_ref: AnalysisScopeRef | None = None
+    reason: str = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def check_dimension(self):
+        if self.action == "dimension_contribution" and not self.dimension_column:
+            raise ValueError("维度分析动作必须指定维度")
+        if self.action == "finish" and (self.dimension_column is not None or self.scope_ref is not None):
+            raise ValueError("结束动作不能指定维度或下钻范围")
+        return self
+
+
+class GroupContribution(BaseModel):
+    group_value: str | None
+    current_value: Decimal
+    comparison_value: Decimal
+    change_amount: Decimal
+    # 对当前查询范围净变化的有符号贡献；抵消存在时可为负数或超过 100%。
+    contribution_rate: Decimal | None
+
+
+class AnalysisObservation(BaseModel):
+    """只有对账通过的结果才包含贡献明细；保留 SQL 以供人工复核口径。"""
+
+    observation_id: str
+    action: AnalysisAction
+    status: Literal["ok", "error"]
+    summary: str
+    groups: list[GroupContribution] = Field(default_factory=list)
+    sql_by_period: dict[str, str] = Field(default_factory=dict)
+    scope_filters: list[FilterCondition] = Field(default_factory=list)
+    scope_depth: int = 0
+    baseline_current_value: Decimal | None = None
+    baseline_comparison_value: Decimal | None = None
+    baseline_change_amount: Decimal | None = None
+    contribution_basis: Literal["query_scope_net_change"] = "query_scope_net_change"
+
+
+class ChangeAnalysisReport(BaseModel):
+    request_id: str
+    stop_reason: Literal[
+        "model_finished", "budget_exhausted", "no_candidates", "invalid_action",
+        "decision_error", "timeout", "verification_stopped",
+    ]
+    decisions: list[AnalysisAction] = Field(default_factory=list)
+    observations: list[AnalysisObservation] = Field(default_factory=list)
+    summary: str

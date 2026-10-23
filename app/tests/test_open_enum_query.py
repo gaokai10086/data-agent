@@ -5,8 +5,8 @@
     大模型能否仅凭字段语义，自己推导出正确的过滤条件。
 
 对照设计：
-    前两题走开放枚举（city / province），值索引里没有，必须靠模型推导。
-    第三题走封闭枚举（brand），值索引里有，作为对照组。
+    city 已升级为维护实际值与别名的封闭枚举；province 仍走开放路径。
+    brand 继续作为既有封闭枚举的对照组。
 
 运行：
     python -m app.tests.test_open_enum_query
@@ -23,11 +23,11 @@ from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 CASES = [
     {
         "question": "杭州市的销售额是多少？",
-        "value_type": "open",
+        "value_type": "closed",
         "table": "dim_store",
         "column": "city",
         "dw_value": "杭州",
-        "note": "DW 里存的是「杭州」而不是「杭州市」，模型写错就会返回空",
+        "note": "城市值索引应将「杭州市」关联到实际存储值「杭州」",
     },
     {
         "question": "江苏省的订单数量是多少？",

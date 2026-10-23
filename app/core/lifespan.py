@@ -7,7 +7,8 @@ from fastapi import FastAPI
 from app.clients.embedding_client import embedding_client_manager #  嵌入模型客户端
 from app.clients.es_client import es_client_manager #  Elasticsearch客户端
 from app.clients.mysql_client import dw_client_manager, meta_client_manager #   MySQL客户端
-from app.clients.qdrant_client import qdrant_client_manager #  Qdrant向量库客户端
+from app.clients.qdrant_client import qdrant_client_manager
+from app.service.mysql_conversation_repository import conversation_repository #  Qdrant向量库客户端
 
 """
 生命周期管理是什么？
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI):
     es_client_manager.init()  # 初始化ES连接
     qdrant_client_manager.init()  # 初始化向量库连接
     embedding_client_manager.init()  # 初始化嵌入模型
+    conversation_repository.initialize()  # 初始化独立应用会话库
 
     # 第19行：yield 分隔符 ⭐
     yield  # 应用运行中，等待关闭信号

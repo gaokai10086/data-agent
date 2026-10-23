@@ -38,6 +38,22 @@ async def _ensure_column_info_value_type(connection) -> bool:
     return True
 
 
+async def _ensure_metric_info_decomposition(connection) -> bool:
+    """旧库幂等补列；不修改现有指标内容。MySQL DDL 会隐式提交。"""
+    exists = await connection.execute(text("""
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'metric_info'
+          AND column_name = 'decomposition'
+    """))
+    if exists.scalar():
+        return False
+    await connection.execute(text("""
+        ALTER TABLE metric_info ADD COLUMN decomposition JSON NULL
+        COMMENT '结构化分析拆解关系；不替代 formula 取数公式'
+    """))
+    return True
+
+
 async def init_meta_database() -> None:
     """幂等创建 Meta 表；已存在的表不会被删除或覆盖。"""
     print("🚀 正在初始化 Meta 数据库表结构...")
@@ -48,9 +64,12 @@ async def init_meta_database() -> None:
         async with meta_client_manager.engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
             added = await _ensure_column_info_value_type(connection)
+            decomposition_added = await _ensure_metric_info_decomposition(connection)
         print("✅ Meta 数据库表结构初始化完成。")
         if added:
             print("   已为 column_info 补充 value_type 列，历史数据默认为 open。")
+        if decomposition_added:
+            print("   已为 metric_info 补充 decomposition 列，历史指标默认无拆解配置。")
         print(
             "   已确保存在：table_info、column_info、column_semantic_draft、table_relation、"
             "metric_info、column_metric、metric_example"

@@ -555,6 +555,43 @@ def save_conversation_to_local_archive(messages: list, session_id: str) -> Path:
     return file_path
 
 
+def _list_remote_conversations() -> list[dict]:
+    """读取 MySQL 持久化的会话摘要；服务暂不可用时不阻断聊天页面。"""
+    try:
+        response = requests.get(f"{API_BASE}/conversations", timeout=5)
+        response.raise_for_status()
+        return response.json().get("items", [])
+    except requests.RequestException as exc:
+        logger.warning("加载会话列表失败: %s", exc)
+        return []
+
+
+def _load_remote_messages(session_id: str) -> list[dict]:
+    try:
+        response = requests.get(f"{API_BASE}/conversations/{session_id}/messages", timeout=10)
+        response.raise_for_status()
+        return response.json().get("items", [])
+    except requests.RequestException as exc:
+        logger.warning("加载历史消息失败 session_id=%s: %s", session_id, exc)
+        return []
+
+
+def _select_remote_conversation(session_id: str) -> None:
+    """切换会话并把持久化消息转换为当前页面的展示结构。"""
+    messages = []
+    for item in _load_remote_messages(session_id):
+        if item.get("role") == "assistant" and item.get("structured_result"):
+            payload = item["structured_result"]
+            messages.append({"role": "assistant", "type": payload.get("type", "text"),
+                             "report_data": payload, "content": item.get("content", "")})
+        else:
+            messages.append({"role": item.get("role", "assistant"), "type": "text",
+                             "content": item.get("content", "")})
+    st.session_state.session_id = session_id
+    st.session_state.messages = messages
+    st.session_state.history_loaded_for = session_id
+
+
 # ==============================================================================
 # 1. 会话状态管理
 # ==============================================================================
@@ -563,6 +600,8 @@ if "session_id" not in st.session_state:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "history_loaded_for" not in st.session_state:
+    st.session_state.history_loaded_for = None
 
 if "page" not in st.session_state:
     st.session_state.page = "🐋 智能问数"
@@ -599,6 +638,22 @@ with st.sidebar:
 
 if current_page == "🐋 智能问数":
     with st.sidebar:
+        st.subheader("💬 历史会话")
+        if st.button("＋ 新建会话", key="new_remote_conversation", use_container_width=True):
+            st.session_state.session_id = f"data_agent_{uuid.uuid4().hex[:8]}"
+            st.session_state.messages = []
+            st.session_state.history_loaded_for = st.session_state.session_id
+            st.rerun()
+        for conversation in _list_remote_conversations()[:30]:
+            conversation_id = conversation.get("id")
+            if not conversation_id:
+                continue
+            title = conversation.get("title") or "未命名会话"
+            label = f"● {title}" if conversation_id == st.session_state.session_id else title
+            if st.button(label[:34], key=f"conversation_{conversation_id}", use_container_width=True):
+                _select_remote_conversation(conversation_id)
+                st.rerun()
+        st.markdown("---")
         st.subheader("⚙️ 会话控制")
         st.info(f"🔑 当前 Session ID:\n`{st.session_state.session_id}`")
 
@@ -607,7 +662,21 @@ if current_page == "🐋 智能问数":
             if st.button("🔄 重置会话", use_container_width=True):
                 st.session_state.session_id = f"data_agent_{uuid.uuid4().hex[:8]}"
                 st.session_state.messages = []
+                st.session_state.history_loaded_for = st.session_state.session_id
                 st.rerun()
+
+        if st.button("🗑️ 删除当前会话", use_container_width=True):
+            try:
+                response = requests.delete(
+                    f"{API_BASE}/conversations/{st.session_state.session_id}", timeout=5
+                )
+                response.raise_for_status()
+                st.session_state.session_id = f"data_agent_{uuid.uuid4().hex[:8]}"
+                st.session_state.messages = []
+                st.session_state.history_loaded_for = st.session_state.session_id
+                st.rerun()
+            except requests.RequestException as exc:
+                st.error(f"删除会话失败：{exc}")
 
         with col_btn2:
             if st.button("💾 归档到本地", use_container_width=True, disabled=not bool(st.session_state.messages)):
@@ -865,6 +934,8 @@ if user_query:
                 f"{API_BASE}/query",
                 json={
                     "query": user_query,
+                    # Streamlit session_state 在页面 rerun 间保持不变，确保追问复用同一会话。
+                    "session_id": st.session_state.session_id,
                     "provider": selected_provider,
                     "model_tier": selected_model_tier,
                 },

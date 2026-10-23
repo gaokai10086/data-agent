@@ -18,12 +18,11 @@ async def validate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
     dw_mysql_repository: DWMySQLRepository = runtime.context['dw_mysql_repository']
 
     try:
-        #   验证表名、字段名是否存在以及语法是否合规
-        await dw_mysql_repository.validate_sql(sql)
+        validator = SQLValidationService(dw_repository=dw_mysql_repository)
+        # 先拦截非只读 SQL，再做 EXPLAIN 和原有 Schema 引用校验。
+        await validator.validate_read_only_sql(sql)
 
-        reference_violations = await SQLValidationService(
-            dw_repository=dw_mysql_repository
-        ).validate_references(
+        reference_violations = await validator.validate_references(
             sql=sql,
             table_infos=state.get("table_infos", []),
             table_relations=state.get("table_relations", []),

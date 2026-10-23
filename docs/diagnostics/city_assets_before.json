@@ -1,0 +1,115 @@
+{
+  "fields": [
+    {
+      "id": "1e8dcb1cb8a64b0d8533fb46047405a3",
+      "table": "dim_store",
+      "value_type": "open",
+      "examples": []
+    },
+    {
+      "id": "c04e3aeb59b646cc821d5c1f4dae8cf5",
+      "table": "dim_user",
+      "value_type": "open",
+      "examples": []
+    }
+  ],
+  "qdrant_fields": [
+    {
+      "point_id": "1e8dcb1c-b8a6-4b0d-8533-fb46047405a3",
+      "payload": {
+        "id": "1e8dcb1cb8a64b0d8533fb46047405a3",
+        "column_id": "1e8dcb1cb8a64b0d8533fb46047405a3",
+        "table_id": 3,
+        "table_name": "dim_store",
+        "column_name": "city",
+        "name": "city",
+        "comment": "标识门店所在城市，可用于按城市维度分析门店分布、区域销售表现等。",
+        "description": "标识门店所在城市，可用于按城市维度分析门店分布、区域销售表现等。",
+        "alias": [
+          "城市",
+          "所在城市",
+          "门店城市"
+        ],
+        "examples": [
+          "上海",
+          "北京",
+          "杭州",
+          "广州",
+          "成都",
+          "武汉",
+          "深圳",
+          "西安",
+          "重庆"
+        ],
+        "data_type": "VARCHAR",
+        "role": "dimension"
+      }
+    },
+    {
+      "point_id": "c04e3aeb-59b6-46cc-821d-5c1f4dae8cf5",
+      "payload": {
+        "id": "c04e3aeb59b646cc821d5c1f4dae8cf5",
+        "column_id": "c04e3aeb59b646cc821d5c1f4dae8cf5",
+        "table_id": 4,
+        "table_name": "dim_user",
+        "column_name": "city",
+        "name": "city",
+        "comment": "记录用户所在城市，可用于地域分布、城市层级等维度分析，取值范围为国内主要城市。",
+        "description": "记录用户所在城市，可用于地域分布、城市层级等维度分析，取值范围为国内主要城市。",
+        "alias": [
+          "城市",
+          "所在地",
+          "用户城市",
+          "城市名称"
+        ],
+        "examples": [
+          "成都",
+          "深圳",
+          "苏州",
+          "长沙",
+          "北京",
+          "武汉",
+          "杭州",
+          "重庆",
+          "西安",
+          "上海",
+          "南京",
+          "广州"
+        ],
+        "data_type": "VARCHAR",
+        "role": "dimension"
+      }
+    }
+  ],
+  "es_values": [],
+  "metric": {
+    "id": "da3d1ced66f740ed808bf4fd49fa027c",
+    "dimensions": [
+      {
+        "name": "支付时间",
+        "column": "fact_order.pay_time"
+      },
+      {
+        "name": "门店",
+        "column": "dim_store.store_name"
+      },
+      {
+        "name": "大区",
+        "column": "dim_store.region"
+      },
+      {
+        "name": "渠道",
+        "column": "dim_store.channel_type"
+      },
+      {
+        "name": "用户",
+        "column": "dim_user.user_id"
+      },
+      {
+        "name": "促销活动",
+        "column": "dim_promotion.promo_name"
+      }
+    ],
+    "version": 1
+  }
+}

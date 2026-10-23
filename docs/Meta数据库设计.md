@@ -106,6 +106,7 @@ metric_key：稳定英文标识，例如 sales_amount
 name：中文指标名称，例如 销售额
 description：业务口径说明
 formula：公式文本
+decomposition：可空的结构化分析拆解 JSON，不替代 formula
 fact_table：主事实表
 measure_column：核心度量字段
 aggregation：聚合方式
@@ -118,6 +119,27 @@ version：版本号
 ```
 
 为控制初版复杂度，`filters`、`alias`、`dimensions` 暂使用 JSON。指标数量、审批流程和查询复杂度显著增加后，可拆为独立关系表。
+
+`decomposition` 第一版仅支持双因素乘法：数量指标 ×（目标金额指标 / 数量指标）。
+定义放在共享 `app/schemas/metric_decomposition.py`，拒绝任意表达式、额外字段、
+不一致的分母及未支持的版本。发布和 Agent 加载时检查引用已发布、相同事实表、
+相同默认时间字段及固定筛选；这些校验不证明数据粒度或 SQL 业务正确。
+MySQL 是权威来源，Qdrant 只同步拆解配置 payload；不因新增配置重建向量。
+
+旧库迁移（先停下正在使用旧表结构的应用进程，迁移完成后重启应用）：
+
+```bash
+python -m app.scripts.sync_sales_decomposition
+python -m app.scripts.sync_sales_decomposition --apply
+```
+
+默认只读预览。`--apply` 在 `/private/tmp` 保存修改前快照，幂等补列，
+只更新销售额的 decomposition 并递增业务版本；不覆盖 formula、dimensions 或其他指标。
+若已有不同人工拆解配置则拒绝覆盖；采用版本条件避免并发覆盖。
+MySQL DDL 会隐式提交，后续失败时新增空列可能保留；重跑可继续。
+MySQL 提交后才同步 Qdrant，跨系统不是原子事务，索引失败可在修复连接后重跑补齐。
+全量建库脚本也支持为旧表补列；新建指标的拆解配置可经指标管理 API 提交。
+种子脚本不覆盖 decomposition，新建环境需在发布销售额及订单数量后运行本迁移。
 
 ### `column_metric`
 

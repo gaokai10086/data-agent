@@ -44,6 +44,7 @@ async def main() -> None:
                 context={
                     "meta_mysql_repository": MetaMySQLRepository(meta_session),
                     "dw_mysql_repository": DWMySQLRepository(dw_session),
+                    "dw_session_factory": dw_client_manager.session_factory,
                     "metric_qdrant_repository": MetricQdrantRepository(qdrant_client_manager.client),
                     "column_qdrant_repository": ColumnQdrantRepository(qdrant_client_manager.client),
                     "value_es_repository": ValueESRepository(es_client_manager.client),
@@ -84,7 +85,9 @@ async def main() -> None:
         "analysis_request": request,
         "metric_context": metric_context,
     })
-    print_json("输出：", anomaly_result["overall_result"])
+    print_json("输出：", anomaly_result["analysis_result"])
+    print("===== Node 5：Verify Change =====")
+    print_json("输出：", anomaly_result["change_verification"])
 
 
 if __name__ == "__main__":

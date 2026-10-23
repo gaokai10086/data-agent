@@ -86,6 +86,7 @@ async def get_chat_service(
         graph=graph,
         meta_mysql_repository=meta_repository,
         dw_mysql_repository=dw_repository,
+        dw_session_factory=dw_client_manager.session_factory,
         column_qdrant_repository=column_qdrant_repository,
         metric_qdrant_repository=metric_qdrant_repository,
         value_es_repository=value_es_repository,

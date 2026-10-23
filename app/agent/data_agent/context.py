@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
@@ -16,5 +16,7 @@ class DataAgentContext(TypedDict):
     embedding_client: HuggingFaceEndpointEmbeddings  # 向量服务客户端
     meta_mysql_repository: MetaMySQLRepository  # 元数据MySQL库
     dw_mysql_repository: DWMySQLRepository  # 数据仓库MySQL库
+    # 并发查询时为每个子任务创建独立 AsyncSession，不能复用同一个 Session。
+    dw_session_factory: Any
     llm_provider: str  # 当前请求选择的模型供应商
     llm_model_tier: str  # 当前请求选择的模型规格

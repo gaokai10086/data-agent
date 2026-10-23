@@ -11,11 +11,13 @@ from typing import Any
 from langgraph.runtime import Runtime
 
 from app.agent.anomaly_agent.schemas import (
+    AnalysisPlan,
     AnalysisRequest,
     MetricContext,
     MetricDimension,
 )
 from app.agent.anomaly_agent.state import AnomalyState
+from app.service.metric_decomposition_service import validate_metric_decomposition
 from app.agent.data_agent.context import DataAgentContext
 
 
@@ -41,7 +43,8 @@ def _build_dimensions(raw_dimensions: Any) -> list[MetricDimension]:
         if not column:
             continue
         aliases = [str(alias).strip() for alias in _as_list(item.get("aliases")) if str(alias).strip()]
-        dimensions.append(MetricDimension(name=name, column=column, aliases=aliases))
+        dimensions.append(MetricDimension(name=name, column=column, aliases=aliases,
+                                          determines=item.get("determines", [])))
     return dimensions
 
 
@@ -72,6 +75,7 @@ def _build_metric_context(metric_record: Any) -> MetricContext:
         filters=[dict(item) for item in filters],
         dimensions=_build_dimensions(getattr(metric_record, "dimensions", None)),
         aliases=aliases,
+        decomposition=getattr(metric_record, "decomposition", None),
     )
 
 
@@ -93,5 +97,10 @@ async def load_metric_context(
     if metric_record is None:
         raise ValueError(f"Metadata 中不存在已发布指标：{request.metric}")
 
-    return {"metric_context": _build_metric_context(metric_record)}
-
+    context = _build_metric_context(metric_record)
+    await validate_metric_decomposition(context, context.decomposition, repository)
+    return {
+        "metric_context": context,
+        # 当前请求进入第一种已实现的异动分析处理器。
+        "analysis_plan": AnalysisPlan(analysis_type="overall_comparison"),
+    }

@@ -20,6 +20,7 @@ from app.agent.data_agent.state import DataAgentState
 from app.core.logging import logger
 from app.agent.data_agent.progress import emit_node_result
 from app.prompt.prompt_loader import load_prompt
+from app.core.meta.value_grounding import prompt_value_evidence
 
 
 def _format_sql_examples_for_prompt(examples: List[Dict[str, Any]]) -> str:
@@ -92,6 +93,7 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
                 "date_info",
                 "db_info",
                 "sql_examples",
+                "value_groundings",
                 "query"
             ]
         )
@@ -107,6 +109,10 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
             "date_info": yaml.safe_dump(date_info, allow_unicode=True, sort_keys=False) if date_info else "暂无时间锚点",
             "db_info": yaml.safe_dump(db_info, allow_unicode=True, sort_keys=False) if db_info else "MySQL 8.0",
             "sql_examples": sql_examples,
+            "value_groundings": yaml.safe_dump(
+                prompt_value_evidence(state.get("retrieved_values", [])),
+                allow_unicode=True, sort_keys=False,
+            ),
             "query": query
         })
 

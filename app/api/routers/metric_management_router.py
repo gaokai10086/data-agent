@@ -1,7 +1,8 @@
 """指标管理接口：业务人员提交指标，系统技术校验后直接发布。"""
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_meta_session
+from app.api.deps import get_meta_session, get_dw_repository
+from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.schemas.metric_management import MetricSubmitRequest
 from app.service.metric_submission_service import MetricSubmissionService
@@ -10,8 +11,9 @@ router = APIRouter(prefix="/api/metric-management", tags=["指标管理"])
 
 
 @router.post("/metrics")
-async def submit_metric(request: MetricSubmitRequest, session=Depends(get_meta_session)) -> dict:
-    service = MetricSubmissionService(MetaMySQLRepository(session))
+async def submit_metric(request: MetricSubmitRequest, session=Depends(get_meta_session),
+                        dw_repository: DWMySQLRepository = Depends(get_dw_repository)) -> dict:
+    service = MetricSubmissionService(MetaMySQLRepository(session), dw_repository)
     try:
         metric = await service.submit(request)
         await session.commit()
@@ -23,6 +25,7 @@ async def submit_metric(request: MetricSubmitRequest, session=Depends(get_meta_s
         "status": metric.status,
         "fact_table": metric.fact_table,
         "measure_column": metric.measure_column,
+        "decomposition": metric.decomposition,
     }
 
 
@@ -54,6 +57,7 @@ async def list_metrics(
                 "filters": metric.filters,
                 "alias": metric.alias,
                 "dimensions": metric.dimensions,
+                "decomposition": metric.decomposition,
             }
             for metric in metrics
         ]

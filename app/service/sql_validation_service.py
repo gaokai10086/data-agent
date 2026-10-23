@@ -3,13 +3,9 @@ import re
 
 from app.models.mysql.column_info_mysql import ColumnInfoMySQL
 from app.core.meta.display_intent import DISPLAY_INTENT_RULES
+from app.core.sql_safety import SQLSafetyPolicy, FORBIDDEN_SQL_PATTERN
 from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
-
-FORBIDDEN_SQL_PATTERN = re.compile(
-    r"\b(insert|update|delete|drop|alter|create|replace|truncate|grant|revoke|load|call|lock|unlock)\b",
-    flags=re.IGNORECASE,
-)
 
 # 只把「表名.字段名」形式的引用纳入候选 Schema 校验，
 # 避免把 CTE 或子查询产生的派生别名（如 order_count）误判成物理字段。
@@ -19,29 +15,18 @@ QUALIFIED_COLUMN_PATTERN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A
 RESERVED_ALIAS_WORDS = frozenset({
     "on", "where", "group", "order", "having", "limit", "as", "using",
     "left", "right", "inner", "outer", "full", "cross", "join", "and", "or",
+    "natural", "straight_join", "union", "intersect", "except", "offset", "for",
+    "window", "into",
 })
 
+# 必须在捕获别名前排除关键字，避免消耗 JOIN 后漏掉下一张表。
+# 词边界确保 join_store、ordering 等合法别名不被关键字前缀误伤。
+_RESERVED_ALIAS_PATTERN = "|".join(re.escape(word) for word in sorted(RESERVED_ALIAS_WORDS))
 TABLE_ALIAS_PATTERN = re.compile(
-    r"\b(?:FROM|JOIN)\s+`?([A-Za-z_][A-Za-z0-9_]*)`?"
-    r"(?:\s+(?:AS\s+)?`?([A-Za-z_][A-Za-z0-9_]*)`?)?",
+    r"\b(?:FROM|JOIN)\s+(?:`?[A-Za-z_][A-Za-z0-9_]*`?\.)?`?([A-Za-z_][A-Za-z0-9_]*)`?"
+    rf"(?:\s+(?:AS\s+)?(?!(?:{_RESERVED_ALIAS_PATTERN})\b)`?([A-Za-z_][A-Za-z0-9_]*)`?)?",
     flags=re.IGNORECASE,
 )
-
-class SQLSafetyPolicy:
-    """只读 SQL 安全规则，供所有需要录入或校验 SQL 的入口复用。"""
-
-    @staticmethod
-    def ensure_read_only_sql(sql: str) -> None:
-        cleaned = sql.strip().rstrip(";").strip()
-        if not cleaned:
-            raise ValueError("SQL 不能为空")
-        if ";" in cleaned:
-            raise ValueError("只允许一条查询语句")
-        if FORBIDDEN_SQL_PATTERN.search(cleaned):
-            raise ValueError("只允许查询，禁止 INSERT、UPDATE、DELETE、DDL 等写操作")
-        if not (cleaned.upper().startswith("SELECT") or cleaned.upper().startswith("WITH")):
-            raise ValueError("SQL 必须以 SELECT 或 WITH 开头")
-
 
 class SQLValidationService:
     """统一提供表字段解析与 SQL 执行计划校验。"""
@@ -53,6 +38,54 @@ class SQLValidationService:
     ):
         self.meta_repository = meta_repository
         self.dw_repository = dw_repository
+
+    @staticmethod
+    def validate_city_filter(sql: str, query: str, used_columns: set[str]) -> list[str]:
+        """保护标准查询中的城市筛选，防止把城市解释成大区。"""
+        city_values = re.findall(r"城市\s*=\s*([^、，；;]+)", query or "")
+        if not city_values:
+            return []
+        violations = []
+        if "city" not in used_columns:
+            violations.append("查询要求城市筛选，但 SQL 未使用城市字段 city；不能用大区 region 替代")
+        for value in city_values:
+            value = value.strip()
+            if re.search(r"`?region`?\s*=\s*['\"]" + re.escape(value) + r"['\"]", sql, re.IGNORECASE):
+                violations.append(f"城市 [{value}] 被错误用于大区 region 筛选，应按 Schema 使用 city 字段")
+        return violations
+
+    @staticmethod
+    def validate_grounded_city_values(sql: str, values: list[dict]) -> list[str]:
+        """校验常见单表/Join 聚合查询中的城市条件，保护字段对象及数据库原值。"""
+        cleaned = re.sub(r"/\*.*?\*/|--[^\n]*", " ", sql, flags=re.DOTALL)
+        where = re.search(r"\bWHERE\b(.*)", cleaned, re.IGNORECASE | re.DOTALL)
+        predicates = where.group(1) if where else ""
+        referenced = {}
+        for match in TABLE_ALIAS_PATTERN.finditer(cleaned):
+            table, alias = match.groups()
+            referenced.setdefault(table.lower(), set()).add(table)
+            if alias and alias.lower() not in RESERVED_ALIAS_WORDS:
+                referenced[table.lower()].add(alias)
+        violations = []
+        for value in values:
+            if value.get("column_name") != "city":
+                continue
+            table = str(value.get("table_name") or "")
+            canonical = str(value.get("value") or "")
+            aliases = referenced.get(table.lower(), set())
+            qualifier = "|".join(re.escape(alias) for alias in aliases)
+            column_pattern = rf"(?:`?(?:{qualifier})`?\.)`?city`?" if qualifier else r"(?!)"
+            # 仅一张有 city 字段的表被引用时，允许不带表别名的写法。
+            if table.lower() in referenced and not ({"dim_store", "dim_user"} - {table.lower()}) & referenced.keys():
+                column_pattern = rf"(?:{column_pattern}|(?<![.\w`])`?city`?)"
+            literal = re.escape(canonical.replace("'", "''"))
+            expected = rf"{column_pattern}\s*(?:=\s*['\"]{literal}['\"]|IN\s*\(\s*['\"]{literal}['\"]\s*\))"
+            if not re.search(expected, predicates, re.IGNORECASE):
+                violations.append(
+                    f"城市取值校验失败：用户表达 [{value.get('matched_text') or canonical}] "
+                    f"应筛选 {table}.city = '{canonical}'；不能替换为门店名、大区、其他对象的城市或未登记别名"
+                )
+        return violations
 
     async def resolve_column(self, qualified_name: str, fact_table: str) -> ColumnInfoMySQL:
         """把「表名.字段名」或事实表内字段名解析为真实的 ColumnInfo。"""
@@ -111,6 +144,8 @@ class SQLValidationService:
             violations.append(f"引用了不在候选 Schema 中的字段: {', '.join(illegal_columns)}")
 
         query_text = (query or "").strip()
+        violations.extend(self.validate_city_filter(sql, query_text, used_columns))
+        violations.extend(self.validate_grounded_city_values(sql, retrieved_values or []))
 
         for keywords, column_patterns in DISPLAY_INTENT_RULES:
             if not any(keyword in query_text for keyword in keywords):

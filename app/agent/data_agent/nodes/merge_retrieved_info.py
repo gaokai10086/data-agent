@@ -8,6 +8,8 @@ from langgraph.runtime import Runtime
 from app.agent.data_agent.context import DataAgentContext
 from app.agent.data_agent.state import DataAgentState, TableInfoState, ColumnInfoState, MetricInfoState
 from app.core.logging import logger
+from app.core.meta.geographic_intent import requires_city_fields
+from app.core.meta.value_grounding import select_value_evidence
 from app.models.mysql.column_info_mysql import ColumnInfoMySQL
 from app.models.mysql.table_info_mysql import TableInfoMySQL
 from app.models.qdrant.column_info_qdrant import ColumnInfoQdrant
@@ -44,6 +46,11 @@ async def merge_retrieved_info(state: DataAgentState, runtime: Runtime[DataAgent
     table_infos: list[TableInfoState] = []
     metric_infos: list[MetricInfoState] = []
 
+    selected_metrics = _select_metrics_by_relevance(retrieved_metrics, state.get("keywords", []))
+    for metric in selected_metrics:
+        metric_infos.append(await _build_metric_info_state(metric, meta_mysql_repository))
+    retrieved_values = select_value_evidence(state.get("query", ""), retrieved_values, metric_infos)
+
     """"""""""""""""""""" 1.值信息合并到字段"""""""""""""""""""""""
     #  构建字段 ID 到字段信息的映射
     id_to_column_map: dict[str, ColumnInfoQdrant] = {value.get('id'): value for value in retrieved_columns if
@@ -67,9 +74,14 @@ async def merge_retrieved_info(state: DataAgentState, runtime: Runtime[DataAgent
         else:
             try:
                 column_info: ColumnInfoMySQL = await meta_mysql_repository.get_column_by_id(column_id)
-                if value not in column_info.examples:
-                    column_info.examples.append(value)
-                id_to_column_map[column_id] = _convert_column_info_from_mysql_to_qdrant(column_info)
+                if column_info is None:
+                    raise ValueError("值索引引用的字段不在 Metadata 中")
+                column = _convert_column_info_from_mysql_to_qdrant(column_info)
+                column["table_name"] = retrieved_value.get("table_name")
+                column["examples"] = list(column_info.examples or [])
+                if value not in column["examples"]:
+                    column["examples"].append(value)
+                id_to_column_map[column_id] = column
             except Exception as e:
                 logger.warning(f"⚠️ [MergeInfo] 加载字段 [{column_id}] 失败: {e}")
 
@@ -183,17 +195,13 @@ async def merge_retrieved_info(state: DataAgentState, runtime: Runtime[DataAgent
     """
     """"""""""""""""""""" 4.为每张表构建完整的结果信息 """""""""""""""""""""""
 
-    selected_metrics = _select_metrics_by_relevance(retrieved_metrics, state.get("keywords", []))
-
-    for metric in selected_metrics:
-        metric_infos.append(
-            await _build_metric_info_state(metric, meta_mysql_repository)
-        )
-
-    table_infos = await _supplement_table_infos(table_infos, meta_mysql_repository, metric_infos)
+    table_infos = await _supplement_table_infos(
+        table_infos, meta_mysql_repository, metric_infos, state.get("query", "")
+    )
 
     logger.info(f"召回信息合并成功")
-    return {"table_infos": table_infos, "metric_infos": metric_infos}
+    return {"table_infos": table_infos, "metric_infos": metric_infos,
+            "retrieved_values": retrieved_values}
 
 
 def _select_metrics_by_relevance(retrieved_metrics: list[dict], keywords: list[str]) -> list[dict]:
@@ -264,6 +272,7 @@ async def _supplement_table_infos(
     table_infos: list[dict],
     meta_repository: MetaMySQLRepository,
     metric_infos: list[dict],
+    query: str = "",
 ) -> list[dict]:
     """补齐候选表中的主外键与指标直接引用字段，避免后续压缩丢失关键列。"""
     required_by_table: dict[str, set[str]] = {}
@@ -300,7 +309,11 @@ async def _supplement_table_infos(
             for column in await meta_repository.list_columns_by_table_id(meta_table.id):
                 if column.name in existing_names:
                     continue
-                if column.name in required or column.role in {"primary_key", "foreign_key"}:
+                city_required = requires_city_fields(query) and (
+                    column.name == "city"
+                    or any("城市" in str(alias) for alias in (column.alias or []))
+                )
+                if city_required or column.name in required or column.role in {"primary_key", "foreign_key"}:
                     columns.append(
                         {
                             "name": column.name,

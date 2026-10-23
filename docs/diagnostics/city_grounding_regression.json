@@ -1,0 +1,91 @@
+[
+  {
+    "id": "beijing",
+    "query": "查询2025年北京市7月的销售额",
+    "passed": true,
+    "sql": "SELECT SUM(fo.pay_amount) AS sales_amount\nFROM fact_order AS fo\nLEFT JOIN dim_store AS ds\n    ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n    AND ds.city = '北京'\n    AND fo.pay_time >= '2025-07-01 00:00:00'\n    AND fo.pay_time < '2025-08-01 00:00:00'",
+    "expected": "95507.14",
+    "actual": "95507.14",
+    "values": [
+      {
+        "id": "1e8dcb1cb8a64b0d8533fb46047405a3:北京",
+        "value": "北京",
+        "aliases": [
+          "北京",
+          "北京市"
+        ],
+        "type": "enum",
+        "column_id": "1e8dcb1cb8a64b0d8533fb46047405a3",
+        "column_name": "city",
+        "table_id": "3",
+        "table_name": "dim_store",
+        "matched_text": "北京市"
+      }
+    ],
+    "retry_count": 0,
+    "latency_ms": 24675,
+    "filter_verified": true
+  },
+  {
+    "id": "region",
+    "query": "查询2025年华北大区7月的销售额",
+    "passed": true,
+    "sql": "SELECT SUM(fo.pay_amount) AS `销售额`\nFROM fact_order AS fo\nLEFT JOIN dim_store AS ds ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND ds.region = '华北'\n  AND fo.pay_time >= '2025-07-01 00:00:00'\n  AND fo.pay_time < '2025-08-01 00:00:00'",
+    "expected": "95507.14",
+    "actual": "95507.14",
+    "values": [
+      {
+        "id": "a255c32e26c74fa2988d8aac41191210:华北",
+        "value": "华北",
+        "type": "enum",
+        "column_id": "a255c32e26c74fa2988d8aac41191210",
+        "column_name": "region",
+        "table_id": "3",
+        "table_name": "dim_store",
+        "matched_text": "华北"
+      }
+    ],
+    "retry_count": 0,
+    "latency_ms": 38064,
+    "filter_verified": true
+  },
+  {
+    "id": "store",
+    "query": "查询2025年北京王府井旗舰店7月的销售额",
+    "passed": true,
+    "sql": "SELECT SUM(fo.pay_amount) AS sales_amount\nFROM fact_order AS fo\nLEFT JOIN dim_store AS ds ON fo.store_id = ds.store_id\nWHERE ds.store_name = '北京王府井旗舰店'\n  AND fo.order_status = '已完成'\n  AND fo.pay_time >= '2025-07-01 00:00:00'\n  AND fo.pay_time < '2025-08-01 00:00:00'",
+    "expected": "55906.62",
+    "actual": "55906.62",
+    "values": [],
+    "retry_count": 0,
+    "latency_ms": 23641,
+    "filter_verified": true
+  },
+  {
+    "id": "user_city",
+    "query": "查询2025年7月用户所在城市为北京市的销售额",
+    "passed": true,
+    "sql": "SELECT SUM(fo.pay_amount) AS sales_amount\nFROM fact_order fo\nJOIN dim_user du ON fo.user_id = du.user_id\nWHERE du.city = '北京'\n  AND fo.order_status = '已完成'\n  AND fo.pay_time >= '2025-07-01'\n  AND fo.pay_time < '2025-08-01'",
+    "expected": "62283.31",
+    "actual": "62283.31",
+    "values": [
+      {
+        "id": "c04e3aeb59b646cc821d5c1f4dae8cf5:北京",
+        "value": "北京",
+        "aliases": [
+          "北京",
+          "北京市"
+        ],
+        "type": "enum",
+        "column_id": "c04e3aeb59b646cc821d5c1f4dae8cf5",
+        "column_name": "city",
+        "table_id": "4",
+        "table_name": "dim_user",
+        "matched_text": "北京市"
+      }
+    ],
+    "retry_count": 0,
+    "latency_ms": 25475,
+    "filter_verified": true
+  }
+]

@@ -87,6 +87,7 @@ def render_metric_management_page(
             value='[{"column": "dim_store.region", "name": "大区"}]',
             height=90,
         )
+        decomposition = st.text_area("指标拆解配置（JSON 对象，可空）", value="", height=100)
         submitted = st.form_submit_button("提交并发布", use_container_width=True)
         if not submitted:
             return
@@ -108,6 +109,7 @@ def render_metric_management_page(
                 "filters": _parse_json_list(filters, "固定过滤条件"),
                 "alias": _split_terms(alias),
                 "dimensions": _parse_json_list(dimensions, "可分析维度"),
+                "decomposition": json.loads(decomposition) if decomposition.strip() else None,
             }
         except ValueError as exc:
             st.error(str(exc))
@@ -162,3 +164,6 @@ def render_metric_management_page(
             st.markdown(f"**别名**：{metric.get('alias')}")
             st.markdown(f"**固定过滤**：{metric.get('filters')}")
             st.markdown(f"**可分析维度**：{metric.get('dimensions')}")
+            if metric.get("decomposition"):
+                st.markdown("**指标拆解配置**")
+                st.json(metric["decomposition"])

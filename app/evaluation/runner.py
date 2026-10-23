@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from app.agent.orchestrator.graph import orchestrator_graph as graph
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.es_client import es_client_manager
+from app.clients.mysql_client import dw_client_manager
 from app.clients.qdrant_client import qdrant_client_manager
 from app.evaluation.comparator import jsonify_rows, results_match
 from app.evaluation.schema import EvalCase
@@ -39,6 +40,7 @@ def build_chat_service(meta_session, dw_session) -> ChatService:
         embedding_client=embedding_client_manager.client,
         meta_mysql_repository=MetaMySQLRepository(meta_session),
         dw_mysql_repository=DWMySQLRepository(dw_session),
+        dw_session_factory=dw_client_manager.session_factory,
         column_qdrant_repository=ColumnQdrantRepository(qdrant_client_manager.client),
         value_es_repository=ValueESRepository(es_client_manager.client),
         metric_qdrant_repository=MetricQdrantRepository(qdrant_client_manager.client),

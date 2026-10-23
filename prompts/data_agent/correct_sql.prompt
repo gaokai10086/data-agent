@@ -10,6 +10,10 @@
 可参考的指标信息如下：
 {metric_infos}
 
+已核对的筛选取值证据如下：
+{value_groundings}
+若错误涉及筛选语义，按证据中的 column 和 database_value 修复；用户地名表达不得替代实际存储值。
+
 当前的时间信息如下：
 {date_info}
 

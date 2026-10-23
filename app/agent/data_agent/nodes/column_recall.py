@@ -30,7 +30,11 @@ def get_default_components():
 
 async def column_recall(state: Dict[str, Any], runtime: Any = None) -> Dict[str, Any]:
     logger.info("🔍 [ColumnRecall] 开始执行物理字段与语义向量召回...")
-    repo, embedding_client = get_default_components()
+    context = getattr(runtime, "context", None) or {}
+    repo = context.get("column_qdrant_repository")
+    embedding_client = context.get("embedding_client")
+    if repo is None or embedding_client is None:
+        repo, embedding_client = get_default_components()
 
     keywords: List[str] = state.get("keywords", [])
     query = state.get("query", "")
@@ -81,7 +85,7 @@ async def column_recall(state: Dict[str, Any], runtime: Any = None) -> Dict[str,
                             "description": comment,
                             "comment": comment,
                             "alias": alias,
-                            "examples": [],
+                            "examples": list(payload.get("examples") or []),
                             "score": score
                         })
         except Exception as e:

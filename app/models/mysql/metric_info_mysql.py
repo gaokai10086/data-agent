@@ -40,6 +40,9 @@ class MetricInfoMySQL(Base):
         default="",
         comment="指标计算公式"
     )
+    decomposition: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True, comment="结构化分析拆解关系；不替代 formula 取数公式"
+    )
     relevant_columns: Mapped[dict | list | None] = mapped_column(
         JSON,
         default=list,

@@ -5,6 +5,7 @@ from app.core.meta.value_sampling_policy import is_safe_to_index
 from app.models.es.value_info_es import ValueInfoES
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.repositories.es.value_es_repository import ValueESRepository
+from app.core.meta.value_grounding import city_value_aliases
 
 
 @dataclass
@@ -26,8 +27,8 @@ class ValueIndexRebuildService:
         self.es_client = es_client
         self.index_name = index_name
 
-    async def rebuild(self) -> ValueIndexRebuildReport:
-        table_columns = await self.meta_repository.list_columns_with_tables()
+    @staticmethod
+    def build_documents(table_columns) -> tuple[list[ValueInfoES], ValueIndexRebuildReport]:
         documents: list[ValueInfoES] = []
         report = ValueIndexRebuildReport()
 
@@ -56,6 +57,7 @@ class ValueIndexRebuildService:
                     ValueInfoES(
                         id=f"{column.id}:{value}",
                         value=value,
+                        aliases=city_value_aliases(value) if column.name == "city" else [],
                         type="enum",
                         column_id=column.id,
                         column_name=column.name or "",
@@ -63,6 +65,31 @@ class ValueIndexRebuildService:
                         table_name=table.name,
                     )
                 )
+
+        return documents, report
+
+    async def sync_fields(self, table_columns) -> ValueIndexRebuildReport:
+        """仅同步指定字段的值文档，保留其他字段和整个索引。"""
+        documents, report = self.build_documents(table_columns)
+        if report.skipped_columns:
+            raise RuntimeError("指定字段无法建立值索引：" + "；".join(report.skipped_columns))
+        column_ids = [column.id for _, column in table_columns]
+        if not column_ids:
+            return report
+        repository = ValueESRepository(self.es_client)
+        await repository.ensure_index()
+        await self.es_client.delete_by_query(
+            index=self.index_name, query={"terms": {"column_id": column_ids}}, refresh=True,
+        )
+        if documents:
+            await repository.batch_index(documents)
+        await self.es_client.indices.refresh(index=self.index_name)
+        report.indexed_values = len(documents)
+        return report
+
+    async def rebuild(self) -> ValueIndexRebuildReport:
+        table_columns = await self.meta_repository.list_columns_with_tables()
+        documents, report = self.build_documents(table_columns)
 
         await self.es_client.indices.delete(index=self.index_name, ignore=[400, 404])
         repository = ValueESRepository(self.es_client)

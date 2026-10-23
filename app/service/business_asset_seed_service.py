@@ -6,6 +6,8 @@ from app.models.mysql.column_metric_mysql import ColumnMetricMySQL
 from app.models.mysql.metric_example_mysql import MetricExampleMySQL
 from app.models.mysql.metric_info_mysql import MetricInfoMySQL
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
+from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
+from app.service.dimension_dependency_service import validate_dependency_data
 
 
 @dataclass
@@ -41,6 +43,8 @@ class BusinessAssetSeedService:
             "dimensions": [
                 {"column": "fact_order.pay_time", "name": "支付时间"},
                 {"column": "dim_store.store_name", "name": "门店"},
+                {"column": "dim_store.city", "name": "城市", "aliases": ["门店城市"],
+                 "determines": ["dim_store.region"]},
                 {"column": "dim_store.region", "name": "大区"},
                 {"column": "dim_store.channel_type", "name": "渠道"},
                 {"column": "dim_user.user_id", "name": "用户"},
@@ -126,8 +130,9 @@ class BusinessAssetSeedService:
         },
     )
 
-    def __init__(self, meta_repository: MetaMySQLRepository):
+    def __init__(self, meta_repository: MetaMySQLRepository, dw_repository: DWMySQLRepository | None = None):
         self.meta_repository = meta_repository
+        self.dw_repository = dw_repository
 
     async def seed(self) -> BusinessAssetSeedReport:
         report = BusinessAssetSeedReport()
@@ -144,6 +149,7 @@ class BusinessAssetSeedService:
 
     async def _validate_schema(self, definition: dict[str, Any]) -> None:
         """指标发布前校验其依赖的物理资产，避免把错误口径写进 published。"""
+        await validate_dependency_data(definition["dimensions"], self.dw_repository)
         required_columns = [
             (definition["fact_table"], definition["measure_column"]),
             (definition["fact_table"], "order_status"),

@@ -9,7 +9,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.runtime import Runtime
 
-from app.agent.anomaly_agent.schemas import AnalysisRequest, ExtractedRequest
+from app.agent.anomaly_agent.schemas import AnalysisRequest, ExtractedRequest, FilterCondition
 from app.agent.anomaly_agent.state import AnomalyState
 from app.agent.data_agent.context import DataAgentContext
 from app.core.llm import get_context_llm
@@ -23,6 +23,21 @@ def _year_month(year: int, month: int) -> str:
     if not 1 <= month <= 12:
         raise ValueError(f"无效月份：{month}")
     return f"{year:04d}-{month:02d}"
+
+
+def normalize_filter(condition: FilterCondition) -> FilterCondition:
+    """归一化明确的直辖市别名；不对任意地名盲目删除行政区后缀。"""
+    municipality_aliases = {
+        "北京": "北京", "北京市": "北京",
+        "上海": "上海", "上海市": "上海",
+        "天津": "天津", "天津市": "天津",
+        "重庆": "重庆", "重庆市": "重庆",
+    }
+    dimension = condition.dimension.strip()
+    value = condition.value.strip()
+    if dimension in {"地区", "地域", "城市", "市", "大区"} and value in municipality_aliases:
+        return condition.model_copy(update={"dimension": "城市", "value": municipality_aliases[value]})
+    return condition.model_copy(update={"dimension": dimension, "value": value})
 
 
 def validate_extracted_request(fields: ExtractedRequest) -> AnalysisRequest:
@@ -55,10 +70,11 @@ def validate_extracted_request(fields: ExtractedRequest) -> AnalysisRequest:
 
     return AnalysisRequest(
         metric=fields.metric.strip(),
-        filters=fields.filters,
+        filters=[normalize_filter(condition) for condition in fields.filters],
         target_period=target_period,
         comparison_period=comparison_period,
         comparison_type=comparison_type,
+        expected_direction=fields.expected_direction,
     )
 
 

@@ -5,6 +5,7 @@ from starlette.responses import StreamingResponse
 from app.api.deps import get_chat_service
 from app.schemas.chat import QuerySchema
 from app.core.logging import logger
+from app.service.mysql_conversation_repository import conversation_repository
 
 """
 不负责问大模型，也不负责查 MySQL，只负责把前端提的问题交给后面的师傅（chat_service）再把师傅一口一口吐出来的结果像流水一样还给前端
@@ -29,17 +30,27 @@ def _progress_message(stage: str) -> str:
 @chat_router.post("/query")
 async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service)):
     logger.info(
-        "[Chat API] received provider={} model={} query={}",
+        "[Chat API] received provider={} model={} session_id={} query={}",
         query.provider,
         query.model_tier,
+        query.session_id,
         query.query[:80],
     )
     async def event_stream():
         last_progress = None
+        assistant_events = []
+        agent_type = ""
+        user_message = None
         try:
+            conversation_repository.create_conversation(query.session_id, query.query[:80])
+            user_message = conversation_repository.add_message(
+                query.session_id, request_id=query.request_id, role="user",
+                status="pending", content=query.query,
+            )
             #  chat_service.stream_chat(query.query)：拿着用户的提问去问大模型、去查数据库
             async for chunk in chat_service.stream_chat(
                 query.query,
+                session_id=query.session_id,
                 provider=query.provider,
                 model_tier=query.model_tier,
             ):
@@ -54,8 +65,35 @@ async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service))
                         yield f"data: {json.dumps({'type': 'progress', 'content': progress}, ensure_ascii=False)}\n\n"
                     continue
                 #  读取大模型每吐出一个词或者一句话（叫 chunk）
+                if isinstance(chunk, dict):
+                    assistant_events.append(chunk)
+                    if chunk.get("type") == "bi_report":
+                        agent_type = "data_agent"
+                    elif chunk.get("type") in {"anomaly_result", "change_analysis_report"}:
+                        agent_type = "anomaly_agent"
                 yield f"data: {json.dumps(chunk, ensure_ascii=False, default=str)}\n\n"
+            structured = next(
+                (item for item in reversed(assistant_events)
+                 if item.get("type") in {"bi_report", "anomaly_result", "change_analysis_report"}),
+                None,
+            )
+            conversation_repository.add_message(
+                query.session_id, request_id=query.request_id, role="assistant",
+                agent_type=agent_type, status="completed",
+                content=structured.get("content", "") if structured else "",
+                structured_result=structured,
+            )
+            conversation_repository.update_message(user_message["id"], status="completed", content=query.query)
         except Exception as e:
+            try:
+                if user_message:
+                    conversation_repository.update_message(user_message["id"], status="failed", content=query.query)
+                conversation_repository.add_message(
+                    query.session_id, request_id=query.request_id, role="assistant",
+                    agent_type=agent_type, status="failed", content=str(e),
+                )
+            except Exception:
+                logger.exception("会话消息持久化失败")
             #  万一中间断网了或者报错，把错误原因包装成一句话推给前端看。
             yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False, default=str)}\n\n"
 

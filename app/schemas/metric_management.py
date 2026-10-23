@@ -1,7 +1,9 @@
 """指标管理 HTTP 请求与响应模型。"""
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from app.core.meta.dimension_dependencies import validate_dimension_dependencies
+from app.schemas.metric_decomposition import MetricDecomposition
 
 
 class MetricFilterItem(BaseModel):
@@ -13,6 +15,8 @@ class MetricFilterItem(BaseModel):
 class MetricDimensionItem(BaseModel):
     column: str = Field(description="分析维度字段，支持 表名.字段名")
     name: str | None = Field(default=None, description="维度展示名称，可选")
+    aliases: list[str] = Field(default_factory=list)
+    determines: list[str] = Field(default_factory=list, description="该维度可唯一确定的其他维度完整字段名")
 
 
 class MetricSubmitRequest(BaseModel):
@@ -29,3 +33,9 @@ class MetricSubmitRequest(BaseModel):
     filters: list[MetricFilterItem] = Field(default_factory=list, description="固定过滤条件")
     alias: list[str] = Field(default_factory=list, description="业务别名")
     dimensions: list[MetricDimensionItem] = Field(default_factory=list, description="可分析维度")
+    decomposition: MetricDecomposition | None = Field(default=None, description="可选的结构化分析拆解关系")
+
+    @model_validator(mode="after")
+    def check_dependencies(self):
+        validate_dimension_dependencies([item.model_dump() for item in self.dimensions])
+        return self

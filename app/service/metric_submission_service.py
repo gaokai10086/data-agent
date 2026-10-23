@@ -4,6 +4,9 @@ from app.models.mysql.metric_info_mysql import MetricInfoMySQL
 from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.schemas.metric_management import MetricSubmitRequest
 from app.service.sql_validation_service import SQLValidationService
+from app.service.dimension_dependency_service import validate_dependency_data
+from app.service.metric_decomposition_service import validate_metric_decomposition
+from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 
 ALLOWED_AGGREGATIONS = frozenset({"SUM", "COUNT", "COUNT_DISTINCT", "AVG", "MIN", "MAX"})
 
@@ -11,8 +14,9 @@ ALLOWED_AGGREGATIONS = frozenset({"SUM", "COUNT", "COUNT_DISTINCT", "AVG", "MIN"
 class MetricSubmissionService:
     """只做技术校验，不做业务口径审批。业务人员对指标定义负责。"""
 
-    def __init__(self, meta_repository: MetaMySQLRepository):
+    def __init__(self, meta_repository: MetaMySQLRepository, dw_repository: DWMySQLRepository | None = None):
         self.meta_repository = meta_repository
+        self.dw_repository = dw_repository
         self.sql_validator = SQLValidationService(meta_repository=meta_repository)
 
     async def submit(self, request: MetricSubmitRequest) -> MetricInfoMySQL:
@@ -45,6 +49,9 @@ class MetricSubmissionService:
         for item in request.dimensions:
             await self.sql_validator.resolve_column(item.column.strip(), fact_table)
 
+        await validate_dependency_data([item.model_dump() for item in request.dimensions], self.dw_repository)
+        await validate_metric_decomposition(request, request.decomposition, self.meta_repository)
+
         metric = MetricInfoMySQL(
             metric_key=metric_key,
             name=name,
@@ -57,6 +64,7 @@ class MetricSubmissionService:
             filters=[item.model_dump() for item in request.filters],
             alias=[alias.strip() for alias in request.alias if alias.strip()],
             dimensions=[item.model_dump() for item in request.dimensions],
+            decomposition=request.decomposition.model_dump(mode="json") if request.decomposition else None,
             relevant_columns=[f"{fact_table}.{measure_column}"],
             status="published",
             version=1,

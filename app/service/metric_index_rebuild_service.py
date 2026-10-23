@@ -60,6 +60,7 @@ class MetricIndexRebuildService:
                     "time_column": metric.time_column or "",
                     "filters": list(metric.filters or []),
                     "dimensions": list(metric.dimensions or []),
+                    "decomposition": getattr(metric, "decomposition", None),
                 }
             )
 
