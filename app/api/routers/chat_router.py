@@ -25,6 +25,22 @@ def _progress_message(stage: str) -> str:
         return "正在准备查询数据..."
     return "正在理解问题..."
 
+
+def _next_assistant_status(current: str, chunk: object) -> str:
+    """根据异动 Agent 的终态事件决定消息状态，失败后不能被普通事件覆盖。"""
+    if not isinstance(chunk, dict) or current == "failed":
+        return current
+    if (
+        chunk.get("type") == "anomaly_preparation_result"
+        and chunk.get("status") == "failed"
+    ):
+        return "failed"
+    # P0-1 当前把技术失败编码为 anomaly 的 error_response；兼容该协议。
+    if chunk.get("type") == "error_response" and chunk.get("agent") == "anomaly":
+        return "failed"
+    return current
+
+
 #  @chat_router.post("/query")：全路径就是 /api/query。当前端（比如网页上的发送按钮）用 POST 方式发请求时，就会触发这个函数。
 # query: QuerySchema：前端发过来的数据必须符合 QuerySchema 定的规矩。如果前端乱发一通，代码在这里直接报错拒绝，根本不会往下走。
 # chat_service=Depends(get_chat_service)：可以理解为“帮我把真正会干活的师傅叫过来，名字叫 chat_service
@@ -42,6 +58,8 @@ async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service))
         assistant_events = []
         agent_type = ""
         user_message = None
+        assistant_status = "completed"
+        terminal_error_sent = False
         try:
             conversation_repository.create_conversation(query.session_id, query.query[:80])
             user_message = conversation_repository.add_message(
@@ -68,6 +86,9 @@ async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service))
                 #  读取大模型每吐出一个词或者一句话（叫 chunk）
                 if isinstance(chunk, dict):
                     assistant_events.append(chunk)
+                    assistant_status = _next_assistant_status(assistant_status, chunk)
+                    if chunk.get("type") == "error_response":
+                        terminal_error_sent = True
                     if chunk.get("type") == "bi_report":
                         agent_type = "data_agent"
                     elif chunk.get("type") in {"anomaly_result", "change_analysis_report"}:
@@ -80,11 +101,15 @@ async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service))
             )
             conversation_repository.add_message(
                 query.session_id, request_id=query.request_id, role="assistant",
-                agent_type=agent_type, status="completed",
+                agent_type=agent_type, status=assistant_status,
                 content=structured.get("content", "") if structured else "",
                 structured_result=structured,
             )
-            conversation_repository.update_message(user_message["id"], status="completed", content=query.query)
+            conversation_repository.update_message(
+                user_message["id"],
+                status=assistant_status,
+                content=query.query,
+            )
         except Exception as e:
             logger.error("Chat stream failed: {}", safe_error_detail(e))
             friendly_error = "暂时无法完成这次数据查询，请稍后重试或联系管理员。"
@@ -97,8 +122,9 @@ async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service))
                 )
             except Exception:
                 logger.exception("会话消息持久化失败")
-            #  万一中间断网了或者报错，把错误原因包装成一句话推给前端看。
-            yield f"data: {json.dumps({'type': 'error_response', 'content': friendly_error, 'error': friendly_error}, ensure_ascii=False, default=str)}\n\n"
+            #  已通过流式事件发送失败提示时，不再重复发送最终错误。
+            if not terminal_error_sent:
+                yield f"data: {json.dumps({'type': 'error_response', 'content': friendly_error, 'error': friendly_error}, ensure_ascii=False, default=str)}\n\n"
 
     # 大模型流式输出，产生数据立刻发送到前端
     return StreamingResponse(

@@ -1,0 +1,1710 @@
+{
+  "evaluated_at": "2026-11-05T19:29:57+08:00",
+  "dataset": {
+    "path": "/Users/gaokai/Desktop/CodeProjects/large_models/data-agent/app/agent/orchestrator/tests/acceptance_cases.json",
+    "suite_name": "orchestrator_stage_acceptance",
+    "label_status": "draft",
+    "description": "应用层阶段性验收：30 条路由与改写语义用例，不修改业务实现。"
+  },
+  "provider": "deepseek",
+  "model_tier": "deepseek-v4-flash",
+  "summary": {
+    "total": 30,
+    "passed": 29,
+    "failed": 1,
+    "case_pass_rate": 0.9667,
+    "intent_accuracy": 0.9667,
+    "rewrite_semantic_pass_rate": 1.0,
+    "history_condition_inheritance_pass_rate": 1.0,
+    "history_contamination_pass_rate": 1.0,
+    "groups": {
+      "no_history": {
+        "total": 5,
+        "passed": 5,
+        "pass_rate": 1.0
+      },
+      "cross_business_contamination": {
+        "total": 7,
+        "passed": 7,
+        "pass_rate": 1.0
+      },
+      "multi_turn_followup": {
+        "total": 8,
+        "passed": 8,
+        "pass_rate": 1.0
+      },
+      "ambiguity_boundary": {
+        "total": 6,
+        "passed": 6,
+        "pass_rate": 1.0
+      },
+      "invalid_incomplete": {
+        "total": 4,
+        "passed": 3,
+        "pass_rate": 0.75
+      }
+    }
+  },
+  "failures": [
+    {
+      "id": "invalid_vague",
+      "group": "invalid_incomplete",
+      "original_query": "再看看",
+      "conversation_history": [
+        "用户：上个月怎么了？"
+      ],
+      "actual_rewritten_query": "再看看上个月发生了什么？",
+      "expected_intent": "anomaly_analysis",
+      "allowed_intents": [
+        "anomaly_analysis",
+        "direct_answer"
+      ],
+      "actual_intent": "query_database",
+      "expected_constraints": {
+        "must_contain": [],
+        "must_not_contain": [
+          "销售额",
+          "订单量"
+        ]
+      },
+      "failure_reasons": [
+        "意图断言失败：允许 ['anomaly_analysis', 'direct_answer']，实际 query_database"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "id": "nohist_metric",
+      "category": "",
+      "conversation_history": [],
+      "input_state": {
+        "query": "2025年10月销售额是多少？",
+        "session_id": "nohist_metric"
+      },
+      "expected_output_state": {
+        "query": "2025年10月销售额是多少？",
+        "session_id": "nohist_metric",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "2025年10月销售额是多少？",
+      "actual_output_state": {
+        "query": "2025年10月销售额是多少？",
+        "session_id": "nohist_metric",
+        "rewritten_query": "2025年10月销售额是多少？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "2025年10月销售额是多少？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3220.29,
+      "error": null,
+      "group": "no_history",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "2025年10月",
+          "销售额"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "nohist_trend",
+      "category": "",
+      "conversation_history": [],
+      "input_state": {
+        "query": "最近30天订单量趋势如何？",
+        "session_id": "nohist_trend"
+      },
+      "expected_output_state": {
+        "query": "最近30天订单量趋势如何？",
+        "session_id": "nohist_trend",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "最近30天订单量趋势如何？",
+      "actual_output_state": {
+        "query": "最近30天订单量趋势如何？",
+        "session_id": "nohist_trend",
+        "rewritten_query": "最近30天订单量趋势如何？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "最近30天订单量趋势如何？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 1119.66,
+      "error": null,
+      "group": "no_history",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "订单量",
+          "趋势"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "nohist_cause",
+      "category": "",
+      "conversation_history": [],
+      "input_state": {
+        "query": "为什么2025年7月销售额比6月下降？",
+        "session_id": "nohist_cause"
+      },
+      "expected_output_state": {
+        "query": "为什么2025年7月销售额比6月下降？",
+        "session_id": "nohist_cause",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "为什么2025年7月销售额比6月下降？",
+      "actual_output_state": {
+        "query": "为什么2025年7月销售额比6月下降？",
+        "session_id": "nohist_cause",
+        "rewritten_query": "为什么2025年7月销售额比6月下降？",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "为什么2025年7月销售额比6月下降？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 1342.72,
+      "error": null,
+      "group": "no_history",
+      "allowed_intents": [
+        "anomaly_analysis"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "2025年7月",
+          "销售额",
+          "下降"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "nohist_capability",
+      "category": "",
+      "conversation_history": [],
+      "input_state": {
+        "query": "你能做什么？",
+        "session_id": "nohist_capability"
+      },
+      "expected_output_state": {
+        "query": "你能做什么？",
+        "session_id": "nohist_capability",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "actual_rewritten_query": "你能做什么？",
+      "actual_output_state": {
+        "query": "你能做什么？",
+        "session_id": "nohist_capability",
+        "rewritten_query": "你能做什么？",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "你能做什么？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 1142.33,
+      "error": null,
+      "group": "no_history",
+      "allowed_intents": [
+        "direct_answer"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "能做什么"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "nohist_concept",
+      "category": "",
+      "conversation_history": [],
+      "input_state": {
+        "query": "如何理解环比？",
+        "session_id": "nohist_concept"
+      },
+      "expected_output_state": {
+        "query": "如何理解环比？",
+        "session_id": "nohist_concept",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "actual_rewritten_query": "如何理解环比？",
+      "actual_output_state": {
+        "query": "如何理解环比？",
+        "session_id": "nohist_concept",
+        "rewritten_query": "如何理解环比？",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "如何理解环比？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 1487.83,
+      "error": null,
+      "group": "no_history",
+      "allowed_intents": [
+        "direct_answer"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "环比"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "cross_data_to_concept",
+      "category": "",
+      "conversation_history": [
+        "用户：查询2025年9月各产品销售额"
+      ],
+      "input_state": {
+        "query": "什么是环比？",
+        "session_id": "cross_data_to_concept"
+      },
+      "expected_output_state": {
+        "query": "什么是环比？",
+        "session_id": "cross_data_to_concept",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "actual_rewritten_query": "什么是环比？",
+      "actual_output_state": {
+        "query": "什么是环比？",
+        "session_id": "cross_data_to_concept",
+        "rewritten_query": "什么是环比？",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "什么是环比？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3631.19,
+      "error": null,
+      "group": "cross_business_contamination",
+      "allowed_intents": [
+        "direct_answer"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "环比"
+        ],
+        "must_not_contain": [
+          "销售额",
+          "2025年9月"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "cross_data_to_code",
+      "category": "",
+      "conversation_history": [
+        "用户：查询华东订单量"
+      ],
+      "input_state": {
+        "query": "帮我写一个Python快速排序",
+        "session_id": "cross_data_to_code"
+      },
+      "expected_output_state": {
+        "query": "帮我写一个Python快速排序",
+        "session_id": "cross_data_to_code",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "actual_rewritten_query": "帮我写一个Python快速排序",
+      "actual_output_state": {
+        "query": "帮我写一个Python快速排序",
+        "session_id": "cross_data_to_code",
+        "rewritten_query": "帮我写一个Python快速排序",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "帮我写一个Python快速排序",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3828.09,
+      "error": null,
+      "group": "cross_business_contamination",
+      "allowed_intents": [
+        "direct_answer"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "Python"
+        ],
+        "must_not_contain": [
+          "华东",
+          "订单量"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "cross_anomaly_to_data",
+      "category": "",
+      "conversation_history": [
+        "用户：为什么7月销售额下降？"
+      ],
+      "input_state": {
+        "query": "9月订单量是多少？",
+        "session_id": "cross_anomaly_to_data"
+      },
+      "expected_output_state": {
+        "query": "9月订单量是多少？",
+        "session_id": "cross_anomaly_to_data",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "9月订单量是多少？",
+      "actual_output_state": {
+        "query": "9月订单量是多少？",
+        "session_id": "cross_anomaly_to_data",
+        "rewritten_query": "9月订单量是多少？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "9月订单量是多少？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2250.14,
+      "error": null,
+      "group": "cross_business_contamination",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "9月",
+          "订单量"
+        ],
+        "must_not_contain": [
+          "销售额"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "cross_anomaly_to_direct",
+      "category": "",
+      "conversation_history": [
+        "用户：分析销售额下降原因"
+      ],
+      "input_state": {
+        "query": "你好",
+        "session_id": "cross_anomaly_to_direct"
+      },
+      "expected_output_state": {
+        "query": "你好",
+        "session_id": "cross_anomaly_to_direct",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "actual_rewritten_query": "你好",
+      "actual_output_state": {
+        "query": "你好",
+        "session_id": "cross_anomaly_to_direct",
+        "rewritten_query": "你好",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "你好",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3000.03,
+      "error": null,
+      "group": "cross_business_contamination",
+      "allowed_intents": [
+        "direct_answer"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "你好"
+        ],
+        "must_not_contain": [
+          "销售额",
+          "下降"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "cross_data_to_anomaly",
+      "category": "",
+      "conversation_history": [
+        "用户：2025年7月销售额是多少？"
+      ],
+      "input_state": {
+        "query": "为什么订单量下降了？",
+        "session_id": "cross_data_to_anomaly"
+      },
+      "expected_output_state": {
+        "query": "为什么订单量下降了？",
+        "session_id": "cross_data_to_anomaly",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "为什么订单量下降了？",
+      "actual_output_state": {
+        "query": "为什么订单量下降了？",
+        "session_id": "cross_data_to_anomaly",
+        "rewritten_query": "为什么订单量下降了？",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "为什么订单量下降了？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3767.08,
+      "error": null,
+      "group": "cross_business_contamination",
+      "allowed_intents": [
+        "anomaly_analysis"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "订单量",
+          "下降"
+        ],
+        "must_not_contain": [
+          "销售额"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "cross_direct_to_data",
+      "category": "",
+      "conversation_history": [
+        "用户：你能做什么？"
+      ],
+      "input_state": {
+        "query": "查询本月利润",
+        "session_id": "cross_direct_to_data"
+      },
+      "expected_output_state": {
+        "query": "查询本月利润",
+        "session_id": "cross_direct_to_data",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "查询本月利润",
+      "actual_output_state": {
+        "query": "查询本月利润",
+        "session_id": "cross_direct_to_data",
+        "rewritten_query": "查询本月利润",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "查询本月利润",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2353.09,
+      "error": null,
+      "group": "cross_business_contamination",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "本月",
+          "利润"
+        ],
+        "must_not_contain": [
+          "能做什么"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "cross_region_metric_switch",
+      "category": "",
+      "conversation_history": [
+        "用户：华东订单量是多少？"
+      ],
+      "input_state": {
+        "query": "华南利润呢？",
+        "session_id": "cross_region_metric_switch"
+      },
+      "expected_output_state": {
+        "query": "华南利润呢？",
+        "session_id": "cross_region_metric_switch",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "华南利润是多少？",
+      "actual_output_state": {
+        "query": "华南利润呢？",
+        "session_id": "cross_region_metric_switch",
+        "rewritten_query": "华南利润是多少？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "华南利润是多少？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2522.94,
+      "error": null,
+      "group": "cross_business_contamination",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "华南",
+          "利润"
+        ],
+        "must_not_contain": [
+          "华东",
+          "订单量"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_metric_replace",
+      "category": "",
+      "conversation_history": [
+        "用户：查询2025年9月各产品销售额"
+      ],
+      "input_state": {
+        "query": "那利润呢？",
+        "session_id": "mt_metric_replace"
+      },
+      "expected_output_state": {
+        "query": "那利润呢？",
+        "session_id": "mt_metric_replace",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "查询2025年9月各产品利润",
+      "actual_output_state": {
+        "query": "那利润呢？",
+        "session_id": "mt_metric_replace",
+        "rewritten_query": "查询2025年9月各产品利润",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "查询2025年9月各产品利润",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2949.5,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "2025年9月",
+          "产品",
+          "利润"
+        ],
+        "must_not_contain": [
+          "销售额"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_time_replace",
+      "category": "",
+      "conversation_history": [
+        "用户：2025年7月销售额比6月下降多少？"
+      ],
+      "input_state": {
+        "query": "那8月呢？",
+        "session_id": "mt_time_replace"
+      },
+      "expected_output_state": {
+        "query": "那8月呢？",
+        "session_id": "mt_time_replace",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "2025年8月销售额比7月下降多少？",
+      "actual_output_state": {
+        "query": "那8月呢？",
+        "session_id": "mt_time_replace",
+        "rewritten_query": "2025年8月销售额比7月下降多少？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "2025年8月销售额比7月下降多少？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2913.64,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "8月",
+          "销售额"
+        ],
+        "must_not_contain": [
+          "6月"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_region_replace",
+      "category": "",
+      "conversation_history": [
+        "用户：分析北京地区7月销售额下降原因"
+      ],
+      "input_state": {
+        "query": "那上海呢？",
+        "session_id": "mt_region_replace"
+      },
+      "expected_output_state": {
+        "query": "那上海呢？",
+        "session_id": "mt_region_replace",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "分析上海地区7月销售额下降原因",
+      "actual_output_state": {
+        "query": "那上海呢？",
+        "session_id": "mt_region_replace",
+        "rewritten_query": "分析上海地区7月销售额下降原因",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "分析上海地区7月销售额下降原因",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2872.28,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "anomaly_analysis"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "上海",
+          "7月",
+          "销售额"
+        ],
+        "must_not_contain": [
+          "北京"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_dimension_replace",
+      "category": "",
+      "conversation_history": [
+        "用户：按渠道拆分销售额"
+      ],
+      "input_state": {
+        "query": "换成地区呢？",
+        "session_id": "mt_dimension_replace"
+      },
+      "expected_output_state": {
+        "query": "换成地区呢？",
+        "session_id": "mt_dimension_replace",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "按地区拆分销售额",
+      "actual_output_state": {
+        "query": "换成地区呢？",
+        "session_id": "mt_dimension_replace",
+        "rewritten_query": "按地区拆分销售额",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "按地区拆分销售额",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2321.11,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "地区",
+          "销售额"
+        ],
+        "must_not_contain": [
+          "渠道"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_condition_inherit",
+      "category": "",
+      "conversation_history": [
+        "用户：查询华东订单量",
+        "用户：那华南呢？"
+      ],
+      "input_state": {
+        "query": "那销售额呢？",
+        "session_id": "mt_condition_inherit"
+      },
+      "expected_output_state": {
+        "query": "那销售额呢？",
+        "session_id": "mt_condition_inherit",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "查询华南销售额",
+      "actual_output_state": {
+        "query": "那销售额呢？",
+        "session_id": "mt_condition_inherit",
+        "rewritten_query": "查询华南销售额",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "查询华南销售额",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2866.09,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "华南",
+          "销售额"
+        ],
+        "must_not_contain": [
+          "华东",
+          "订单量"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_turn_chain",
+      "category": "",
+      "conversation_history": [
+        "用户：查询2025年10月销售额",
+        "用户：那北京呢？"
+      ],
+      "input_state": {
+        "query": "那11月呢？",
+        "session_id": "mt_turn_chain"
+      },
+      "expected_output_state": {
+        "query": "那11月呢？",
+        "session_id": "mt_turn_chain",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "查询2025年11月北京的销售额",
+      "actual_output_state": {
+        "query": "那11月呢？",
+        "session_id": "mt_turn_chain",
+        "rewritten_query": "查询2025年11月北京的销售额",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "查询2025年11月北京的销售额",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3479.14,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "北京",
+          "11月",
+          "销售额"
+        ],
+        "must_not_contain": [
+          "10月"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_anomaly_deepen",
+      "category": "",
+      "conversation_history": [
+        "用户：2025年7月销售额是多少？",
+        "用户：为什么下降？"
+      ],
+      "input_state": {
+        "query": "哪些渠道影响最大？",
+        "session_id": "mt_anomaly_deepen"
+      },
+      "expected_output_state": {
+        "query": "哪些渠道影响最大？",
+        "session_id": "mt_anomaly_deepen",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "2025年7月销售额下降中，哪些渠道影响最大？",
+      "actual_output_state": {
+        "query": "哪些渠道影响最大？",
+        "session_id": "mt_anomaly_deepen",
+        "rewritten_query": "2025年7月销售额下降中，哪些渠道影响最大？",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "2025年7月销售额下降中，哪些渠道影响最大？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2791.21,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "anomaly_analysis"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "7月",
+          "销售额",
+          "渠道"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "mt_data_switch",
+      "category": "",
+      "conversation_history": [
+        "用户：为什么7月销售额下降？",
+        "用户：哪些渠道影响最大？"
+      ],
+      "input_state": {
+        "query": "那8月订单量呢？",
+        "session_id": "mt_data_switch"
+      },
+      "expected_output_state": {
+        "query": "那8月订单量呢？",
+        "session_id": "mt_data_switch",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "8月订单量情况如何？",
+      "actual_output_state": {
+        "query": "那8月订单量呢？",
+        "session_id": "mt_data_switch",
+        "rewritten_query": "8月订单量情况如何？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "8月订单量情况如何？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3177.25,
+      "error": null,
+      "group": "multi_turn_followup",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "8月",
+          "订单量"
+        ],
+        "must_not_contain": [
+          "销售额"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "amb_why_after_magnitude",
+      "category": "",
+      "conversation_history": [
+        "用户：2025年7月销售额比6月下降了多少？"
+      ],
+      "input_state": {
+        "query": "为什么？",
+        "session_id": "amb_why_after_magnitude"
+      },
+      "expected_output_state": {
+        "query": "为什么？",
+        "session_id": "amb_why_after_magnitude",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "2025年7月销售额比6月下降的原因是什么？",
+      "actual_output_state": {
+        "query": "为什么？",
+        "session_id": "amb_why_after_magnitude",
+        "rewritten_query": "2025年7月销售额比6月下降的原因是什么？",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "2025年7月销售额比6月下降的原因是什么？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2960.17,
+      "error": null,
+      "group": "ambiguity_boundary",
+      "allowed_intents": [
+        "anomaly_analysis"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "2025年7月",
+          "销售额",
+          "下降"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "amb_down_how_much",
+      "category": "",
+      "conversation_history": [
+        "用户：2025年7月销售额"
+      ],
+      "input_state": {
+        "query": "比6月下降了多少？",
+        "session_id": "amb_down_how_much"
+      },
+      "expected_output_state": {
+        "query": "比6月下降了多少？",
+        "session_id": "amb_down_how_much",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "2025年7月销售额比2025年6月下降了多少？",
+      "actual_output_state": {
+        "query": "比6月下降了多少？",
+        "session_id": "amb_down_how_much",
+        "rewritten_query": "2025年7月销售额比2025年6月下降了多少？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "2025年7月销售额比2025年6月下降了多少？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2741.72,
+      "error": null,
+      "group": "ambiguity_boundary",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "7月",
+          "6月",
+          "销售额",
+          "下降"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "amb_why_down",
+      "category": "",
+      "conversation_history": [
+        "用户：2025年7月销售额比6月下降"
+      ],
+      "input_state": {
+        "query": "为什么下降？",
+        "session_id": "amb_why_down"
+      },
+      "expected_output_state": {
+        "query": "为什么下降？",
+        "session_id": "amb_why_down",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "2025年7月销售额比6月下降的原因是什么？",
+      "actual_output_state": {
+        "query": "为什么下降？",
+        "session_id": "amb_why_down",
+        "rewritten_query": "2025年7月销售额比6月下降的原因是什么？",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "2025年7月销售额比6月下降的原因是什么？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2853.84,
+      "error": null,
+      "group": "ambiguity_boundary",
+      "allowed_intents": [
+        "anomaly_analysis"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "7月",
+          "6月",
+          "销售额",
+          "下降"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "amb_ambiguous_no_fabricate",
+      "category": "",
+      "conversation_history": [
+        "用户：查询北京销售额"
+      ],
+      "input_state": {
+        "query": "能再详细点吗？",
+        "session_id": "amb_ambiguous_no_fabricate"
+      },
+      "expected_output_state": {
+        "query": "能再详细点吗？",
+        "session_id": "amb_ambiguous_no_fabricate",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "北京销售额的查询结果能再详细一点吗？",
+      "actual_output_state": {
+        "query": "能再详细点吗？",
+        "session_id": "amb_ambiguous_no_fabricate",
+        "rewritten_query": "北京销售额的查询结果能再详细一点吗？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "北京销售额的查询结果能再详细一点吗？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3693.09,
+      "error": null,
+      "group": "ambiguity_boundary",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "详细",
+          "销售额"
+        ],
+        "must_not_contain": [
+          "利润",
+          "订单量"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "amb_region_switch",
+      "category": "",
+      "conversation_history": [
+        "用户：华东销售额下降了多少？"
+      ],
+      "input_state": {
+        "query": "那华南为什么下降？",
+        "session_id": "amb_region_switch"
+      },
+      "expected_output_state": {
+        "query": "那华南为什么下降？",
+        "session_id": "amb_region_switch",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "华南销售额为什么下降？",
+      "actual_output_state": {
+        "query": "那华南为什么下降？",
+        "session_id": "amb_region_switch",
+        "rewritten_query": "华南销售额为什么下降？",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "华南销售额为什么下降？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2723.8,
+      "error": null,
+      "group": "ambiguity_boundary",
+      "allowed_intents": [
+        "anomaly_analysis"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "华南",
+          "下降"
+        ],
+        "must_not_contain": [
+          "华东"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "amb_no_verified_fact",
+      "category": "",
+      "conversation_history": [
+        "用户：2025年7月销售额比6月下降了多少？"
+      ],
+      "input_state": {
+        "query": "按门店拆一下",
+        "session_id": "amb_no_verified_fact"
+      },
+      "expected_output_state": {
+        "query": "按门店拆一下",
+        "session_id": "amb_no_verified_fact",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "2025年7月销售额比6月下降了多少，按门店拆分是多少？",
+      "actual_output_state": {
+        "query": "按门店拆一下",
+        "session_id": "amb_no_verified_fact",
+        "rewritten_query": "2025年7月销售额比6月下降了多少，按门店拆分是多少？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "2025年7月销售额比6月下降了多少，按门店拆分是多少？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3324.41,
+      "error": null,
+      "group": "ambiguity_boundary",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "销售额",
+          "门店"
+        ],
+        "must_not_contain": [
+          "已核实",
+          "实际下降",
+          "结论是下降"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "invalid_ack",
+      "category": "",
+      "conversation_history": [
+        "用户：查询销售额"
+      ],
+      "input_state": {
+        "query": "嗯",
+        "session_id": "invalid_ack"
+      },
+      "expected_output_state": {
+        "query": "嗯",
+        "session_id": "invalid_ack",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "actual_rewritten_query": "嗯",
+      "actual_output_state": {
+        "query": "嗯",
+        "session_id": "invalid_ack",
+        "rewritten_query": "嗯",
+        "intent": "direct_answer",
+        "agent_result": {
+          "entered_agent": "direct_answer"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "嗯",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": false,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 2567.88,
+      "error": null,
+      "group": "invalid_incomplete",
+      "allowed_intents": [
+        "direct_answer"
+      ],
+      "expected_constraints": {
+        "must_contain": [],
+        "must_not_contain": [
+          "销售额"
+        ]
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "invalid_partial_month",
+      "category": "",
+      "conversation_history": [
+        "用户：销售额是多少？"
+      ],
+      "input_state": {
+        "query": "6月",
+        "session_id": "invalid_partial_month"
+      },
+      "expected_output_state": {
+        "query": "6月",
+        "session_id": "invalid_partial_month",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "6月销售额是多少？",
+      "actual_output_state": {
+        "query": "6月",
+        "session_id": "invalid_partial_month",
+        "rewritten_query": "6月销售额是多少？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "6月销售额是多少？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 1929.37,
+      "error": null,
+      "group": "invalid_incomplete",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "6月",
+          "销售额"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    },
+    {
+      "id": "invalid_vague",
+      "category": "",
+      "conversation_history": [
+        "用户：上个月怎么了？"
+      ],
+      "input_state": {
+        "query": "再看看",
+        "session_id": "invalid_vague"
+      },
+      "expected_output_state": {
+        "query": "再看看",
+        "session_id": "invalid_vague",
+        "intent": "anomaly_analysis",
+        "agent_result": {
+          "entered_agent": "anomaly_analysis"
+        }
+      },
+      "actual_rewritten_query": "再看看上个月发生了什么？",
+      "actual_output_state": {
+        "query": "再看看",
+        "session_id": "invalid_vague",
+        "rewritten_query": "再看看上个月发生了什么？",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": false,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "再看看上个月发生了什么？",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": false,
+      "latency_ms": 5031.7,
+      "error": null,
+      "group": "invalid_incomplete",
+      "allowed_intents": [
+        "anomaly_analysis",
+        "direct_answer"
+      ],
+      "expected_constraints": {
+        "must_contain": [],
+        "must_not_contain": [
+          "销售额",
+          "订单量"
+        ]
+      },
+      "failure_reasons": [
+        "意图断言失败：允许 ['anomaly_analysis', 'direct_answer']，实际 query_database"
+      ]
+    },
+    {
+      "id": "invalid_other",
+      "category": "",
+      "conversation_history": [
+        "用户：查询华东销售额"
+      ],
+      "input_state": {
+        "query": "那其他呢？",
+        "session_id": "invalid_other"
+      },
+      "expected_output_state": {
+        "query": "那其他呢？",
+        "session_id": "invalid_other",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "actual_rewritten_query": "查询除华东以外其他区域的销售额",
+      "actual_output_state": {
+        "query": "那其他呢？",
+        "session_id": "invalid_other",
+        "rewritten_query": "查询除华东以外其他区域的销售额",
+        "intent": "query_database",
+        "agent_result": {
+          "entered_agent": "query_database"
+        }
+      },
+      "state_assertions_passed": true,
+      "rewrite_assertions": {
+        "actual_rewritten_query": "查询除华东以外其他区域的销售额",
+        "missing_terms": [],
+        "missing_alternative_groups": [],
+        "forbidden_terms_present": [],
+        "differs_from_input": true,
+        "passed": true
+      },
+      "passed": true,
+      "latency_ms": 3109.15,
+      "error": null,
+      "group": "invalid_incomplete",
+      "allowed_intents": [
+        "query_database"
+      ],
+      "expected_constraints": {
+        "must_contain": [
+          "其他",
+          "销售额"
+        ],
+        "must_not_contain": []
+      },
+      "failure_reasons": []
+    }
+  ]
+}

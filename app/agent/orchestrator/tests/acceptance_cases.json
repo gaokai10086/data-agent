@@ -1,0 +1,302 @@
+{
+  "version": 1,
+  "suite_name": "orchestrator_stage_acceptance",
+  "description": "应用层阶段性验收：30 条路由与改写语义用例，不修改业务实现。",
+  "label_status": "draft",
+  "groups": {
+    "no_history": "无历史独立提问",
+    "cross_business_contamination": "跨业务切换与历史污染",
+    "multi_turn_followup": "多轮连续追问",
+    "ambiguity_boundary": "歧义与边界意图",
+    "invalid_incomplete": "无效或不完整问题"
+  },
+  "cases": [
+    {
+      "id": "nohist_metric",
+      "group": "no_history",
+      "history": [],
+      "query": "2025年10月销售额是多少？",
+      "session_id": "nohist_metric",
+      "intent": "query_database",
+      "must_contain": ["2025年10月", "销售额"]
+    },
+    {
+      "id": "nohist_trend",
+      "group": "no_history",
+      "history": [],
+      "query": "最近30天订单量趋势如何？",
+      "session_id": "nohist_trend",
+      "intent": "query_database",
+      "must_contain": ["订单量", "趋势"]
+    },
+    {
+      "id": "nohist_cause",
+      "group": "no_history",
+      "history": [],
+      "query": "为什么2025年7月销售额比6月下降？",
+      "session_id": "nohist_cause",
+      "intent": "anomaly_analysis",
+      "must_contain": ["2025年7月", "销售额", "下降"]
+    },
+    {
+      "id": "nohist_capability",
+      "group": "no_history",
+      "history": [],
+      "query": "你能做什么？",
+      "session_id": "nohist_capability",
+      "intent": "direct_answer",
+      "must_contain": ["能做什么"]
+    },
+    {
+      "id": "nohist_concept",
+      "group": "no_history",
+      "history": [],
+      "query": "如何理解环比？",
+      "session_id": "nohist_concept",
+      "intent": "direct_answer",
+      "must_contain": ["环比"]
+    },
+    {
+      "id": "cross_data_to_concept",
+      "group": "cross_business_contamination",
+      "history": ["用户：查询2025年9月各产品销售额"],
+      "query": "什么是环比？",
+      "session_id": "cross_data_to_concept",
+      "intent": "direct_answer",
+      "must_contain": ["环比"],
+      "must_not_contain": ["销售额", "2025年9月"]
+    },
+    {
+      "id": "cross_data_to_code",
+      "group": "cross_business_contamination",
+      "history": ["用户：查询华东订单量"],
+      "query": "帮我写一个Python快速排序",
+      "session_id": "cross_data_to_code",
+      "intent": "direct_answer",
+      "must_contain": ["Python"],
+      "must_not_contain": ["华东", "订单量"]
+    },
+    {
+      "id": "cross_anomaly_to_data",
+      "group": "cross_business_contamination",
+      "history": ["用户：为什么7月销售额下降？"],
+      "query": "9月订单量是多少？",
+      "session_id": "cross_anomaly_to_data",
+      "intent": "query_database",
+      "must_contain": ["9月", "订单量"],
+      "must_not_contain": ["销售额"]
+    },
+    {
+      "id": "cross_anomaly_to_direct",
+      "group": "cross_business_contamination",
+      "history": ["用户：分析销售额下降原因"],
+      "query": "你好",
+      "session_id": "cross_anomaly_to_direct",
+      "intent": "direct_answer",
+      "must_contain": ["你好"],
+      "must_not_contain": ["销售额", "下降"]
+    },
+    {
+      "id": "cross_data_to_anomaly",
+      "group": "cross_business_contamination",
+      "history": ["用户：2025年7月销售额是多少？"],
+      "query": "为什么订单量下降了？",
+      "session_id": "cross_data_to_anomaly",
+      "intent": "anomaly_analysis",
+      "must_contain": ["订单量", "下降"],
+      "must_not_contain": ["销售额"]
+    },
+    {
+      "id": "cross_direct_to_data",
+      "group": "cross_business_contamination",
+      "history": ["用户：你能做什么？"],
+      "query": "查询本月利润",
+      "session_id": "cross_direct_to_data",
+      "intent": "query_database",
+      "must_contain": ["本月", "利润"],
+      "must_not_contain": ["能做什么"]
+    },
+    {
+      "id": "cross_region_metric_switch",
+      "group": "cross_business_contamination",
+      "history": ["用户：华东订单量是多少？"],
+      "query": "华南利润呢？",
+      "session_id": "cross_region_metric_switch",
+      "intent": "query_database",
+      "must_contain": ["华南", "利润"],
+      "must_not_contain": ["华东", "订单量"]
+    },
+    {
+      "id": "mt_metric_replace",
+      "group": "multi_turn_followup",
+      "history": ["用户：查询2025年9月各产品销售额"],
+      "query": "那利润呢？",
+      "session_id": "mt_metric_replace",
+      "intent": "query_database",
+      "must_contain": ["2025年9月", "产品", "利润"],
+      "must_not_contain": ["销售额"]
+    },
+    {
+      "id": "mt_time_replace",
+      "group": "multi_turn_followup",
+      "history": ["用户：2025年7月销售额比6月下降多少？"],
+      "query": "那8月呢？",
+      "session_id": "mt_time_replace",
+      "intent": "query_database",
+      "must_contain": ["8月", "销售额"],
+      "must_not_contain": ["6月"]
+    },
+    {
+      "id": "mt_region_replace",
+      "group": "multi_turn_followup",
+      "history": ["用户：分析北京地区7月销售额下降原因"],
+      "query": "那上海呢？",
+      "session_id": "mt_region_replace",
+      "intent": "anomaly_analysis",
+      "must_contain": ["上海", "7月", "销售额"],
+      "must_not_contain": ["北京"]
+    },
+    {
+      "id": "mt_dimension_replace",
+      "group": "multi_turn_followup",
+      "history": ["用户：按渠道拆分销售额"],
+      "query": "换成地区呢？",
+      "session_id": "mt_dimension_replace",
+      "intent": "query_database",
+      "must_contain": ["地区", "销售额"],
+      "must_not_contain": ["渠道"]
+    },
+    {
+      "id": "mt_condition_inherit",
+      "group": "multi_turn_followup",
+      "history": ["用户：查询华东订单量", "用户：那华南呢？"],
+      "query": "那销售额呢？",
+      "session_id": "mt_condition_inherit",
+      "intent": "query_database",
+      "must_contain": ["华南", "销售额"],
+      "must_not_contain": ["华东", "订单量"]
+    },
+    {
+      "id": "mt_turn_chain",
+      "group": "multi_turn_followup",
+      "history": ["用户：查询2025年10月销售额", "用户：那北京呢？"],
+      "query": "那11月呢？",
+      "session_id": "mt_turn_chain",
+      "intent": "query_database",
+      "must_contain": ["北京", "11月", "销售额"],
+      "must_not_contain": ["10月"]
+    },
+    {
+      "id": "mt_anomaly_deepen",
+      "group": "multi_turn_followup",
+      "history": ["用户：2025年7月销售额是多少？", "用户：为什么下降？"],
+      "query": "哪些渠道影响最大？",
+      "session_id": "mt_anomaly_deepen",
+      "intent": "anomaly_analysis",
+      "must_contain": ["7月", "销售额", "渠道"]
+    },
+    {
+      "id": "mt_data_switch",
+      "group": "multi_turn_followup",
+      "history": ["用户：为什么7月销售额下降？", "用户：哪些渠道影响最大？"],
+      "query": "那8月订单量呢？",
+      "session_id": "mt_data_switch",
+      "intent": "query_database",
+      "must_contain": ["8月", "订单量"],
+      "must_not_contain": ["销售额"]
+    },
+    {
+      "id": "amb_why_after_magnitude",
+      "group": "ambiguity_boundary",
+      "history": ["用户：2025年7月销售额比6月下降了多少？"],
+      "query": "为什么？",
+      "session_id": "amb_why_after_magnitude",
+      "intent": "anomaly_analysis",
+      "must_contain": ["2025年7月", "销售额", "下降"]
+    },
+    {
+      "id": "amb_down_how_much",
+      "group": "ambiguity_boundary",
+      "history": ["用户：2025年7月销售额"],
+      "query": "比6月下降了多少？",
+      "session_id": "amb_down_how_much",
+      "intent": "query_database",
+      "must_contain": ["7月", "6月", "销售额", "下降"]
+    },
+    {
+      "id": "amb_why_down",
+      "group": "ambiguity_boundary",
+      "history": ["用户：2025年7月销售额比6月下降"],
+      "query": "为什么下降？",
+      "session_id": "amb_why_down",
+      "intent": "anomaly_analysis",
+      "must_contain": ["7月", "6月", "销售额", "下降"]
+    },
+    {
+      "id": "amb_ambiguous_no_fabricate",
+      "group": "ambiguity_boundary",
+      "history": ["用户：查询北京销售额"],
+      "query": "能再详细点吗？",
+      "session_id": "amb_ambiguous_no_fabricate",
+      "intent": "query_database",
+      "must_contain": ["详细", "销售额"],
+      "must_not_contain": ["利润", "订单量"]
+    },
+    {
+      "id": "amb_region_switch",
+      "group": "ambiguity_boundary",
+      "history": ["用户：华东销售额下降了多少？"],
+      "query": "那华南为什么下降？",
+      "session_id": "amb_region_switch",
+      "intent": "anomaly_analysis",
+      "must_contain": ["华南", "下降"],
+      "must_not_contain": ["华东"]
+    },
+    {
+      "id": "amb_no_verified_fact",
+      "group": "ambiguity_boundary",
+      "history": ["用户：2025年7月销售额比6月下降了多少？"],
+      "query": "按门店拆一下",
+      "session_id": "amb_no_verified_fact",
+      "intent": "query_database",
+      "must_contain": ["销售额", "门店"],
+      "must_not_contain": ["已核实", "实际下降", "结论是下降"]
+    },
+    {
+      "id": "invalid_ack",
+      "group": "invalid_incomplete",
+      "history": ["用户：查询销售额"],
+      "query": "嗯",
+      "session_id": "invalid_ack",
+      "intent": "direct_answer",
+      "must_not_contain": ["销售额"]
+    },
+    {
+      "id": "invalid_partial_month",
+      "group": "invalid_incomplete",
+      "history": ["用户：销售额是多少？"],
+      "query": "6月",
+      "session_id": "invalid_partial_month",
+      "intent": "query_database",
+      "must_contain": ["6月", "销售额"]
+    },
+    {
+      "id": "invalid_vague",
+      "group": "invalid_incomplete",
+      "history": ["用户：上个月怎么了？"],
+      "query": "再看看",
+      "session_id": "invalid_vague",
+      "allowed_intents": ["anomaly_analysis", "direct_answer"],
+      "must_not_contain": ["销售额", "订单量"]
+    },
+    {
+      "id": "invalid_other",
+      "group": "invalid_incomplete",
+      "history": ["用户：查询华东销售额"],
+      "query": "那其他呢？",
+      "session_id": "invalid_other",
+      "intent": "query_database",
+      "must_contain": ["其他", "销售额"]
+    }
+  ]
+}
