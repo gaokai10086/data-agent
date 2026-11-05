@@ -9,14 +9,14 @@ from langchain_core.runnables import RunnableLambda
 
 from app.agent.orchestrator.graph import route_intent
 from app.agent.orchestrator.nodes.intent_detection import intent_detection
+from app.agent.orchestrator import PROMPT_DIR
 from app.prompt.prompt_loader import load_prompt
 
 
-def test_orchestrator_routes_four_intents():
+def test_orchestrator_routes_three_intents():
     assert route_intent({"intent": "query_database"}) == "query_database"
     assert route_intent({"intent": "anomaly_analysis"}) == "anomaly_analysis"
     assert route_intent({"intent": "direct_answer"}) == "direct_answer"
-    assert route_intent({"intent": "explain_knowledge"}) == "explain_knowledge"
 
 
 def test_orchestrator_rejects_unknown_intent():
@@ -25,7 +25,7 @@ def test_orchestrator_rejects_unknown_intent():
 
 
 def test_intent_prompt_distinguishes_change_from_cause():
-    prompt = load_prompt("orchestrator/intent_detection")
+    prompt = load_prompt("intent_detection", base_dir=PROMPT_DIR)
     assert "下降了多少？" in prompt
     assert "为什么北京地区7月销售额比6月下降？" in prompt
     assert "只问变化幅度，不问原因" in prompt

@@ -11,8 +11,8 @@ from app.agent.data_agent.nodes.column_recall import column_recall
 from app.agent.anomaly_agent.schemas import (
     AnalysisContext, AnalysisRequest, ChangeVerification, MetricContext, OverallComparisonResult,
 )
-from app.agent.anomaly_agent.nodes.load_metric_context import _build_metric_context
-from app.agent.anomaly_agent.skills.registry import build_analysis_strategy
+from app.agent.anomaly_agent.Change_Inspection_Agent.nodes.load_metric_context import _build_metric_context
+from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import build_analysis_strategy
 from app.core.meta.dimension_dependencies import validate_dimension_dependencies
 from app.service.dimension_dependency_service import validate_dependency_data
 

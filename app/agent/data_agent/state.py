@@ -150,6 +150,8 @@ class DataAgentState(TypedDict):
     # ---------------- 4. SQL 生成与自愈反思回路 ----------------
     sql: str                # 生成或修正后的执行 SQL
     error: str | None       # EXPLAIN 预检报错日志 (通过时为 None)
+    sql_error_kind: str | None  # repairable/permission/connection/timeout/safety/unknown
+    sql_error_stage: str | None # validate/execute
     retry_count: int        # 连续修正重试计数器
 
     # ================ 5. 数据执行与结果输出层 (新增) ================

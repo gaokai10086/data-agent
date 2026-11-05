@@ -19,6 +19,7 @@ from app.evaluation.runner import refresh_gold
 from app.evaluation.schema import EvalCase, load_cases
 from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
 from app.service.sql_validation_service import SQLSafetyPolicy as ServicePolicy, SQLValidationService
+from app.service.sql_error_handling import SQLReferenceError
 
 
 SAFE_SQL = (
@@ -101,7 +102,10 @@ class ValidationNodeTest(unittest.IsolatedAsyncioTestCase):
             with self.subTest(sql=sql):
                 result = await validate_sql({"sql": sql, "retry_count": 1}, runtime)
                 self.assertTrue(result["error"])
-                self.assertEqual(result["retry_count"], 2)
+                self.assertEqual(result["retry_count"], 1)
+                self.assertEqual(result["sql_error_kind"], "safety")
+                self.assertEqual(full_route(result), "translate_error")
+                self.assertEqual(query_route(result), "translate_error")
         repository.validate_sql.assert_not_awaited()
         repository.get_used_columns_from_sql.assert_not_awaited()
         repository.get_all_table_names.assert_not_awaited()
@@ -120,21 +124,25 @@ class ValidationNodeTest(unittest.IsolatedAsyncioTestCase):
         with patch.object(SQLValidationService, "validate_references", side_effect=references):
             result = await validate_sql({"sql": SAFE_SQL[0], "table_infos": [{"name": "fact_order"}]}, runtime)
         self.assertEqual(calls, ["explain", "references"])
-        self.assertEqual(result, {"error": None})
+        self.assertIsNone(result["error"])
+        self.assertIsNone(result["sql_error_kind"])
 
     async def test_schema_failure_retains_error_and_retry_contract(self):
         repository = make_repository()
         runtime = SimpleNamespace(context={"dw_mysql_repository": repository}, stream_writer=Mock())
         with patch.object(SQLValidationService, "validate_references", new=AsyncMock(return_value=["未知字段"])):
             result = await validate_sql({"sql": SAFE_SQL[0], "retry_count": 2}, runtime)
-        self.assertEqual(result, {"error": "SQL引用校验失败：未知字段", "retry_count": 3})
+        self.assertEqual(result["error"], "SQL引用校验失败：未知字段")
+        self.assertEqual(result["retry_count"], 3)
+        self.assertEqual(result["sql_error_kind"], "repairable")
 
     async def test_explain_failure_skips_schema_and_enters_correction(self):
         repository = make_repository()
-        repository.validate_sql.side_effect = ValueError("Unknown column")
+        repository.validate_sql.side_effect = SQLReferenceError("Unknown column")
         runtime = SimpleNamespace(context={"dw_mysql_repository": repository}, stream_writer=Mock())
         result = await validate_sql({"sql": SAFE_SQL[0]}, runtime)
-        self.assertEqual(result, {"error": "Unknown column", "retry_count": 1})
+        self.assertEqual(result["error"], "Unknown column")
+        self.assertEqual(result["retry_count"], 1)
         repository.get_used_columns_from_sql.assert_not_awaited()
         self.assertEqual(full_route(result), "correct_sql")
         self.assertEqual(query_route(result), "correct_sql")
@@ -186,6 +194,7 @@ class CorrectionLoopTest(unittest.IsolatedAsyncioTestCase):
     async def run_loop(self, route, corrected_sql):
         """仅裁剪召回/展示阶段，使用生产校验、纠错、执行节点和路由函数。"""
         repository = make_repository()
+        repository.validate_sql.side_effect = lambda sql: (_ for _ in ()).throw(SQLReferenceError("Unknown column")) if "missing_column" in sql else None
         prompts = []
 
         def model_response(prompt):
@@ -193,7 +202,7 @@ class CorrectionLoopTest(unittest.IsolatedAsyncioTestCase):
             return AIMessage(content=corrected_sql)
 
         builder = StateGraph(DataAgentState, context_schema=DataAgentContext)
-        builder.add_node("generate_sql", lambda state: {"sql": "DELETE FROM fact_order"})
+        builder.add_node("generate_sql", lambda state: {"sql": "SELECT missing_column FROM fact_order"})
         builder.add_node("validate_sql", validate_sql)
         builder.add_node("correct_sql", correct_sql)
         builder.add_node("execute_sql", execute_sql)
@@ -218,21 +227,29 @@ class CorrectionLoopTest(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(final["error"])
                 self.assertEqual(final["retry_count"], 1)
                 self.assertEqual(final["sql_result"], [{"value": 1}])
-                repository.validate_sql.assert_awaited_once_with(SAFE_SQL[0])
+                self.assertEqual(repository.validate_sql.await_count, 2)
                 repository.get_used_columns_from_sql.assert_awaited_once_with(SAFE_SQL[0])
                 repository.execute_sql.assert_awaited_once_with(SAFE_SQL[0])
                 self.assertEqual(len(prompts), 1)
-                self.assertIn("DELETE FROM fact_order", prompts[0])
-                self.assertIn("禁止", prompts[0])
+                self.assertIn("SELECT missing_column FROM fact_order", prompts[0])
+                self.assertIn("Unknown column", prompts[0])
+
+    async def test_correction_that_generates_unsafe_sql_stops_immediately(self):
+        for route in (full_route, query_route):
+            final, repository, prompts = await self.run_loop(route, "DELETE FROM fact_order")
+            self.assertEqual(final["sql_error_kind"], "safety")
+            self.assertEqual(final["retry_count"], 1)
+            self.assertEqual(len(prompts), 1)
+            repository.execute_sql.assert_not_awaited()
 
     async def test_three_failed_validations_stop_without_executing(self):
         for route in (full_route, query_route):
             with self.subTest(route=route.__module__):
-                final, repository, prompts = await self.run_loop(route, "UPDATE fact_order SET pay_amount=0")
+                final, repository, prompts = await self.run_loop(route, "SELECT missing_column FROM fact_order")
                 self.assertEqual(final["retry_count"], 3)
                 self.assertEqual(len(prompts), 2)
                 self.assertEqual(final["error_response"], final["error"])
-                repository.validate_sql.assert_not_awaited()
+                self.assertEqual(repository.validate_sql.await_count, 3)
                 repository.execute_sql.assert_not_awaited()
 
 

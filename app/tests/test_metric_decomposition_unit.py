@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 
 from pydantic import ValidationError
 
-from app.agent.anomaly_agent.nodes.load_metric_context import _build_metric_context, load_metric_context
+from app.agent.anomaly_agent.Change_Inspection_Agent.nodes.load_metric_context import _build_metric_context, load_metric_context
 from app.schemas.metric_decomposition import MetricDecomposition, sales_amount_decomposition
 from app.schemas.metric_management import MetricSubmitRequest
 from app.scripts.sync_sales_decomposition import migrate

@@ -26,14 +26,7 @@ from app.agent.data_agent.nodes.value_recall import value_recall
 from app.agent.data_agent.state import DataAgentState
 
 
-def route_after_validation(state: DataAgentState) -> str:
-    """根据 SQL 校验结果决定执行、修正还是终止。"""
-
-    if state.get("error") is None:
-        return "execute_sql"
-    if state.get("retry_count", 0) >= 3:
-        return "translate_error"
-    return "correct_sql"
+from app.agent.data_agent.sql_routing import route_after_validation, route_after_execution
 
 
 builder = StateGraph(
@@ -89,7 +82,11 @@ builder.add_conditional_edges(
 builder.add_edge("correct_sql", "validate_sql")
 
 # 只取数子图的终点是 SQL 执行；不进入图表、洞察和推荐节点。
-builder.add_edge("execute_sql", END)
+builder.add_conditional_edges("execute_sql", route_after_execution, {
+    "result_analysis": END,
+    "correct_sql": "correct_sql",
+    "translate_error": "translate_error",
+})
 builder.add_edge("translate_error", END)
 
 data_query_graph = builder.compile()

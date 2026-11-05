@@ -11,7 +11,7 @@ from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 from app.repositories.qdrant.column_repository_qdrant import ColumnQdrantRepository
 from app.repositories.qdrant.metric_repository_qdrant import MetricQdrantRepository
 from app.service.conversation_context import (
-    QueryContext, conversation_store, infer_filters, new_session_id, rewrite_query,
+    QueryContext, conversation_history, conversation_store, infer_filters, new_session_id,
 )
 
 """
@@ -63,59 +63,70 @@ class ChatService:
     async def stream_chat(self, query: str, *, session_id: str | None = None,
                           provider: str = DEFAULT_LLM_PROVIDER, model_tier: str = DEFAULT_LLM_MODEL):
         logger.info("[Chat Service] selected provider={} model={}", provider, model_tier)
-        # Orchestrator 负责意图识别和分流，子 Agent 在适配节点内接收自己的 State。
+        # 问题改写与意图识别都已收敛到 Orchestrator 图内部。
         context = self._build_context(provider=provider, model_tier=model_tier)
         session_id = session_id or new_session_id()
-        previous = conversation_store.get(session_id)
-        rewritten_query, was_rewritten = rewrite_query(query, previous)
-        logger.info("[Chat Service] session_id={} previous_context={} rewritten={} query={}",
-                    session_id, bool(previous), was_rewritten, rewritten_query)
         # 前端可持久化该 ID，后续请求显式复用即可保持会话。
         yield {"type": "session", "session_id": session_id}
-        if was_rewritten:
-            yield {"type": "query_rewritten", "original_query": query,
-                   "rewritten_query": rewritten_query, "session_id": session_id}
         final_state = None
         async for mode, chunk in self.graph.astream(
-            input={"query": rewritten_query}, context=context,
+            input={"query": query, "session_id": session_id}, context=context,
             stream_mode=["custom", "values"]
         ):
             if mode == "custom":
                 yield chunk
             else:
                 final_state = chunk
-        self._remember_success(session_id, query, rewritten_query, final_state)
+        rewritten_for_history = (final_state or {}).get("rewritten_query") or query
+        conversation_history.append(session_id, rewritten_for_history)
+        self._remember_success(session_id, query, final_state)
 
     async def run_once(self, query: str, *, session_id: str | None = None,
                        provider: str = DEFAULT_LLM_PROVIDER, model_tier: str = DEFAULT_LLM_MODEL) -> dict:
         """非流式执行一次问数，返回最终 State，供离线评测与批量任务使用。"""
         context = self._build_context(provider=provider, model_tier=model_tier)
         session_id = session_id or new_session_id()
-        previous = conversation_store.get(session_id)
-        rewritten_query, _ = rewrite_query(query, previous)
-        result = await self.graph.ainvoke(input={"query": rewritten_query}, context=context)
-        self._remember_success(session_id, query, rewritten_query, result)
+        result = await self.graph.ainvoke(
+            input={"query": query, "session_id": session_id}, context=context
+        )
+        rewritten_for_history = result.get("rewritten_query") or query
+        conversation_history.append(session_id, rewritten_for_history)
+        self._remember_success(session_id, query, result)
         return result.get("agent_result") or result
 
     @staticmethod
-    def _remember_success(session_id: str, original_query: str, rewritten_query: str,
-                          state: dict | None) -> None:
+    def _remember_success(session_id: str, original_query: str, state: dict | None) -> None:
         if not state:
             return
         result = state.get("agent_result") or state
+        intent = state.get("intent")
+        rewritten_query = state.get("rewritten_query") or original_query
         # astream 的最终 values 在不同 LangGraph 版本中可能只保留 agent_result；
         # 以实际 Data-Agent 结果字段兜底，避免成功查询未写入多轮上下文。
-        is_data_query = state.get("intent") == "query_database" or bool(
+        is_data_query = intent == "query_database" or bool(
             result.get("sql") or result.get("sql_result")
         )
-        if not is_data_query:
+        if is_data_query:
+            if result.get("error") or result.get("error_response"):
+                return
+            conversation_store.put(session_id, QueryContext(
+                original_query=original_query, rewritten_query=rewritten_query,
+                intent="query_database", filters=infer_filters(rewritten_query),
+            ))
             return
-        if result.get("error") or result.get("error_response"):
+
+        if intent == "anomaly_analysis":
+            request = result.get("analysis_request") if isinstance(result, dict) else None
+            if request is None:
+                return
+            request_payload = (
+                request.model_dump(mode="json") if hasattr(request, "model_dump") else dict(request)
+            )
+            conversation_store.put(session_id, QueryContext(
+                original_query=original_query, rewritten_query=rewritten_query,
+                intent="anomaly_analysis", analysis_request=request_payload,
+            ))
             return
-        conversation_store.put(session_id, QueryContext(
-            original_query=original_query, rewritten_query=rewritten_query,
-            intent="query_database", filters=infer_filters(rewritten_query),
-        ))
 
 #   为什么要把数据拆分为 DataAgentState 和 DataAgentContext 两个不同的对象
 """

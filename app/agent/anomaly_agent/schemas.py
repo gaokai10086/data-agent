@@ -8,14 +8,20 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
 from app.core.meta.dimension_dependencies import validate_dimension_dependencies
 from app.schemas.metric_decomposition import MetricDecomposition
 
 
 class FilterCondition(BaseModel):
-    """用户在问题中指定的筛选条件；维度名和值尚未与元数据核对。"""
+    """用户在问题中指定的筛选条件；值尚未与元数据核对。
 
-    dimension: str
+    dimension 是 LLM 从原话里转写出的维度提示，只在用户明说时才有值；
+    裸实体（如单独出现的“凯乐石”）dimension 为 None，交由值召回补全。
+    值召回永远是物理列与合法值的最终权威，这里的 dimension 只是 hint。
+    """
+
+    dimension: str | None = None
     value: str
     operator: Literal["="] = "="
 
@@ -129,6 +135,20 @@ class ChangeVerification(BaseModel):
     actual_direction: Literal["decrease", "increase", "unchanged", "unknown"] = "unknown"
     summary: str
     warnings: list[str] = Field(default_factory=list)
+
+
+class PreparationResult(BaseModel):
+    """前置核实阶段的统一输出，用于父图判断是否进入根因分析。
+
+    status 表达“可以继续”“核实拒绝”“前置阶段本身失败”三种结局；
+    reason 保留底层原因（可能是 ChangeVerification.reason，也可能是
+    前置阶段的内部错误码），因此用自由字符串而非严格枚举。
+    """
+
+    status: Literal["ready", "rejected", "failed"]
+    reason: str
+    request_id: str | None = None
+    user_message: str
 
 
 class AnalysisContext(BaseModel):

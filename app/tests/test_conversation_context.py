@@ -60,14 +60,18 @@ def _test_session_isolation_and_failed_turn_does_not_overwrite():
     asyncio.run(chat.run_once("查询华东最近30天销售额", session_id="a"))
     asyncio.run(chat.run_once("那华南呢？", session_id="a"))
     asyncio.run(chat.run_once("那华南呢？", session_id="b"))
-    assert graph.inputs[1]["query"] == "查询华南地区最近30天销售额"
+    # 改写已移到 Orchestrator 图内的节点，service 只透传原问题与 session_id。
+    assert graph.inputs[1]["query"] == "那华南呢？"
+    assert graph.inputs[1]["session_id"] == "a"
     assert graph.inputs[2]["query"] == "那华南呢？"
+    assert graph.inputs[2]["session_id"] == "b"
 
     failed = FakeGraph({"intent": "query_database", "agent_result": {"error": "数据库失败"}})
     failing_chat = service(failed)
     asyncio.run(failing_chat.run_once("查询华北销售额", session_id="c"))
     asyncio.run(failing_chat.run_once("那华南呢？", session_id="c"))
     assert failed.inputs[1]["query"] == "那华南呢？"
+    assert failed.inputs[1]["session_id"] == "c"
 
 
 def _test_stream_preserves_custom_sse_and_remembers_success():

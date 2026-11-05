@@ -1,3 +1,4 @@
+from app.service.sql_error_handling import run_sql_operation, sql_failure
 from langgraph.runtime import Runtime
 
 from app.agent.data_agent.context import DataAgentContext
@@ -16,13 +17,12 @@ async def execute_sql(state: DataAgentState, runtime: Runtime[DataAgentContext])
     dw_mysql_repository: DWMySQLRepository = runtime.context['dw_mysql_repository']
 
     try:
-        result = await dw_mysql_repository.execute_sql(sql)
+        result = await run_sql_operation(dw_mysql_repository, lambda: dw_mysql_repository.execute_sql(sql))
         logger.info(f"SQL执行结果: {result}")
         row_count = len(result) if isinstance(result, list) else "已返回"
         emit_node_result(runtime, f"SQL 执行完成：返回 {row_count} 行")
         writer({"result": result})
         # 将结果同步写回全局 State，供后续可能接入的分析/出图节点读取
-        return {"sql_result": result}
-    except Exception as e:
-        logger.error(f"SQL执行失败: {e}")
-        raise
+        return {"sql_result": result, "error": None, "sql_error_kind": None, "sql_error_stage": None}
+    except Exception as exc:
+        return sql_failure(state, exc, "execute")

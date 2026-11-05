@@ -11,6 +11,7 @@ dependencies = [
     "huggingface-hub>=0.36.0",
     "jieba>=0.42.1",
     "langchain>=1.2.6",
+    "langchain-community>=0.4.1",
     "langchain-deepseek>=1.0.1",
     "langchain-huggingface>=1.2.0",
     "langgraph>=1.0.6",
@@ -19,6 +20,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "python-dotenv>=1.0.1",
     "qdrant-client>=1.16.2",
-    "sqlalchemy>=2.0.45",
+    "sqlalchemy[asyncio]>=2.0.45",
     "streamlit-echarts>=0.4.0,<0.5.0",
+    "zhipuai>=2.1.5.20250825",
 ]

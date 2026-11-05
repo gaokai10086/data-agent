@@ -55,14 +55,7 @@ from app.repositories.qdrant.metric_repository_qdrant import MetricQdrantReposit
 from app.repositories.qdrant.sql_example_repository import SQLExampleQdrantRepository
 
 
-def route_after_validation(state: DataAgentState) -> str:
-    """SQL 质检后置路由：决定取数、纠错重试还是熔断翻译"""
-    if state.get("error") is None:
-        return "execute_sql"
-    elif state.get("retry_count", 0) >= 3:
-        return "translate_error"
-    else:
-        return "correct_sql"
+from app.agent.data_agent.sql_routing import route_after_validation, route_after_execution
 
 
 # ==================== 构建状态图 ====================
@@ -135,7 +128,11 @@ graph_builder.add_edge("correct_sql", "validate_sql")
 graph_builder.add_edge("translate_error", END)
 
 # 6. 编排边：执行取数 -> 结果分析 -> 图表决策 -> 图表生成 -> 最终展示
-graph_builder.add_edge("execute_sql", "result_analysis")
+graph_builder.add_conditional_edges("execute_sql", route_after_execution, {
+    "result_analysis": "result_analysis",
+    "correct_sql": "correct_sql",
+    "translate_error": "translate_error",
+})
 graph_builder.add_edge("result_analysis", "chart_decision")
 graph_builder.add_edge("chart_decision", "chart_generate")
 graph_builder.add_edge("chart_generate", "join_final_outputs")

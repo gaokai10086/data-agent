@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 import threading
+from collections import deque
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -16,6 +17,8 @@ class QueryContext:
     rewritten_query: str
     intent: str
     filters: tuple[str, ...] = ()
+    # 异动分析成功后的上一轮结构化请求，供追问改写补全指标/月份/筛选。
+    analysis_request: dict | None = None
 
 
 class ConversationStore:
@@ -44,6 +47,39 @@ class ConversationStore:
 
 
 conversation_store = ConversationStore()
+
+
+class ConversationHistory:
+    """按 session 保存最近 N 轮已改写问题的轻量内存历史。"""
+
+    def __init__(self, max_turns: int = 6):
+        self._items: dict[str, deque[str]] = {}
+        self._lock = threading.RLock()
+        self._max_turns = max_turns
+
+    def append(self, session_id: str | None, content: str) -> None:
+        """追加一轮已改写问题；空内容或空 session 直接忽略。"""
+        if not session_id or not content:
+            return
+        with self._lock:
+            turns = self._items.setdefault(session_id, deque(maxlen=self._max_turns))
+            turns.append(content)
+
+    def recent(self, session_id: str | None, limit: int = 6) -> list[str]:
+        """返回最近若干轮问题，按时间从旧到新。"""
+        if not session_id:
+            return []
+        with self._lock:
+            turns = self._items.get(session_id)
+            return list(turns)[-limit:] if turns else []
+
+    def clear(self, session_id: str) -> None:
+        with self._lock:
+            self._items.pop(session_id, None)
+
+
+conversation_history = ConversationHistory()
+
 
 # 仅处理明确的省略表达，未知表达保留原问题，避免臆造条件。
 _FOLLOWUP_PREFIX = re.compile(r"^(?:那|那么|再|继续|另外|改成|换成|按|帮我|请)\s*")
@@ -74,6 +110,9 @@ def _is_followup(query: str, previous: QueryContext | None) -> bool:
 def rewrite_query(query: str, previous: QueryContext | None) -> tuple[str, bool]:
     """返回 (送入 Orchestrator 的问题, 是否发生了安全改写)。"""
     text = query.strip()
+    if previous is not None and previous.intent == "anomaly_analysis":
+        from app.agent.anomaly_agent.query_rewrite import rewrite_anomaly_followup
+        return rewrite_anomaly_followup(text, previous.analysis_request)
     if not _is_followup(text, previous):
         return text, False
     base = previous.rewritten_query

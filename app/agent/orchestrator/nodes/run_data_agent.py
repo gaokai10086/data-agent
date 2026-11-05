@@ -26,7 +26,7 @@ async def run_data_agent(
 
     result: dict[str, object] = {}
     async for mode, chunk in data_agent_graph.astream(
-        input=DataAgentState(query=state.get("query", "")),
+        input=DataAgentState(query=state.get("rewritten_query") or state.get("query", "")),
         context=runtime.context,
         stream_mode=["custom", "values"],
     ):

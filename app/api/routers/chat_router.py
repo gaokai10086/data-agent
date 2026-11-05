@@ -5,6 +5,7 @@ from starlette.responses import StreamingResponse
 from app.api.deps import get_chat_service
 from app.schemas.chat import QuerySchema
 from app.core.logging import logger
+from app.service.sql_error_handling import safe_error_detail
 from app.service.mysql_conversation_repository import conversation_repository
 
 """
@@ -85,17 +86,19 @@ async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service))
             )
             conversation_repository.update_message(user_message["id"], status="completed", content=query.query)
         except Exception as e:
+            logger.error("Chat stream failed: {}", safe_error_detail(e))
+            friendly_error = "暂时无法完成这次数据查询，请稍后重试或联系管理员。"
             try:
                 if user_message:
                     conversation_repository.update_message(user_message["id"], status="failed", content=query.query)
                 conversation_repository.add_message(
                     query.session_id, request_id=query.request_id, role="assistant",
-                    agent_type=agent_type, status="failed", content=str(e),
+                    agent_type=agent_type, status="failed", content=friendly_error,
                 )
             except Exception:
                 logger.exception("会话消息持久化失败")
             #  万一中间断网了或者报错，把错误原因包装成一句话推给前端看。
-            yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False, default=str)}\n\n"
+            yield f"data: {json.dumps({'type': 'error_response', 'content': friendly_error, 'error': friendly_error}, ensure_ascii=False, default=str)}\n\n"
 
     # 大模型流式输出，产生数据立刻发送到前端
     return StreamingResponse(

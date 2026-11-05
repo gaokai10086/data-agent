@@ -14,6 +14,10 @@ SIDE_EFFECT_PATTERN = re.compile(
 )
 
 
+class SQLSafetyError(ValueError):
+    """安全拒绝是终止信号，不允许用 SQL 纠错绕过。"""
+
+
 class SQLSafetyPolicy:
     """保守拦截常见写入及副作用，执行账号仍须使用最小只读权限。
 
@@ -28,17 +32,17 @@ class SQLSafetyPolicy:
         if cleaned.endswith(";"):
             cleaned = cleaned[:-1].strip()
         if not cleaned:
-            raise ValueError("SQL 不能为空")
+            raise SQLSafetyError("SQL 不能为空")
         if ";" in cleaned:
-            raise ValueError("只允许一条查询语句")
+            raise SQLSafetyError("只允许一条查询语句")
         # MySQL / MariaDB 会执行这类注释中的代码，不能按普通注释忽略。
         if EXECUTABLE_COMMENT_PATTERN.search(cleaned):
-            raise ValueError("禁止 SQL 可执行注释")
+            raise SQLSafetyError("禁止 SQL 可执行注释")
         # 合并普通注释为空白，防止 FOR/**/SHARE 等绕过多词规则。
         inspected = re.sub(r"/\*.*?\*/|--[^\n]*|#[^\n]*", " ", cleaned, flags=re.DOTALL)
         if FORBIDDEN_SQL_PATTERN.search(cleaned) or FORBIDDEN_SQL_PATTERN.search(inspected):
-            raise ValueError("只允许查询，禁止 INSERT、UPDATE、DELETE、DDL、INTO 等写操作")
+            raise SQLSafetyError("只允许查询，禁止 INSERT、UPDATE、DELETE、DDL、INTO 等写操作")
         if SIDE_EFFECT_PATTERN.search(cleaned) or SIDE_EFFECT_PATTERN.search(inspected):
-            raise ValueError("只允许只读查询，禁止锁定、变量赋值及已知副作用函数")
+            raise SQLSafetyError("只允许只读查询，禁止锁定、变量赋值及已知副作用函数")
         if not re.match(r"^(?:SELECT|WITH)\b", cleaned, re.IGNORECASE):
-            raise ValueError("SQL 必须以 SELECT 或 WITH 开头")
+            raise SQLSafetyError("SQL 必须以 SELECT 或 WITH 开头")

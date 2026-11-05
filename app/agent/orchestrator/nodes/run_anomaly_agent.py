@@ -32,9 +32,23 @@ async def run_anomaly_agent(
     })
     # 两个 Agent 的 State 不共享：这里显式把 query 映射为子 Graph 的 raw_question。
     result = await anomaly_graph.ainvoke(
-        {"raw_question": state.get("query", "")},
+        {
+            "raw_question": state.get("rewritten_query") or state.get("query", ""),
+            "intent": state.get("intent"),
+        },
         context=runtime.context,
     )
+    # 前置 Agent 的结构化结果先对外暴露，便于 UI 区分“已核验但未进入归因”
+    # 与“已完成归因报告”。
+    preparation = result.get("preparation_result")
+    runtime.stream_writer({
+        "type": "anomaly_preparation_result",
+        "agent": "anomaly_preparation",
+        **(preparation.model_dump(mode="json") if preparation is not None else {
+            "status": "failed", "reason": "missing_preparation_result",
+            "user_message": "异动分析前置 Agent 未返回结构化结果。",
+        }),
+    })
     request = result["analysis_request"]
     # 结构化事件便于调用方检查指标、目标月份和对比月份。
     # 它不是 anomaly_result；前端不能把本阶段误显示成“归因完成”。
