@@ -284,3 +284,36 @@ class ChangeAnalysisReport(BaseModel):
     decisions: list[AnalysisAction] = Field(default_factory=list)
     observations: list[AnalysisObservation] = Field(default_factory=list)
     summary: str
+
+
+class InspectionOutcome(BaseModel):
+    """可复用变化检验工具的统一返回契约。
+
+    ready 表示总体变化前提得到支持，并不表示已完成归因、
+    已验证 SQL 的真实业务口径，或已检验统计异常显著性。
+    """
+
+    status: Literal["ready", "rejected", "failed"]
+    reason: str
+    request_id: str | None = None
+    user_message: str
+    metric_context: MetricContext | None = None
+    overall_result: OverallComparisonResult | None = None
+    verification: ChangeVerification | None = None
+
+    @model_validator(mode="after")
+    def check_consistency(self):
+        if self.status == "ready":
+            if not all((self.request_id, self.metric_context, self.overall_result, self.verification)):
+                raise ValueError("ready 核验结果必须提供请求标识、指标定义、总体结果和核验依据")
+            if self.verification.decision != "continue":
+                raise ValueError("ready 核验结果必须对应 continue 决策")
+        elif self.verification is not None and self.verification.decision == "continue":
+            raise ValueError("非 ready 状态不能携带 continue 核验结论")
+
+        if self.overall_result is not None:
+            if self.request_id != self.overall_result.request_id:
+                raise ValueError("核验结果 request_id 与总体查询结果不一致")
+            if self.metric_context is None or self.metric_context.metric_key != self.overall_result.metric_key:
+                raise ValueError("总体查询结果的指标标识与 Metadata 不一致")
+        return self
