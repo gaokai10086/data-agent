@@ -12,11 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.agent.anomaly_agent.schemas import (
-    AnalysisRequest,
-    ChangeVerification,
-    PreparationResult,
-)
+from app.agent.anomaly_agent.schemas import AnalysisRequest
 from app.agent.orchestrator.graph import route_intent
 from app.agent.orchestrator.nodes.run_anomaly_agent import run_anomaly_agent
 from app.agent.orchestrator.nodes.run_data_agent import run_data_agent
@@ -61,23 +57,10 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
             comparison_period="2025-06",
             comparison_type="mom",
         )
-        verification = ChangeVerification(
-            decision="continue",
-            reason="change_confirmed",
-            expected_direction="decrease",
-            actual_direction="decrease",
-            summary="核验通过",
-        )
-        preparation = PreparationResult(
-            status="ready",
-            reason="change_confirmed",
-            request_id=request.request_id,
-            user_message="核验通过",
-        )
         child_result = {
+            "raw_question": "改写后的问题",
             "analysis_request": request,
-            "change_verification": verification,
-            "preparation_result": preparation,
+            "selected_skill_name": "sales_amount_anomaly",
         }
         seen = {}
 
@@ -87,7 +70,7 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
 
         events = []
         with patch(
-            "app.agent.orchestrator.nodes.run_anomaly_agent.anomaly_graph.ainvoke",
+            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.ainvoke",
             new=AsyncMock(side_effect=fake_ainvoke),
         ):
             result = await run_anomaly_agent(
@@ -101,7 +84,7 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             seen["input"],
-            {"raw_question": "改写后的问题", "intent": "anomaly_analysis"},
+            {"raw_question": "改写后的问题"},
         )
         self.assertEqual(seen["context"], "ctx")
         self.assertEqual(result, {"agent_result": child_result})
@@ -110,17 +93,15 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
             event_types,
             [
                 "progress",
-                "anomaly_preparation_result",
                 "anomaly_request",
-                "change_verification",
-                "token",
+                "selected_skill",
             ],
         )
 
     async def test_anomaly_technical_failure_returns_failed_result(self):
         events = []
         with patch(
-            "app.agent.orchestrator.nodes.run_anomaly_agent.anomaly_graph.ainvoke",
+            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.ainvoke",
             new=AsyncMock(side_effect=RuntimeError("db down")),
         ), patch(
             "app.agent.orchestrator.nodes.run_anomaly_agent.logger.exception"

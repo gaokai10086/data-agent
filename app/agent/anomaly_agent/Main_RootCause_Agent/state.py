@@ -1,10 +1,10 @@
 """Main_RootCause_Agent 的状态契约。
 
-第一阶段只定义跨节点必须保留的用户问题。后续解析、指标上下文和
-根因分析结果都应作为独立字段逐步加入，而不是在接收节点中提前推断。
+第一阶段只保留“接收 → 解析 → 选 Skill”链路必需的三类数据。
+变化检验、归因、预算和报告字段在尚未接入对应节点前不提前声明。
 """
 
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 from app.agent.anomaly_agent.schemas import AnalysisRequest
 
@@ -14,10 +14,8 @@ class RootCauseState(TypedDict, total=False):
 
     # Orchestrator 已完成意图分流后传入的原始问题，保持原文不改写。
     raw_question: str
-    # Orchestrator 已完成的意图识别结果
-    intent: Literal["anomaly_analysis"]
     # 主 Agent 完成问题理解后写回的结构化请求，供 Skill 选择与后续调度使用。
     analysis_request: AnalysisRequest
-    #  加载的skill名称
+    # 异动分析业务域内匹配到的 Skill 名称。
     selected_skill_name: str
 

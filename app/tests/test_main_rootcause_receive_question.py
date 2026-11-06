@@ -28,12 +28,11 @@ class MainRootCauseNodesTest(unittest.TestCase):
 
     def test_select_skill_requires_parse_result(self):
         with self.assertRaisesRegex(ValueError, "完成问题解析"):
-            select_skill({"raw_question": "x", "intent": "anomaly_analysis"})
+            select_skill({"raw_question": "x"})
 
     def test_select_skill_by_metric(self):
         result = select_skill({
             "analysis_request": build_request(),
-            "intent": "anomaly_analysis",
         })
         self.assertEqual(result["selected_skill_name"], "sales_amount_anomaly")
 
@@ -41,7 +40,6 @@ class MainRootCauseNodesTest(unittest.TestCase):
         with self.assertRaises(UnsupportedSkillError):
             select_skill({
                 "analysis_request": build_request("利润"),
-                "intent": "anomaly_analysis",
             })
 
 

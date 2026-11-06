@@ -87,10 +87,75 @@ _TOPIC_MARKERS = ("什么是", "解释", "怎么理解", "介绍", "定义", "RA
 _QUERY_MARKERS = ("查询", "查", "统计", "销售额", "订单", "金额", "数量", "按", "拆分", "地区", "区域", "最近", "上个月", "本月")
 _REGIONS = "华东|华南|华北|华西|东北|西南|东南|中部"
 _METRICS = ("销售额", "订单数量", "订单数", "销量", "利润", "客单价")
+_ANOMALY_FOLLOWUP = re.compile(r"^(?:那|那么)\s*(.+?)(?:呢)$")
+_ANOMALY_DIRECTIONS = {"decrease": "下降", "increase": "上升"}
 
 
 def new_session_id() -> str:
     return uuid4().hex
+
+
+def _format_period(period: str) -> str:
+    year, month = period.split("-", 1)
+    return f"{year}年{int(month)}月"
+
+
+def _rebuild_anomaly_question(request: dict, filters: list[dict]) -> str:
+    """用上一轮结构化请求重建一条可解析的完整问题。"""
+    metric = request.get("metric", "销售额")
+    target = _format_period(request.get("target_period", ""))
+    comparison = _format_period(request.get("comparison_period", ""))
+    direction = _ANOMALY_DIRECTIONS.get(request.get("expected_direction"), "变化")
+    scope = ""
+    for item in filters:
+        dimension = item.get("dimension")
+        value = item.get("value", "")
+        if not value:
+            continue
+        if dimension == "城市":
+            scope += value
+        elif dimension:
+            scope += f"{value}{dimension}"
+        else:
+            scope += value
+    return f"为什么{target}{scope}{metric}比{comparison}{direction}了？"
+
+
+def _rewrite_anomaly_followup(query: str, analysis_request: dict | None) -> tuple[str, bool]:
+    """把“那北京呢”这类异动追问补全成完整问题；不是追问则原样返回。"""
+    if not analysis_request:
+        return query, False
+    text = query.strip()
+    match = _ANOMALY_FOLLOWUP.match(text)
+    if not match:
+        return text, False
+    target = match.group(1).strip()
+    if not target:
+        return text, False
+
+    channel = re.search(r"(线上|线下)", target)
+    if channel:
+        dimension, value = "渠道", channel.group(1)
+    else:
+        value = re.sub(r"(?:地区|区域|大区|省)$", "", target)
+        dimension = "城市"
+
+    filters = [dict(item) for item in (analysis_request.get("filters") or [])]
+    replaced = False
+    geo_dimensions = ("城市", "省份", "大区", "地区")
+    for item in filters:
+        if dimension == "城市" and item.get("dimension") in geo_dimensions:
+            item["dimension"], item["value"] = "城市", value
+            replaced = True
+            break
+        if dimension != "城市" and item.get("dimension") == dimension:
+            item["value"] = value
+            replaced = True
+            break
+    if not replaced:
+        filters.append({"dimension": dimension, "value": value, "operator": "="})
+
+    return _rebuild_anomaly_question(analysis_request, filters), True
 
 
 def _is_followup(query: str, previous: QueryContext | None) -> bool:
@@ -111,8 +176,7 @@ def rewrite_query(query: str, previous: QueryContext | None) -> tuple[str, bool]
     """返回 (送入 Orchestrator 的问题, 是否发生了安全改写)。"""
     text = query.strip()
     if previous is not None and previous.intent == "anomaly_analysis":
-        from app.agent.anomaly_agent.query_rewrite import rewrite_anomaly_followup
-        return rewrite_anomaly_followup(text, previous.analysis_request)
+        return _rewrite_anomaly_followup(text, previous.analysis_request)
     if not _is_followup(text, previous):
         return text, False
     base = previous.rewritten_query

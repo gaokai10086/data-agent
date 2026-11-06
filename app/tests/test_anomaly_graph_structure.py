@@ -1,18 +1,22 @@
-"""异动前置 Agent、Main_RootCause_Agent 与受约束分析子图的结构回归。"""
-from app.agent.anomaly_agent.graph import anomaly_graph
+"""Main_RootCause_Agent 第一阶段与变化检验子图的结构回归。"""
+from langgraph.constants import END
+
 from app.agent.anomaly_agent.Change_Inspection_Agent.graph import anomaly_preparation_agent
-from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.analyze_change import analysis_graph
+from app.agent.anomaly_agent.Main_RootCause_Agent.graph import main_root_cause_agent
 
 
-def test_anomaly_graph_registers_expected_nodes():
-    assert set(anomaly_graph.nodes) >= {
-        "anomaly_preparation_agent", "finish_preparation",
+def test_main_root_cause_graph_runs_only_phase1_chain():
+    assert set(main_root_cause_agent.nodes) >= {
+        "receive_question", "parse_request", "select_skill",
     }
+    edges = {(e.source, e.target) for e in main_root_cause_agent.get_graph().edges}
+    assert ("receive_question", "parse_request") in edges
+    assert ("parse_request", "select_skill") in edges
+    assert ("select_skill", END) in edges
+
+
+def test_change_inspection_graph_is_preserved():
     assert set(anomaly_preparation_agent.nodes) >= {
-        "receive_question", "parse_request", "load_metric_context", "query_overall",
-        "verify_change", "mark_preparation_result",
+        "load_metric_context", "query_overall", "verify_change",
+        "mark_preparation_result",
     }
-    edges = {(e.source, e.target) for e in analysis_graph.get_graph().edges}
-    assert ("check_evidence", "select_action") in edges
-    assert ("execute_action", "check_evidence") in edges
-    assert ("execute_action", "select_action") not in edges

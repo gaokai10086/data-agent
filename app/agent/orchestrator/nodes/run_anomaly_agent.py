@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from langgraph.runtime import Runtime
 
-from app.agent.anomaly_agent.graph import anomaly_graph
+from app.agent.anomaly_agent.Main_RootCause_Agent.graph import main_root_cause_agent
 from app.agent.anomaly_agent.schemas import (
     AnalysisRequest,
-    ChangeVerification,
     PreparationResult,
 )
 from app.agent.data_agent.context import DataAgentContext
@@ -48,26 +47,24 @@ async def run_anomaly_agent(
     state: OrchestratorState,
     runtime: Runtime[DataAgentContext],
 ) -> dict[str, object]:
-    """把 Orchestrator 的 query 交给异动 Graph，并返回其最终状态。
+    """把 Orchestrator 的 query 交给异动主 Graph，并返回其最终状态。
 
     runtime.stream_writer 写出的事件会进入上层 SSE；最终返回值则进入
-    OrchestratorState.agent_result，供非流式调用或后续编排使用。
-    总体核实后可进入有限维度分析，输出阶段性证据报告。
+    OrchestratorState.agent_result，供非流式调用或后续编排使用。当前
+    主 Graph 只运行到 Skill 选择，变化检验与归因节点尚未接入。
     """
     # 先告诉前端已经进入异动分支；这是进度提示，不代表解析成功。
     runtime.stream_writer({
         "type": "progress",
         "stage": "anomaly",
         "agent": "anomaly",
-        "content": "已分流到异动归因 Agent，正在解析指标和比较月份",
+        "content": "已分流到异动分析 Agent，正在解析问题并选择分析 Skill",
     })
-    # 两个 Agent 的 State 不共享：这里显式把 query 映射为子 Graph 的 raw_question。
+    # 两个 Agent 的 State 不共享：这里只把 query 映射为子 Graph 的 raw_question。
+    # 意图识别与路由已在 Orchestrator 完成，不再作为输入传给 Main_RootCause_Agent。
     try:
-        result = await anomaly_graph.ainvoke(
-            {
-                "raw_question": state.get("rewritten_query") or state.get("query", ""),
-                "intent": state.get("intent"),
-            },
+        result = await main_root_cause_agent.ainvoke(
+            {"raw_question": state.get("rewritten_query") or state.get("query", "")},
             context=runtime.context,
         )
     except Exception as exc:
@@ -78,74 +75,31 @@ async def run_anomaly_agent(
         logger.error("异动分析子图返回了非对象结果")
         return _technical_failure(runtime, "invalid_anomaly_result")
 
-    # 前置 Agent 的结构化结果先对外暴露，便于 UI 区分“已核验但未进入归因”
-    # 与“已完成归因报告”。
-    preparation = result.get("preparation_result")
-    if not isinstance(preparation, PreparationResult):
-        logger.error("异动分析结果缺少 preparation_result")
-        return _technical_failure(runtime, "missing_preparation_result")
-    if preparation.status == "failed":
-        logger.error("异动分析前置阶段失败: {}", preparation.reason)
-        return _technical_failure(
-            runtime,
-            preparation.reason or "preparation_failed",
-            request_id=preparation.request_id,
-        )
-
     request = result.get("analysis_request")
     if not isinstance(request, AnalysisRequest):
         logger.error("异动分析结果缺少 analysis_request")
         return _technical_failure(
             runtime,
             "missing_analysis_request",
-            request_id=preparation.request_id,
         )
 
-    verification = result.get("change_verification")
-    if not isinstance(verification, ChangeVerification):
-        logger.error("异动分析结果缺少 change_verification")
+    selected_skill_name = result.get("selected_skill_name")
+    if not isinstance(selected_skill_name, str) or not selected_skill_name.strip():
+        logger.error("异动分析结果缺少 selected_skill_name")
         return _technical_failure(
             runtime,
-            "missing_change_verification",
+            "missing_selected_skill",
             request_id=request.request_id,
         )
 
-    runtime.stream_writer({
-        "type": "anomaly_preparation_result",
-        "agent": "anomaly_preparation",
-        **preparation.model_dump(mode="json"),
-    })
-    # 结构化事件便于调用方检查指标、目标月份和对比月份。
-    # 它不是 anomaly_result；前端不能把本阶段误显示成“归因完成”。
     runtime.stream_writer({
         "type": "anomaly_request",
         "agent": "anomaly",
         **request.model_dump(),
     })
     runtime.stream_writer({
-        "type": "change_verification",
+        "type": "selected_skill",
         "agent": "anomaly",
-        **verification.model_dump(mode="json"),
-    })
-
-    strategy = result.get("analysis_strategy") if preparation.status == "ready" else None
-    report = result.get("change_analysis_report") if preparation.status == "ready" else None
-    if strategy is not None:
-        runtime.stream_writer({
-            "type": "analysis_strategy",
-            "agent": "anomaly",
-            **strategy.model_dump(mode="json"),
-        })
-    if report is not None:
-        runtime.stream_writer({
-            "type": "change_analysis_report",
-            "agent": "anomaly",
-            **report.model_dump(mode="json"),
-        })
-    # 使用 token 兼容现有 UI；不冒用旧 anomaly_result 报告卡片协议。
-    runtime.stream_writer({
-        "type": "token",
-        "content": (report.summary if report is not None else verification.summary)
-        + " ".join(verification.warnings),
+        "skill_name": selected_skill_name,
     })
     return {"agent_result": result}

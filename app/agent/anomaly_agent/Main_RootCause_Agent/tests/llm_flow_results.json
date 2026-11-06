@@ -1,0 +1,87 @@
+{
+  "generated_at": "20261106T135558",
+  "provider": "deepseek",
+  "model_tier": "deepseek-v4-flash",
+  "total": 3,
+  "passed": 3,
+  "failed": 0,
+  "cases": [
+    {
+      "case_id": "mom_city_decline",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年7月上海销售额比2025年6月下降了？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "8c302e52c186438ab4acf6bc56dbe102",
+          "target_period": "2025-07",
+          "comparison_period": "2025-06",
+          "comparison_type": "mom",
+          "filters": [
+            {
+              "dimension": "城市",
+              "value": "上海",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "yoy_city_channel_increase",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年7月北京线上渠道销售额比2024年7月增长了？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "bcc32455b9164d5a92aa3379ee2bcc78",
+          "target_period": "2025-07",
+          "comparison_period": "2024-07",
+          "comparison_type": "yoy",
+          "filters": [
+            {
+              "dimension": "城市",
+              "value": "北京",
+              "operator": "="
+            },
+            {
+              "dimension": "渠道",
+              "value": "线上",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "increase"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "bare_entity_mom_decline",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年7月凯乐石销售额比2025年6月下降了？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "366688abb22844f2a546db26e6170707",
+          "target_period": "2025-07",
+          "comparison_period": "2025-06",
+          "comparison_type": "mom",
+          "filters": [
+            {
+              "dimension": null,
+              "value": "凯乐石",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    }
+  ]
+}
