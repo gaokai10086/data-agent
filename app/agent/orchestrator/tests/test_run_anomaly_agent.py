@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.agent.anomaly_agent.schemas import AnalysisRequest
+from app.agent.anomaly_agent.schemas import MonthPeriod, TaskRequest
 from app.agent.orchestrator.nodes.run_anomaly_agent import (
     TECHNICAL_FAILURE_MESSAGE,
     run_anomaly_agent,
@@ -29,16 +29,16 @@ class FakeRuntime:
 
 
 def build_result() -> dict[str, object]:
-    request = AnalysisRequest(
-        metric="销售额",
-        target_period="2025-07",
-        comparison_period="2025-06",
-        comparison_type="mom",
+    task_request = TaskRequest(
+        objective="分析销售额环比下降",
+        metrics=["销售额"],
+        target_period=MonthPeriod(year=2025, month=7),
+        comparison_period=MonthPeriod(year=2025, month=6),
         expected_direction="decrease",
     )
     return {
         "raw_question": "为什么销售额下降？",
-        "analysis_request": request,
+        "task_request": task_request,
         "selected_skill_name": "sales_amount_anomaly",
     }
 
@@ -60,16 +60,18 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
             )
         return output, runtime.events
 
-    async def test_valid_result_forwards_request_and_selected_skill(self):
+    async def test_valid_result_forwards_task_and_selected_skill(self):
         result = build_result()
         output, events = await self.call_with_result(result)
 
-        self.assertEqual(output, {"agent_result": result})
+        self.assertIsInstance(output["agent_result"]["task_request"], TaskRequest)
+        self.assertEqual(output["agent_result"]["selected_skill_name"], "sales_amount_anomaly")
+        self.assertIn("analysis_request", output["agent_result"])
         self.assertEqual(
             [event["type"] for event in events[1:]],
-            ["anomaly_request", "selected_skill"],
+            ["task_request", "selected_skill"],
         )
-        self.assertEqual(events[1]["metric"], "销售额")
+        self.assertEqual(events[1]["metrics"], ["销售额"])
         self.assertEqual(events[2]["skill_name"], "sales_amount_anomaly")
         self.assertNotIn("error_response", [event.get("type") for event in events])
 
@@ -91,14 +93,14 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(seen["input"], {"raw_question": "改写后的问题"})
 
-    async def test_missing_analysis_request_is_technical_failure(self):
+    async def test_missing_task_request_is_technical_failure(self):
         result = build_result()
-        result.pop("analysis_request")
+        result.pop("task_request")
         output, events = await self.call_with_result(result)
 
         failure = output["agent_result"]["preparation_result"]
         self.assertEqual(failure.status, "failed")
-        self.assertEqual(failure.reason, "missing_analysis_request")
+        self.assertEqual(failure.reason, "missing_task_request")
         self.assertEqual(
             [event.get("type") for event in events],
             ["progress", "error_response"],
@@ -138,10 +140,6 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [event.get("type") for event in runtime.events],
             ["progress", "error_response"],
-        )
-        self.assertEqual(
-            sum(event.get("type") == "error_response" for event in runtime.events),
-            1,
         )
         serialized = json.dumps(runtime.events, ensure_ascii=False, default=str)
         self.assertNotIn("postgresql", serialized)

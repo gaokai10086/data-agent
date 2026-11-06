@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.meta.dimension_dependencies import validate_dimension_dependencies
 from app.schemas.metric_decomposition import MetricDecomposition
@@ -51,6 +51,48 @@ class AnalysisRequest(BaseModel):
     comparison_type: Literal["mom", "yoy", "custom"]
     filters: list[FilterCondition] = Field(default_factory=list)
     expected_direction: Literal["decrease", "increase", "unspecified"] = "unspecified"
+
+
+class MonthPeriod(BaseModel):
+    """一个明确的年月周期；时间表达式不能在此伪造。"""
+
+    year: int
+    month: int
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, value: int) -> int:
+        if not 1 <= value <= 9999:
+            raise ValueError(f"无效年份：{value}")
+        return value
+
+    @field_validator("month")
+    @classmethod
+    def validate_month(cls, value: int) -> int:
+        if not 1 <= value <= 12:
+            raise ValueError(f"无效月份：{value}")
+        return value
+
+
+class TaskRequest(BaseModel):
+    """用户分析任务的统一自然语言理解结果。
+
+    这里只记录用户已经明确表达的信息，不猜测缺失的时间、指标或维度。
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    objective: str
+    metrics: list[str] = Field(default_factory=list)
+    target_period: MonthPeriod | None = None
+    comparison_period: MonthPeriod | None = None
+    relative_time: str | None = None
+    filters: list[FilterCondition] = Field(default_factory=list)
+    dimensions: list[str] = Field(default_factory=list)
+    analysis_goals: list[str] = Field(default_factory=list)
+    expected_direction: Literal["decrease", "increase", "unspecified"] = "unspecified"
+    hypothesis: str | None = None
+    missing_info: list[str] = Field(default_factory=list)
 
 
 class MetricDimension(BaseModel):

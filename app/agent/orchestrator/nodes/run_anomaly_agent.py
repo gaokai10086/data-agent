@@ -9,9 +9,12 @@ from __future__ import annotations
 from langgraph.runtime import Runtime
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.graph import main_root_cause_agent
+from app.agent.anomaly_agent.Main_RootCause_Agent.task_request_conversion import (
+    task_request_to_analysis_request,
+)
 from app.agent.anomaly_agent.schemas import (
-    AnalysisRequest,
     PreparationResult,
+    TaskRequest,
 )
 from app.agent.data_agent.context import DataAgentContext
 from app.agent.orchestrator.state import OrchestratorState
@@ -75,12 +78,12 @@ async def run_anomaly_agent(
         logger.error("异动分析子图返回了非对象结果")
         return _technical_failure(runtime, "invalid_anomaly_result")
 
-    request = result.get("analysis_request")
-    if not isinstance(request, AnalysisRequest):
-        logger.error("异动分析结果缺少 analysis_request")
+    task_request = result.get("task_request")
+    if not isinstance(task_request, TaskRequest):
+        logger.error("异动分析结果缺少 task_request")
         return _technical_failure(
             runtime,
-            "missing_analysis_request",
+            "missing_task_request",
         )
 
     selected_skill_name = result.get("selected_skill_name")
@@ -89,17 +92,27 @@ async def run_anomaly_agent(
         return _technical_failure(
             runtime,
             "missing_selected_skill",
-            request_id=request.request_id,
         )
 
+    # 变化检验 Tool 的执行输入仍然使用 AnalysisRequest；这里仅在条件完整时
+    # 做确定性转换，不调用变化检验 Tool，也不表示归因已经完成。
+    try:
+        analysis_request = task_request_to_analysis_request(task_request)
+    except ValueError:
+        analysis_request = None
+
     runtime.stream_writer({
-        "type": "anomaly_request",
+        "type": "task_request",
         "agent": "anomaly",
-        **request.model_dump(),
+        **task_request.model_dump(mode="json"),
     })
     runtime.stream_writer({
         "type": "selected_skill",
         "agent": "anomaly",
         "skill_name": selected_skill_name,
     })
-    return {"agent_result": result}
+
+    agent_result = dict(result)
+    if analysis_request is not None:
+        agent_result["analysis_request"] = analysis_request
+    return {"agent_result": agent_result}

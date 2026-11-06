@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.agent.anomaly_agent.schemas import AnalysisRequest
+from app.agent.anomaly_agent.schemas import MonthPeriod, TaskRequest
 from app.agent.orchestrator.graph import route_intent
 from app.agent.orchestrator.nodes.run_anomaly_agent import run_anomaly_agent
 from app.agent.orchestrator.nodes.run_data_agent import run_data_agent
@@ -51,15 +51,15 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("stage", events[0])
 
     async def test_anomaly_agent_maps_state_and_forwards_business_events(self):
-        request = AnalysisRequest(
-            metric="销售额",
-            target_period="2025-07",
-            comparison_period="2025-06",
-            comparison_type="mom",
+        task_request = TaskRequest(
+            objective="分析销售额环比下降",
+            metrics=["销售额"],
+            target_period=MonthPeriod(year=2025, month=7),
+            comparison_period=MonthPeriod(year=2025, month=6),
         )
         child_result = {
             "raw_question": "改写后的问题",
-            "analysis_request": request,
+            "task_request": task_request,
             "selected_skill_name": "sales_amount_anomaly",
         }
         seen = {}
@@ -87,13 +87,14 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
             {"raw_question": "改写后的问题"},
         )
         self.assertEqual(seen["context"], "ctx")
-        self.assertEqual(result, {"agent_result": child_result})
+        self.assertIsInstance(result["agent_result"]["task_request"], TaskRequest)
+        self.assertIn("analysis_request", result["agent_result"])
         event_types = [event.get("type", "progress") for event in events]
         self.assertEqual(
             event_types,
             [
                 "progress",
-                "anomaly_request",
+                "task_request",
                 "selected_skill",
             ],
         )

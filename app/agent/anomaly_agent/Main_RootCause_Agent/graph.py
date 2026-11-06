@@ -7,7 +7,7 @@
 from langgraph.constants import END, START
 from langgraph.graph import StateGraph
 
-from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.parse_request import parse_request
+from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.parse_task import parse_task
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.receive_question import (
     receive_question,
 )
@@ -21,11 +21,11 @@ def build_root_cause_graph(*, checkpointer=None):
 
     builder = StateGraph(RootCauseState, context_schema=DataAgentContext)
     builder.add_node("receive_question", receive_question)
-    builder.add_node("parse_request", parse_request)
+    builder.add_node("parse_task", parse_task)
     builder.add_node("select_skill", select_skill)
     builder.add_edge(START, "receive_question")
-    builder.add_edge("receive_question", "parse_request")
-    builder.add_edge("parse_request", "select_skill")
+    builder.add_edge("receive_question", "parse_task")
+    builder.add_edge("parse_task", "select_skill")
     builder.add_edge("select_skill", END)
     return builder.compile(checkpointer=checkpointer)
 

@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {"id": "case_01", "question": "为什么2025年7月销售额比6月下降？", "expected_check": "parsed"},
+    {"id": "case_02", "question": "2025年7月销售额比2024年7月下降多少？", "expected_check": "parsed"},
+    {"id": "case_03", "question": "2025年8月和5月的销售额有什么差异？", "expected_check": "parsed"},
+    {"id": "case_04", "question": "最近三个月哪些城市销售额下降最严重？", "expected_check": "parsed"},
+    {"id": "case_05", "question": "最近半年销售额波动很大。", "expected_check": "parsed"},
+    {"id": "case_06", "question": "上海销售额下降是订单量还是客单价的问题？", "expected_check": "parsed"},
+    {"id": "case_07", "question": "华东地区哪些渠道影响最大？", "expected_check": "parsed"},
+    {"id": "case_08", "question": "销售额下降但利润增长，为什么？", "expected_check": "parsed"},
+    {"id": "case_09", "question": "促销活动结束是不是导致销售额下降？", "expected_check": "parsed"},
+    {"id": "case_10", "question": "最近哪些业务指标出现异常？", "expected_check": "parsed"},
+    {"id": "case_11", "question": "2025年13月销售额为什么下降？", "expected_check": "parse_error"},
+    {"id": "case_12", "question": "为什么2025年7月比2025年7月销售额下降？", "expected_check": "conversion_error"}
+  ]
+}

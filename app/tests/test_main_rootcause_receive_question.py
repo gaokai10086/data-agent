@@ -1,19 +1,17 @@
-"""Main_RootCause_Agent 主 Agent 的输入与 Skill 选择边界测试。"""
+"""Main_RootCause_Agent 的输入与 Skill 选择边界测试。"""
 
 import unittest
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.receive_question import receive_question
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.select_skill import select_skill
 from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import UnsupportedSkillError
-from app.agent.anomaly_agent.schemas import AnalysisRequest
+from app.agent.anomaly_agent.schemas import TaskRequest
 
 
-def build_request(metric: str = "销售额") -> AnalysisRequest:
-    return AnalysisRequest(
-        metric=metric,
-        target_period="2025-07",
-        comparison_period="2025-06",
-        comparison_type="mom",
+def build_task(metrics: list[str] | None = None) -> TaskRequest:
+    return TaskRequest(
+        objective="分析销售额变化",
+        metrics=metrics if metrics is not None else ["销售额"],
     )
 
 
@@ -31,16 +29,16 @@ class MainRootCauseNodesTest(unittest.TestCase):
             select_skill({"raw_question": "x"})
 
     def test_select_skill_by_metric(self):
-        result = select_skill({
-            "analysis_request": build_request(),
-        })
+        result = select_skill({"task_request": build_task()})
         self.assertEqual(result["selected_skill_name"], "sales_amount_anomaly")
 
     def test_select_skill_rejects_unsupported_metric(self):
         with self.assertRaises(UnsupportedSkillError):
-            select_skill({
-                "analysis_request": build_request("利润"),
-            })
+            select_skill({"task_request": build_task(["利润"])})
+
+    def test_select_skill_rejects_multiple_metrics(self):
+        with self.assertRaisesRegex(ValueError, "多个指标"):
+            select_skill({"task_request": build_task(["销售额", "利润"])})
 
 
 if __name__ == "__main__":
