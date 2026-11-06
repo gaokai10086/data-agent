@@ -1,9 +1,9 @@
 {
-  "generated_at": "20261106T135558",
+  "generated_at": "20261106T143228",
   "provider": "deepseek",
   "model_tier": "deepseek-v4-flash",
-  "total": 3,
-  "passed": 3,
+  "total": 15,
+  "passed": 15,
   "failed": 0,
   "cases": [
     {
@@ -14,7 +14,7 @@
         "raw_question": "为什么2025年7月上海销售额比2025年6月下降了？",
         "analysis_request": {
           "metric": "销售额",
-          "request_id": "8c302e52c186438ab4acf6bc56dbe102",
+          "request_id": "6625559ab5334d05b5c1bd8c71a1f0f4",
           "target_period": "2025-07",
           "comparison_period": "2025-06",
           "comparison_type": "mom",
@@ -38,7 +38,7 @@
         "raw_question": "为什么2025年7月北京线上渠道销售额比2024年7月增长了？",
         "analysis_request": {
           "metric": "销售额",
-          "request_id": "bcc32455b9164d5a92aa3379ee2bcc78",
+          "request_id": "ba4ef03a047c4f8b9b2bfaa54a650025",
           "target_period": "2025-07",
           "comparison_period": "2024-07",
           "comparison_type": "yoy",
@@ -67,7 +67,7 @@
         "raw_question": "为什么2025年7月凯乐石销售额比2025年6月下降了？",
         "analysis_request": {
           "metric": "销售额",
-          "request_id": "366688abb22844f2a546db26e6170707",
+          "request_id": "62d60a6241ff4450873d2e2da1687866",
           "target_period": "2025-07",
           "comparison_period": "2025-06",
           "comparison_type": "mom",
@@ -81,6 +81,244 @@
           "expected_direction": "decrease"
         },
         "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_4",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年1月上海销售额比2024年12月下降了？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "9fbe5ebe04544dd79800afba475d8eb6",
+          "target_period": "2025-01",
+          "comparison_period": "2024-12",
+          "comparison_type": "mom",
+          "filters": [
+            {
+              "dimension": "城市",
+              "value": "上海",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_5",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年8月销售额比2025年5月下降了？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "591d0fbc394044a68e60537c9829fd0e",
+          "target_period": "2025-08",
+          "comparison_period": "2025-05",
+          "comparison_type": "custom",
+          "filters": [],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_6",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "分析2025年7月销售额相比2024年7月的变化原因。",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "05368cbebeb24667aa33bd79551ee198",
+          "target_period": "2025-07",
+          "comparison_period": "2024-07",
+          "comparison_type": "yoy",
+          "filters": [],
+          "expected_direction": "unspecified"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_7",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年7月北京线上渠道凯乐石销售额比2025年6月下降？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "5b19081a4ee046bb9c2113754bf5c2e6",
+          "target_period": "2025-07",
+          "comparison_period": "2025-06",
+          "comparison_type": "mom",
+          "filters": [
+            {
+              "dimension": "城市",
+              "value": "北京",
+              "operator": "="
+            },
+            {
+              "dimension": "渠道",
+              "value": "线上",
+              "operator": "="
+            },
+            {
+              "dimension": null,
+              "value": "凯乐石",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_8",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年7月上海线下渠道的销售额比2025年6月下降？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "b0ed020172c1465fadc7acbbca6946a3",
+          "target_period": "2025-07",
+          "comparison_period": "2025-06",
+          "comparison_type": "mom",
+          "filters": [
+            {
+              "dimension": "城市",
+              "value": "上海",
+              "operator": "="
+            },
+            {
+              "dimension": "渠道",
+              "value": "线下",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_9",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年7月北京市销售额相比2025年6月减少？",
+        "analysis_request": {
+          "metric": "销售额",
+          "request_id": "eebed3aa94c047298e8630aefb58eaca",
+          "target_period": "2025-07",
+          "comparison_period": "2025-06",
+          "comparison_type": "mom",
+          "filters": [
+            {
+              "dimension": "城市",
+              "value": "北京",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_10",
+      "passed": true,
+      "problems": [],
+      "actual": {
+        "raw_question": "为什么2025年7月GMV比2025年6月下降？",
+        "analysis_request": {
+          "metric": "GMV",
+          "request_id": "9c68cf921cf947548aa2e82b2d247c21",
+          "target_period": "2025-07",
+          "comparison_period": "2025-06",
+          "comparison_type": "mom",
+          "filters": [],
+          "expected_direction": "decrease"
+        },
+        "selected_skill_name": "sales_amount_anomaly"
+      }
+    },
+    {
+      "case_id": "extended_11",
+      "passed": true,
+      "problems": [],
+      "expected_failure": "unsupported_skill",
+      "actual": {
+        "raw_question": "为什么2025年7月订单量比2025年6月下降？",
+        "analysis_request": {
+          "metric": "订单量",
+          "request_id": "2c73311eb86a4026ae210a626e77ebb1",
+          "target_period": "2025-07",
+          "comparison_period": "2025-06",
+          "comparison_type": "mom",
+          "filters": [],
+          "expected_direction": "decrease"
+        },
+        "error_stage": "select_skill",
+        "error": "UnsupportedSkillError: 没有 Skill 可以处理指标：订单量",
+        "selected_skill_name": null
+      }
+    },
+    {
+      "case_id": "extended_12",
+      "passed": true,
+      "problems": [],
+      "expected_failure": "invalid_month",
+      "actual": {
+        "raw_question": "为什么2025年13月销售额比2025年12月下降？",
+        "error_stage": "parse_request",
+        "error": "ValueError: 无效月份：13",
+        "analysis_request": null,
+        "selected_skill_name": null
+      }
+    },
+    {
+      "case_id": "extended_13",
+      "passed": true,
+      "problems": [],
+      "expected_failure": "same_period",
+      "actual": {
+        "raw_question": "为什么2025年7月销售额比2025年7月下降？",
+        "error_stage": "parse_request",
+        "error": "ValueError: 目标月份与对比月份不能相同",
+        "analysis_request": null,
+        "selected_skill_name": null
+      }
+    },
+    {
+      "case_id": "extended_14",
+      "passed": true,
+      "problems": [],
+      "expected_failure": "missing_comparison",
+      "actual": {
+        "raw_question": "为什么2025年7月销售额下降了？",
+        "error_stage": "parse_request",
+        "error": "ValidationError: 1 validation error for ExtractedRequest\ncomparison_month\n  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.12/v/int_type",
+        "analysis_request": null,
+        "selected_skill_name": null
+      }
+    },
+    {
+      "case_id": "extended_15",
+      "passed": true,
+      "problems": [],
+      "expected_failure": "blank_question",
+      "actual": {
+        "raw_question": "   ",
+        "error_stage": "receive_question",
+        "error": "ValueError: Main_RootCause_Agent 接收的问题不能为空",
+        "analysis_request": null,
+        "selected_skill_name": null
       }
     }
   ]

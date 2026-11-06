@@ -108,6 +108,16 @@ class OverallComparisonHandler(BaseAnomalyHandler):
         if request is None or metric_context is None:
             raise ValueError("总体查询前必须先完成请求解析和指标上下文加载")
 
+        return await self.compare(request, metric_context, runtime)
+
+    async def compare(
+        self,
+        request: AnalysisRequest,
+        metric_context: MetricContext,
+        runtime: Runtime[DataAgentContext],
+    ) -> OverallComparisonResult:
+        """按请求和指标上下文执行两个周期的总体对比。"""
+
         async def query_period(period: str, role: str) -> Decimal | None:
             logger.info("开始周期查询")
             try:

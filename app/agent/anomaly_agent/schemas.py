@@ -137,6 +137,34 @@ class ChangeVerification(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class InspectionOutcome(BaseModel):
+    """变化检验工具的统一输出；ready 时附带后续归因所需的完整证据。"""
+
+    status: Literal["ready", "rejected", "failed"]
+    reason: str
+    request_id: str | None = None
+    user_message: str
+    metric_context: MetricContext | None = None
+    overall_result: OverallComparisonResult | None = None
+    verification: ChangeVerification | None = None
+
+    @model_validator(mode="after")
+    def check_ready_contract(self):
+        if self.status != "ready":
+            return self
+        if self.request_id is None:
+            raise ValueError("ready 状态必须包含 request_id")
+        if self.metric_context is None or self.overall_result is None or self.verification is None:
+            raise ValueError("ready 状态必须包含指标上下文、总体比较结果和核验依据")
+        if self.verification.decision != "continue":
+            raise ValueError("ready 状态的核验依据必须是 continue")
+        if self.overall_result.request_id != self.request_id:
+            raise ValueError("ready 状态的总体比较结果 request_id 不一致")
+        if self.overall_result.metric_key != self.metric_context.metric_key:
+            raise ValueError("ready 状态的总体比较结果与指标上下文的 metric_key 不一致")
+        return self
+
+
 class PreparationResult(BaseModel):
     """前置核实阶段的统一输出，用于父图判断是否进入根因分析。
 

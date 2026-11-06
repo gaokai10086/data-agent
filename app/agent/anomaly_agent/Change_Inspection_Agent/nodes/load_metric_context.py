@@ -79,6 +79,26 @@ def _build_metric_context(metric_record: Any) -> MetricContext:
     )
 
 
+async def resolve_metric_context(
+    request: AnalysisRequest,
+    runtime: Runtime[DataAgentContext],
+) -> MetricContext:
+    """根据 AnalysisRequest.metric 加载已发布的指标 Metadata。"""
+    repository = runtime.context.get("meta_mysql_repository")
+    if repository is None:
+        raise RuntimeError("运行时未注入 meta_mysql_repository，无法读取指标 Metadata")
+
+    metric_record = await repository.get_metric_by_name(request.metric)
+    if metric_record is None:
+        raise ValueError(f"Metadata 中不存在已发布指标：{request.metric}")
+    if str(getattr(metric_record, "status", "")).strip() != "published":
+        raise ValueError(f"指标 [{request.metric}] 尚未发布，不能用于变化检验")
+
+    context = _build_metric_context(metric_record)
+    await validate_metric_decomposition(context, context.decomposition, repository)
+    return context
+
+
 async def load_metric_context(
     state: PreparationState,
     runtime: Runtime[DataAgentContext],
@@ -89,16 +109,7 @@ async def load_metric_context(
     if request is None:
         raise ValueError("加载指标上下文前必须先完成请求解析")
 
-    repository = runtime.context.get("meta_mysql_repository")
-    if repository is None:
-        raise RuntimeError("运行时未注入 meta_mysql_repository，无法读取指标 Metadata")
-
-    metric_record = await repository.get_metric_by_name(request.metric)
-    if metric_record is None:
-        raise ValueError(f"Metadata 中不存在已发布指标：{request.metric}")
-
-    context = _build_metric_context(metric_record)
-    await validate_metric_decomposition(context, context.decomposition, repository)
+    context = await resolve_metric_context(request, runtime)
     return {
         "metric_context": context,
         # 当前请求进入第一种已实现的异动分析处理器。

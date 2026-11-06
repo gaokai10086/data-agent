@@ -5,7 +5,11 @@ from abc import ABC, abstractmethod
 from langgraph.runtime import Runtime
 
 from app.agent.anomaly_agent.Change_Inspection_Agent.state import PreparationState
-from app.agent.anomaly_agent.schemas import BaseAnomalyResult
+from app.agent.anomaly_agent.schemas import (
+    AnalysisRequest,
+    BaseAnomalyResult,
+    MetricContext,
+)
 from app.agent.data_agent.context import DataAgentContext
 
 
@@ -15,10 +19,19 @@ class BaseAnomalyHandler(ABC):
     analysis_type: str
 
     @abstractmethod
+    async def compare(
+        self,
+        request: AnalysisRequest,
+        metric_context: MetricContext,
+        runtime: Runtime[DataAgentContext],
+    ) -> BaseAnomalyResult:
+        """不依赖 Graph State 的领域执行入口。"""
+
+    @abstractmethod
     async def run(
         self,
         state: PreparationState,
         runtime: Runtime[DataAgentContext],
     ) -> BaseAnomalyResult:
-        """执行分析并返回已校验的领域结果。"""
+        """兼容现有 Graph 节点的 State 适配入口。"""
 
