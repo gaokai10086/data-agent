@@ -1,4 +1,4 @@
-"""run_anomaly_agent 第一阶段适配测试，可直接用 Python 运行。"""
+"""run_anomaly_agent Skill 入口适配测试。"""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.agent.anomaly_agent.schemas import MonthPeriod, TaskRequest
 from app.agent.orchestrator.nodes.run_anomaly_agent import (
     TECHNICAL_FAILURE_MESSAGE,
     run_anomaly_agent,
@@ -28,18 +27,13 @@ class FakeRuntime:
         self.events.append(event)
 
 
-def build_result() -> dict[str, object]:
-    task_request = TaskRequest(
-        objective="分析销售额环比下降",
-        metrics=["销售额"],
-        target_period=MonthPeriod(year=2025, month=7),
-        comparison_period=MonthPeriod(year=2025, month=6),
-        expected_direction="decrease",
-    )
+def build_result(status: str = "matched") -> dict[str, object]:
     return {
         "raw_question": "为什么销售额下降？",
-        "task_request": task_request,
-        "selected_skill_name": "sales_amount_anomaly",
+        "extracted_metrics": ["销售额"],
+        "skill_match_status": status,
+        "skill_match_reason": "指标全部由同一 Skill 支持",
+        "selected_skill_name": "sales_amount_anomaly" if status == "matched" else None,
     }
 
 
@@ -60,19 +54,27 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
             )
         return output, runtime.events
 
-    async def test_valid_result_forwards_task_and_selected_skill(self):
-        result = build_result()
+    async def test_matched_forwards_skill_match_result_and_skill(self):
+        result = build_result("matched")
         output, events = await self.call_with_result(result)
 
-        self.assertIsInstance(output["agent_result"]["task_request"], TaskRequest)
-        self.assertEqual(output["agent_result"]["selected_skill_name"], "sales_amount_anomaly")
-        self.assertIn("analysis_request", output["agent_result"])
+        self.assertEqual(output, {"agent_result": result})
         self.assertEqual(
             [event["type"] for event in events[1:]],
-            ["task_request", "selected_skill"],
+            ["skill_match_result", "selected_skill"],
         )
-        self.assertEqual(events[1]["metrics"], ["销售额"])
+        self.assertEqual(events[1]["status"], "matched")
         self.assertEqual(events[2]["skill_name"], "sales_amount_anomaly")
+
+    async def test_business_unsupported_is_not_technical_failure(self):
+        result = build_result("unsupported")
+        output, events = await self.call_with_result(result)
+
+        self.assertEqual(output, {"agent_result": result})
+        self.assertEqual(
+            [event.get("type") for event in events],
+            ["progress", "skill_match_result"],
+        )
         self.assertNotIn("error_response", [event.get("type") for event in events])
 
     async def test_input_maps_only_raw_question(self):
@@ -93,27 +95,14 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(seen["input"], {"raw_question": "改写后的问题"})
 
-    async def test_missing_task_request_is_technical_failure(self):
+    async def test_missing_status_is_technical_failure(self):
         result = build_result()
-        result.pop("task_request")
+        result.pop("skill_match_status")
         output, events = await self.call_with_result(result)
 
         failure = output["agent_result"]["preparation_result"]
         self.assertEqual(failure.status, "failed")
-        self.assertEqual(failure.reason, "missing_task_request")
-        self.assertEqual(
-            [event.get("type") for event in events],
-            ["progress", "error_response"],
-        )
-
-    async def test_missing_selected_skill_is_technical_failure(self):
-        result = build_result()
-        result.pop("selected_skill_name")
-        output, events = await self.call_with_result(result)
-
-        failure = output["agent_result"]["preparation_result"]
-        self.assertEqual(failure.status, "failed")
-        self.assertEqual(failure.reason, "missing_selected_skill")
+        self.assertEqual(failure.reason, "missing_skill_match_status")
         self.assertEqual(
             [event.get("type") for event in events],
             ["progress", "error_response"],
@@ -137,10 +126,6 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(failure.status, "failed")
         self.assertEqual(failure.reason, "anomaly_execution_error")
         self.assertEqual(failure.user_message, TECHNICAL_FAILURE_MESSAGE)
-        self.assertEqual(
-            [event.get("type") for event in runtime.events],
-            ["progress", "error_response"],
-        )
         serialized = json.dumps(runtime.events, ensure_ascii=False, default=str)
         self.assertNotIn("postgresql", serialized)
         self.assertNotIn("secret", serialized)

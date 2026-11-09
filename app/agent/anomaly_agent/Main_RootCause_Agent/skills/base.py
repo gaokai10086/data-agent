@@ -22,6 +22,12 @@ class SkillConfig:
     instruction_file: str
     capabilities: tuple[str, ...]
     constraints: tuple[str, ...]
+    related_metrics: tuple[str, ...] = ()
+    business_rules: tuple[str, ...] = ()
+    analysis_guidance: str = ""
+    allowed_capabilities: tuple[str, ...] = ()
+    enabled: bool = True
+    open_question_scenarios: tuple[str, ...] = ()
 
 
 class BaseSkill(ABC):
@@ -58,6 +64,30 @@ class BaseSkill(ABC):
         return self.config.supported_metrics
 
     @property
+    def related_metrics(self) -> tuple[str, ...]:
+        return self.config.related_metrics
+
+    @property
+    def business_rules(self) -> tuple[str, ...]:
+        return self.config.business_rules
+
+    @property
+    def analysis_guidance(self) -> str:
+        return self.config.analysis_guidance
+
+    @property
+    def allowed_capabilities(self) -> tuple[str, ...]:
+        return self.config.allowed_capabilities
+
+    @property
+    def enabled(self) -> bool:
+        return self.config.enabled
+
+    @property
+    def open_question_scenarios(self) -> tuple[str, ...]:
+        return self.config.open_question_scenarios
+
+    @property
     def instruction_file(self) -> str:
         return self.config.instruction_file
 
@@ -88,4 +118,11 @@ class BaseSkill(ABC):
         """返回 Skill 对解析后指标名的匹配分数，默认表示无法匹配。"""
 
         return 0.0
+
+    def supports_metric(self, metric: str) -> bool:
+        """判断指标是否属于主指标或关联指标。"""
+        normalized = metric.strip().casefold()
+        if any(name.casefold() == normalized for name in self.supported_metrics):
+            return True
+        return any(name.casefold() == normalized for name in self.related_metrics)
 

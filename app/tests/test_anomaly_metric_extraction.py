@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.agent.anomaly_agent.Main_RootCause_Agent.task_request_conversion import (
+from app.agent.anomaly_agent.Main_RootCause_Agent.parsing import (
     normalize_filter,
     task_request_to_analysis_request,
 )

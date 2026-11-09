@@ -9,13 +9,7 @@ from __future__ import annotations
 from langgraph.runtime import Runtime
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.graph import main_root_cause_agent
-from app.agent.anomaly_agent.Main_RootCause_Agent.task_request_conversion import (
-    task_request_to_analysis_request,
-)
-from app.agent.anomaly_agent.schemas import (
-    PreparationResult,
-    TaskRequest,
-)
+from app.agent.anomaly_agent.schemas import PreparationResult
 from app.agent.data_agent.context import DataAgentContext
 from app.agent.orchestrator.state import OrchestratorState
 from app.core.logging import logger
@@ -61,7 +55,7 @@ async def run_anomaly_agent(
         "type": "progress",
         "stage": "anomaly",
         "agent": "anomaly",
-        "content": "已分流到异动分析 Agent，正在解析问题并选择分析 Skill",
+        "content": "已分流到异动分析 Agent，正在提取指标并匹配分析 Skill",
     })
     # 两个 Agent 的 State 不共享：这里只把 query 映射为子 Graph 的 raw_question。
     # 意图识别与路由已在 Orchestrator 完成，不再作为输入传给 Main_RootCause_Agent。
@@ -78,41 +72,23 @@ async def run_anomaly_agent(
         logger.error("异动分析子图返回了非对象结果")
         return _technical_failure(runtime, "invalid_anomaly_result")
 
-    task_request = result.get("task_request")
-    if not isinstance(task_request, TaskRequest):
-        logger.error("异动分析结果缺少 task_request")
-        return _technical_failure(
-            runtime,
-            "missing_task_request",
-        )
+    status = result.get("skill_match_status")
+    if not isinstance(status, str):
+        logger.error("异动分析结果缺少 skill_match_status")
+        return _technical_failure(runtime, "missing_skill_match_status")
 
     selected_skill_name = result.get("selected_skill_name")
-    if not isinstance(selected_skill_name, str) or not selected_skill_name.strip():
-        logger.error("异动分析结果缺少 selected_skill_name")
-        return _technical_failure(
-            runtime,
-            "missing_selected_skill",
-        )
-
-    # 变化检验 Tool 的执行输入仍然使用 AnalysisRequest；这里仅在条件完整时
-    # 做确定性转换，不调用变化检验 Tool，也不表示归因已经完成。
-    try:
-        analysis_request = task_request_to_analysis_request(task_request)
-    except ValueError:
-        analysis_request = None
-
     runtime.stream_writer({
-        "type": "task_request",
+        "type": "skill_match_result",
         "agent": "anomaly",
-        **task_request.model_dump(mode="json"),
+        "status": status,
+        "reason": result.get("skill_match_reason", ""),
+        "extracted_metrics": result.get("extracted_metrics", []),
     })
-    runtime.stream_writer({
-        "type": "selected_skill",
-        "agent": "anomaly",
-        "skill_name": selected_skill_name,
-    })
-
-    agent_result = dict(result)
-    if analysis_request is not None:
-        agent_result["analysis_request"] = analysis_request
-    return {"agent_result": agent_result}
+    if status == "matched" and isinstance(selected_skill_name, str) and selected_skill_name.strip():
+        runtime.stream_writer({
+            "type": "selected_skill",
+            "agent": "anomaly",
+            "skill_name": selected_skill_name,
+        })
+    return {"agent_result": result}

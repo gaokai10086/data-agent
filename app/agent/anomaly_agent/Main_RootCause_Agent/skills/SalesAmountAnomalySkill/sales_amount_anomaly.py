@@ -28,6 +28,18 @@ class SalesAmountAnomalySkill(BaseSkill):
                 "不能直接生成或执行未经校验的 SQL",
                 "不能把相关性直接表述为因果关系",
             ),
+            related_metrics=(),
+            business_rules=(
+                "销售额口径必须来自已发布的指标定义",
+                "变化方向以已核验的周期总体值判断",
+            ),
+            analysis_guidance=(
+                "先确认销售额变化方向，再按维度贡献与指标拆解逐层分析，"
+                "所有结论必须引用查询证据。"
+            ),
+            allowed_capabilities=(),
+            enabled=True,
+            open_question_scenarios=(),
         )
 
     def match_metric(self, metric: str) -> float:
