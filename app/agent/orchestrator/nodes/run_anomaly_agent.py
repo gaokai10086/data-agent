@@ -72,17 +72,18 @@ async def run_anomaly_agent(
         logger.error("异动分析子图返回了非对象结果")
         return _technical_failure(runtime, "invalid_anomaly_result")
 
-    status = result.get("skill_match_status")
+    skill_result = result.get("skill_result") or {}
+    status = skill_result.get("status")
     if not isinstance(status, str):
-        logger.error("异动分析结果缺少 skill_match_status")
-        return _technical_failure(runtime, "missing_skill_match_status")
+        logger.error("异动分析结果缺少 skill_result.status")
+        return _technical_failure(runtime, "missing_skill_result")
 
-    selected_skill_name = result.get("selected_skill_name")
+    selected_skill_name = skill_result.get("skill_name")
     runtime.stream_writer({
         "type": "skill_match_result",
         "agent": "anomaly",
         "status": status,
-        "reason": result.get("skill_match_reason", ""),
+        "reason": skill_result.get("reason", ""),
         "extracted_metrics": result.get("extracted_metrics", []),
     })
     if status == "matched" and isinstance(selected_skill_name, str) and selected_skill_name.strip():

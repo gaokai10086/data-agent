@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {"id": "sales_mom_01", "question": "为什么2025年7月销售额比6月下降？", "expected": {"skill_status": "matched", "task_type": "period_comparison"}},
+    {"id": "sales_yoy_02", "question": "为什么2025年8月销售额比2024年8月下降？", "expected": {"skill_status": "matched", "task_type": "period_comparison"}},
+    {"id": "sales_region_03", "question": "为什么2025年9月上海地区的销售额比8月下降？", "expected": {"skill_status": "matched", "task_type": "period_comparison"}},
+    {"id": "sales_location_04", "question": "2025年7月哪些城市销售额环比下降最严重？", "expected": {"skill_status": "matched", "task_type": "anomaly_location"}},
+    {"id": "sales_attribution_05", "question": "2025年7月哪些渠道对销售额环比下降贡献最大？", "expected": {"skill_status": "matched", "task_type": "dimension_attribution"}},
+    {"id": "sales_decomposition_06", "question": "2025年7月销售额环比下降主要是订单量还是客单价导致的？", "expected": {"skill_status": "matched", "task_type": "metric_decomposition"}},
+    {"id": "sales_hypothesis_07", "question": "2025年7月销售额环比下降是否与促销结束有关？", "expected": {"skill_status": "matched", "task_type": "hypothesis_analysis"}},
+    {"id": "orders_08", "question": "为什么2025年7月订单量比6月下降？", "expected": {"skill_status": "unsupported"}},
+    {"id": "profit_09", "question": "为什么2025年7月利润比6月下降？", "expected": {"skill_status": "unsupported"}},
+    {"id": "refund_10", "question": "为什么2025年7月退款率比6月上升？", "expected": {"skill_status": "unsupported"}}
+  ]
+}

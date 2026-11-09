@@ -8,8 +8,9 @@ from app.agent.anomaly_agent.Main_RootCause_Agent.state import RootCauseState
 
 
 def load_skill_node(state: RootCauseState) -> dict[str, object]:
-    """只保存名称和必要摘要；完整配置仍从可信 Registry 加载。"""
-    name = state.get("selected_skill_name")
+    """从 skill_result 加载并校验；不向 State 写入隐式摘要。"""
+    skill_result = state.get("skill_result") or {}
+    name = skill_result.get("skill_name")
     if not name:
         raise ValueError("load_skill 需要在 matched 之后调用")
 
@@ -19,9 +20,4 @@ def load_skill_node(state: RootCauseState) -> dict[str, object]:
         raise ValueError(
             f"Skill 声明了未注册能力：{capabilities['unavailable_capabilities']}"
         )
-    return {
-        "skill_match_reason": (
-            state.get("skill_match_reason", "")
-            + f"；可用能力：{capabilities['available_capabilities']}"
-        ).strip("；"),
-    }
+    return {}

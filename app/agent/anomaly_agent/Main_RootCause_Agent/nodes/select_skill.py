@@ -10,9 +10,10 @@ def select_skill(state: RootCauseState) -> dict[str, object]:
     question = state.get("raw_question", "")
     result = match_skill(metrics, question)
     output: dict[str, object] = {
-        "skill_match_status": result.status,
-        "skill_match_reason": result.reason,
+        "skill_result": {
+            "status": result.status,
+            "reason": result.reason,
+            "skill_name": result.selected_skill_name,
+        },
     }
-    if result.status == "matched":
-        output["selected_skill_name"] = result.selected_skill_name
     return output

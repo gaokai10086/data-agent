@@ -25,17 +25,9 @@ class MainRootCausePhase1Test(unittest.TestCase):
             {
                 "raw_question",
                 "extracted_metrics",
-                "selected_skill_name",
-                "skill_match_status",
-                "skill_match_reason",
-                "selected_task_type",
-                "selected_schema_name",
-                "schema_selection_status",
-                "schema_selection_reason",
-                "parsed_request",
-                "validation_status",
-                "validation_errors",
-                "missing_info",
+                "skill_result",
+                "schema_result",
+                "parsed_result",
             },
         )
 
@@ -56,12 +48,8 @@ class MainRootCausePhase1Test(unittest.TestCase):
             "raw_question": question,
             "extracted_metrics": extracted["extracted_metrics"],
         })
-        self.assertEqual(selected["skill_match_status"], "matched")
-        self.assertEqual(selected["selected_skill_name"], "sales_amount_anomaly")
-        load_skill_node({
-            "selected_skill_name": selected["selected_skill_name"],
-            "skill_match_reason": selected["skill_match_reason"],
-        })
+        self.assertEqual(selected["skill_result"]["status"], "matched")
+        load_skill_node({"skill_result": selected["skill_result"]})
 
     def test_blank_question_fails(self):
         with self.assertRaisesRegex(ValueError, "问题不能为空"):

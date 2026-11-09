@@ -21,7 +21,8 @@ async def parse_task_request(
     runtime: Runtime[DataAgentContext],
 ) -> dict[str, object]:
     """按选中 Schema 解析并校验；不调用变化检验 Tool 或执行 SQL。"""
-    task_type = state.get("selected_task_type")
+    schema_result = state.get("schema_result") or {}
+    task_type = schema_result.get("task_type")
     if not task_type:
         raise ValueError("parse_task_request 需要先完成 Schema 选择")
 
@@ -39,15 +40,19 @@ async def parse_task_request(
         parsed = schema.model_validate(extracted)
     except ValidationError as exc:
         return {
-            "parsed_request": None,
-            "validation_status": "failed",
-            "validation_errors": [str(exc)],
-            "missing_info": [],
+            "parsed_result": {
+                "status": "failed",
+                "parsed_request": None,
+                "errors": [str(exc)],
+                "missing_info": [],
+            },
         }
 
     return {
-        "parsed_request": parsed.model_dump(mode="json"),
-        "validation_status": "passed",
-        "validation_errors": [],
-        "missing_info": getattr(parsed, "missing_info", []),
+        "parsed_result": {
+            "status": "passed",
+            "parsed_request": parsed.model_dump(mode="json"),
+            "errors": [],
+            "missing_info": getattr(parsed, "missing_info", []),
+        },
     }

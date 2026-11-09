@@ -53,9 +53,11 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
         child_result = {
             "raw_question": "改写后的问题",
             "extracted_metrics": ["销售额"],
-            "skill_match_status": "matched",
-            "skill_match_reason": "指标全部由同一 Skill 支持",
-            "selected_skill_name": "sales_amount_anomaly",
+            "skill_result": {
+                "status": "matched",
+                "reason": "指标全部由同一 Skill 支持",
+                "skill_name": "sales_amount_anomaly",
+            },
         }
         seen = {}
 
@@ -82,7 +84,7 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
             {"raw_question": "改写后的问题"},
         )
         self.assertEqual(seen["context"], "ctx")
-        self.assertEqual(result["agent_result"]["skill_match_status"], "matched")
+        self.assertEqual(result["agent_result"]["skill_result"]["status"], "matched")
         event_types = [event.get("type", "progress") for event in events]
         self.assertEqual(
             event_types,

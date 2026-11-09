@@ -28,8 +28,11 @@ class AnomalyLocationRequest(BaseModel):
 
     metrics: list[str] = Field(default_factory=list)
     relative_time: str | None = None
+    target_period: MonthPeriod | None = None
+    comparison_period: MonthPeriod | None = None
     period: MonthPeriod | None = None
     dimensions: list[str] = Field(default_factory=list)
+    sort_order: Literal["descending", "ascending"] | None = None
     ranking: int | None = None
     missing_info: list[str] = Field(default_factory=list)
 
@@ -49,7 +52,8 @@ class MetricDecompositionRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     metric: str | None = None
-    related_metrics: list[str] = Field(default_factory=list)
+    decomposition_metrics: list[str] = Field(default_factory=list)
+    relationship: str | None = None
     target_period: MonthPeriod | None = None
     comparison_period: MonthPeriod | None = None
     filters: list[FilterCondition] = Field(default_factory=list)
@@ -65,6 +69,7 @@ class HypothesisAnalysisRequest(BaseModel):
     comparison_period: MonthPeriod | None = None
     hypothesis: str | None = None
     factors: list[str] = Field(default_factory=list)
+    evidence_requirements: list[str] = Field(default_factory=list)
     missing_info: list[str] = Field(default_factory=list)
 
 

@@ -17,12 +17,14 @@ from app.agent.data_agent.context import DataAgentContext
 
 def route_skill(state: RootCauseState) -> str:
     """只有 matched 进入 load_skill，其余业务状态直接结束。"""
-    return "load_skill" if state.get("skill_match_status") == "matched" else END
+    skill_result = state.get("skill_result") or {}
+    return "load_skill" if skill_result.get("status") == "matched" else END
 
 
 def route_task_schema(state: RootCauseState) -> str:
     """只有 Schema 选择成功才进入结构化解析，否则受控结束。"""
-    return "parse_task_request" if state.get("schema_selection_status") == "matched" else END
+    schema_result = state.get("schema_result") or {}
+    return "parse_task_request" if schema_result.get("status") == "matched" else END
 
 
 def build_root_cause_graph(*, checkpointer=None):

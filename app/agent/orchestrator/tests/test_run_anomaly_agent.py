@@ -31,9 +31,11 @@ def build_result(status: str = "matched") -> dict[str, object]:
     return {
         "raw_question": "为什么销售额下降？",
         "extracted_metrics": ["销售额"],
-        "skill_match_status": status,
-        "skill_match_reason": "指标全部由同一 Skill 支持",
-        "selected_skill_name": "sales_amount_anomaly" if status == "matched" else None,
+        "skill_result": {
+            "status": status,
+            "reason": "指标全部由同一 Skill 支持",
+            "skill_name": "sales_amount_anomaly" if status == "matched" else None,
+        },
     }
 
 
@@ -97,12 +99,12 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_missing_status_is_technical_failure(self):
         result = build_result()
-        result.pop("skill_match_status")
+        result.pop("skill_result")
         output, events = await self.call_with_result(result)
 
         failure = output["agent_result"]["preparation_result"]
         self.assertEqual(failure.status, "failed")
-        self.assertEqual(failure.reason, "missing_skill_match_status")
+        self.assertEqual(failure.reason, "missing_skill_result")
         self.assertEqual(
             [event.get("type") for event in events],
             ["progress", "error_response"],

@@ -39,12 +39,16 @@ async def select_task_schema(
     runtime: Runtime[DataAgentContext],
 ) -> dict[str, object]:
     """LLM 从 Skill 已注册任务类型中选择一个；不在此生成业务参数。"""
-    skill = load_skill(state.get("selected_skill_name", ""))
+    skill_result = state.get("skill_result") or {}
+    skill_name = skill_result.get("skill_name") or ""
+    skill = load_skill(skill_name)
     task_types = [task_type for task_type in skill.task_types if task_type in TASK_SCHEMA_REGISTRY]
     if not task_types:
         return {
-            "schema_selection_status": "unsupported",
-            "schema_selection_reason": "当前 Skill 未注册可用任务 Schema",
+            "schema_result": {
+                "status": "unsupported",
+                "reason": "当前 Skill 未注册可用任务 Schema",
+            },
         }
 
     llm = get_context_llm(runtime, temperature=0.0, streaming=False)
@@ -61,18 +65,24 @@ async def select_task_schema(
     if result.status == "matched":
         if result.task_type not in task_types:
             return {
-                "schema_selection_status": "unsupported",
-                "schema_selection_reason": f"LLM 返回了未注册任务类型：{result.task_type}",
+                "schema_result": {
+                    "status": "unsupported",
+                    "reason": f"LLM 返回了未注册任务类型：{result.task_type}",
+                },
             }
         schema = get_task_schema(result.task_type)
         return {
-            "schema_selection_status": "matched",
-            "schema_selection_reason": result.reason,
-            "selected_task_type": result.task_type,
-            "selected_schema_name": schema.__name__,
+            "schema_result": {
+                "status": "matched",
+                "reason": result.reason,
+                "task_type": result.task_type,
+                "schema_name": schema.__name__,
+            },
         }
 
     return {
-        "schema_selection_status": result.status,
-        "schema_selection_reason": result.reason,
+        "schema_result": {
+            "status": result.status,
+            "reason": result.reason,
+        },
     }

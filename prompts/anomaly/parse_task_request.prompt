@@ -3,9 +3,14 @@
 规则：
 1. 只使用用户明确给出的信息，不编造指标、维度、时间、过滤条件或排名。
 2. 无法确定且 Schema 中对应字段允许为空时，填 null；需要列表时填 []。
-3. 缺失但影响分析的信息写入 missing_info 数组。
+3. missing_info 只写需要用户补充、否则任务无法继续的信息；系统可以通过数据查询获得的信息不要写入 missing_info。
 4. 日期必须返回 {{"year": 整数, "month": 整数}}，月份必须是 1-12。
-5. 只返回 JSON，不要输出解释。
+5. ranking 字段仅在用户明确指定数量时填写；未指定时保持 null，不视为 missing_info。
+6. “环比”应解析为 target_period 与 comparison_period，不要把“环比”写进 relative_time。
+7. 如果用户要求“最严重”“最大”“最差”等排序，sort_order 返回 "descending"；要求“最小”“最低”等返回 "ascending"；未明确排序则 null。
+8. metric_decomposition 的 decomposition_metrics 保存拆解因子，relationship 表达因子间关系（如乘法）。
+9. hypothesis_analysis 的 evidence_requirements 保存后续检索需要的证据；仅用户必须补充的信息才进入 missing_info。
+10. 只返回 JSON，不要输出解释。
 
 JSON Schema：
 {schema_json}

@@ -1,0 +1,489 @@
+{
+  "generated_at": "20261109T155210",
+  "model": "deepseek/deepseek-v4-flash",
+  "total": 10,
+  "summary": {
+    "machine_passed": 10,
+    "machine_failed": 0
+  },
+  "cases": [
+    {
+      "id": "sales_mom_01",
+      "raw_question": "为什么2025年7月销售额比6月下降？",
+      "extracted_metrics": {
+        "metrics": [
+          "销售额"
+        ]
+      },
+      "skill_result": {
+        "status": "matched",
+        "reason": "指标全部由同一 Skill 支持",
+        "skill_name": "sales_amount_anomaly"
+      },
+      "schema_result": {
+        "status": "matched",
+        "reason": "问题明确比较2025年7月与6月的销售额变化，属于两个周期的指标比较。",
+        "task_type": "period_comparison",
+        "schema_name": "PeriodComparisonRequest"
+      },
+      "parsed_result": {
+        "status": "passed",
+        "parsed_request": {
+          "metric": "销售额",
+          "target_period": {
+            "year": 2025,
+            "month": 7
+          },
+          "comparison_period": {
+            "year": 2025,
+            "month": 6
+          },
+          "filters": [],
+          "expected_direction": "decrease",
+          "missing_info": []
+        },
+        "errors": [],
+        "missing_info": []
+      },
+      "expected_result": {
+        "skill_status": "matched",
+        "task_type": "period_comparison"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "sales_yoy_02",
+      "raw_question": "为什么2025年8月销售额比2024年8月下降？",
+      "extracted_metrics": {
+        "metrics": [
+          "销售额"
+        ]
+      },
+      "skill_result": {
+        "status": "matched",
+        "reason": "指标全部由同一 Skill 支持",
+        "skill_name": "sales_amount_anomaly"
+      },
+      "schema_result": {
+        "status": "matched",
+        "reason": "用户明确比较2025年8月与2024年8月的销售额下降情况，属于两个周期的指标变化比较；未指定具体维度归因、因子拆解或待验证假设。",
+        "task_type": "period_comparison",
+        "schema_name": "PeriodComparisonRequest"
+      },
+      "parsed_result": {
+        "status": "passed",
+        "parsed_request": {
+          "metric": "销售额",
+          "target_period": {
+            "year": 2025,
+            "month": 8
+          },
+          "comparison_period": {
+            "year": 2024,
+            "month": 8
+          },
+          "filters": [],
+          "expected_direction": "decrease",
+          "missing_info": []
+        },
+        "errors": [],
+        "missing_info": []
+      },
+      "expected_result": {
+        "skill_status": "matched",
+        "task_type": "period_comparison"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "sales_region_03",
+      "raw_question": "为什么2025年9月上海地区的销售额比8月下降？",
+      "extracted_metrics": {
+        "metrics": [
+          "销售额"
+        ]
+      },
+      "skill_result": {
+        "status": "matched",
+        "reason": "指标全部由同一 Skill 支持",
+        "skill_name": "sales_amount_anomaly"
+      },
+      "schema_result": {
+        "status": "matched",
+        "reason": "用户明确比较2025年9月与8月上海地区销售额的下降变化，属于两个周期的指标变化比较。",
+        "task_type": "period_comparison",
+        "schema_name": "PeriodComparisonRequest"
+      },
+      "parsed_result": {
+        "status": "passed",
+        "parsed_request": {
+          "metric": "销售额",
+          "target_period": {
+            "year": 2025,
+            "month": 9
+          },
+          "comparison_period": {
+            "year": 2025,
+            "month": 8
+          },
+          "filters": [
+            {
+              "dimension": "地区",
+              "value": "上海",
+              "operator": "="
+            }
+          ],
+          "expected_direction": "decrease",
+          "missing_info": []
+        },
+        "errors": [],
+        "missing_info": []
+      },
+      "expected_result": {
+        "skill_status": "matched",
+        "task_type": "period_comparison"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "sales_location_04",
+      "raw_question": "2025年7月哪些城市销售额环比下降最严重？",
+      "extracted_metrics": {
+        "metrics": [
+          "销售额"
+        ]
+      },
+      "skill_result": {
+        "status": "matched",
+        "reason": "指标全部由同一 Skill 支持",
+        "skill_name": "sales_amount_anomaly"
+      },
+      "schema_result": {
+        "status": "matched",
+        "reason": "问题关注2025年7月销售额环比下降最严重的城市，核心是定位异常发生的城市维度，且使用环比相对时间，符合 anomaly_location。",
+        "task_type": "anomaly_location",
+        "schema_name": "AnomalyLocationRequest"
+      },
+      "parsed_result": {
+        "status": "passed",
+        "parsed_request": {
+          "metrics": [
+            "销售额"
+          ],
+          "relative_time": null,
+          "target_period": {
+            "year": 2025,
+            "month": 7
+          },
+          "comparison_period": {
+            "year": 2025,
+            "month": 6
+          },
+          "period": null,
+          "dimensions": [
+            "城市"
+          ],
+          "sort_order": "descending",
+          "ranking": null,
+          "missing_info": []
+        },
+        "errors": [],
+        "missing_info": []
+      },
+      "expected_result": {
+        "skill_status": "matched",
+        "task_type": "anomaly_location"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "sales_attribution_05",
+      "raw_question": "2025年7月哪些渠道对销售额环比下降贡献最大？",
+      "extracted_metrics": {
+        "metrics": [
+          "销售额"
+        ]
+      },
+      "skill_result": {
+        "status": "matched",
+        "reason": "指标全部由同一 Skill 支持",
+        "skill_name": "sales_amount_anomaly"
+      },
+      "schema_result": {
+        "status": "matched",
+        "reason": "问题核心是分析各渠道对销售额环比下降的贡献大小，属于按渠道维度解释指标变化的归因分析。",
+        "task_type": "dimension_attribution",
+        "schema_name": "DimensionAttributionRequest"
+      },
+      "parsed_result": {
+        "status": "passed",
+        "parsed_request": {
+          "metric": "销售额",
+          "target_period": {
+            "year": 2025,
+            "month": 7
+          },
+          "comparison_period": {
+            "year": 2025,
+            "month": 6
+          },
+          "filters": [],
+          "dimensions": [
+            "渠道"
+          ],
+          "missing_info": []
+        },
+        "errors": [],
+        "missing_info": []
+      },
+      "expected_result": {
+        "skill_status": "matched",
+        "task_type": "dimension_attribution"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "sales_decomposition_06",
+      "raw_question": "2025年7月销售额环比下降主要是订单量还是客单价导致的？",
+      "extracted_metrics": {
+        "metrics": [
+          "销售额"
+        ]
+      },
+      "skill_result": {
+        "status": "matched",
+        "reason": "指标全部由同一 Skill 支持",
+        "skill_name": "sales_amount_anomaly"
+      },
+      "schema_result": {
+        "status": "matched",
+        "reason": "问题要求将销售额环比下降拆解为订单量和客单价两个构成因子，判断主要贡献来源。",
+        "task_type": "metric_decomposition",
+        "schema_name": "MetricDecompositionRequest"
+      },
+      "parsed_result": {
+        "status": "passed",
+        "parsed_request": {
+          "metric": "销售额",
+          "decomposition_metrics": [
+            "订单量",
+            "客单价"
+          ],
+          "relationship": "销售额 = 订单量 × 客单价",
+          "target_period": {
+            "year": 2025,
+            "month": 7
+          },
+          "comparison_period": {
+            "year": 2025,
+            "month": 6
+          },
+          "filters": [],
+          "decomposition_type": "multiplicative",
+          "missing_info": []
+        },
+        "errors": [],
+        "missing_info": []
+      },
+      "expected_result": {
+        "skill_status": "matched",
+        "task_type": "metric_decomposition"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "sales_hypothesis_07",
+      "raw_question": "2025年7月销售额环比下降是否与促销结束有关？",
+      "extracted_metrics": {
+        "metrics": [
+          "销售额"
+        ]
+      },
+      "skill_result": {
+        "status": "matched",
+        "reason": "指标全部由同一 Skill 支持",
+        "skill_name": "sales_amount_anomaly"
+      },
+      "schema_result": {
+        "status": "matched",
+        "reason": "用户提出“促销结束”这一原因猜想，并询问其是否与2025年7月销售额环比下降有关，属于待验证的业务假设。",
+        "task_type": "hypothesis_analysis",
+        "schema_name": "HypothesisAnalysisRequest"
+      },
+      "parsed_result": {
+        "status": "passed",
+        "parsed_request": {
+          "metric": "销售额",
+          "target_period": {
+            "year": 2025,
+            "month": 7
+          },
+          "comparison_period": {
+            "year": 2025,
+            "month": 6
+          },
+          "hypothesis": "2025年7月销售额环比下降与促销结束有关",
+          "factors": [
+            "促销结束"
+          ],
+          "evidence_requirements": [
+            "2025年7月销售额数据",
+            "2025年6月销售额数据",
+            "促销活动结束时间",
+            "促销结束前后销售额变化数据"
+          ],
+          "missing_info": []
+        },
+        "errors": [],
+        "missing_info": []
+      },
+      "expected_result": {
+        "skill_status": "matched",
+        "task_type": "hypothesis_analysis"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "orders_08",
+      "raw_question": "为什么2025年7月订单量比6月下降？",
+      "extracted_metrics": {
+        "metrics": [
+          "订单量"
+        ]
+      },
+      "skill_result": {
+        "status": "unsupported",
+        "reason": "没有已启用 Skill 支持当前指标",
+        "skill_name": null
+      },
+      "schema_result": {
+        "status": "skipped"
+      },
+      "parsed_result": {
+        "status": "skipped"
+      },
+      "expected_result": {
+        "skill_status": "unsupported"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "profit_09",
+      "raw_question": "为什么2025年7月利润比6月下降？",
+      "extracted_metrics": {
+        "metrics": [
+          "利润"
+        ]
+      },
+      "skill_result": {
+        "status": "unsupported",
+        "reason": "没有已启用 Skill 支持当前指标",
+        "skill_name": null
+      },
+      "schema_result": {
+        "status": "skipped"
+      },
+      "parsed_result": {
+        "status": "skipped"
+      },
+      "expected_result": {
+        "skill_status": "unsupported"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    },
+    {
+      "id": "refund_10",
+      "raw_question": "为什么2025年7月退款率比6月上升？",
+      "extracted_metrics": {
+        "metrics": [
+          "退款率"
+        ]
+      },
+      "skill_result": {
+        "status": "unsupported",
+        "reason": "没有已启用 Skill 支持当前指标",
+        "skill_name": null
+      },
+      "schema_result": {
+        "status": "skipped"
+      },
+      "parsed_result": {
+        "status": "skipped"
+      },
+      "expected_result": {
+        "skill_status": "unsupported"
+      },
+      "machine_test": {
+        "status": "passed",
+        "reason": null
+      },
+      "semantic_review": {
+        "status": "pending",
+        "notes": ""
+      }
+    }
+  ]
+}

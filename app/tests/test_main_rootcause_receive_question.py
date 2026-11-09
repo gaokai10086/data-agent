@@ -21,16 +21,16 @@ class MainRootCauseNodesTest(unittest.TestCase):
 
     def test_select_skill_by_metric(self):
         result = select_skill(build_state(["销售额"]))
-        self.assertEqual(result["skill_match_status"], "matched")
-        self.assertEqual(result["selected_skill_name"], "sales_amount_anomaly")
+        self.assertEqual(result["skill_result"]["status"], "matched")
+        self.assertEqual(result["skill_result"]["skill_name"], "sales_amount_anomaly")
 
     def test_select_skill_rejects_unsupported_metric(self):
         result = select_skill(build_state(["利润"]))
-        self.assertEqual(result["skill_match_status"], "unsupported")
+        self.assertEqual(result["skill_result"]["status"], "unsupported")
 
     def test_select_skill_rejects_multiple_metrics(self):
         result = select_skill(build_state(["销售额", "利润"]))
-        self.assertEqual(result["skill_match_status"], "unsupported")
+        self.assertEqual(result["skill_result"]["status"], "unsupported")
 
 
 if __name__ == "__main__":
