@@ -28,6 +28,14 @@ class MainRootCausePhase1Test(unittest.TestCase):
                 "selected_skill_name",
                 "skill_match_status",
                 "skill_match_reason",
+                "selected_task_type",
+                "selected_schema_name",
+                "schema_selection_status",
+                "schema_selection_reason",
+                "parsed_request",
+                "validation_status",
+                "validation_errors",
+                "missing_info",
             },
         )
 

@@ -40,6 +40,13 @@ class SalesAmountAnomalySkill(BaseSkill):
             allowed_capabilities=(),
             enabled=True,
             open_question_scenarios=(),
+            task_types=(
+                "period_comparison",
+                "anomaly_location",
+                "dimension_attribution",
+                "metric_decomposition",
+                "hypothesis_analysis",
+            ),
         )
 
     def match_metric(self, metric: str) -> float:

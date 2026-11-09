@@ -16,4 +16,20 @@ class RootCauseState(TypedDict, total=False):
     skill_match_status: str
     # 匹配结果的业务说明。
     skill_match_reason: str
+    # 选中的任务类型，例如 period_comparison。
+    selected_task_type: str
+    # 选中任务类型对应的 Pydantic Schema 类名。
+    selected_schema_name: str
+    # Schema 选择状态。
+    schema_selection_status: str
+    # Schema 选择理由。
+    schema_selection_reason: str
+    # 结构化解析后的请求数据。
+    parsed_request: dict
+    # Pydantic 校验状态：passed / failed。
+    validation_status: str
+    # 校验失败错误列表。
+    validation_errors: list[str]
+    # 解析后仍然缺失、需要后续确认的信息。
+    missing_info: list[str]
 

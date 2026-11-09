@@ -28,6 +28,7 @@ class SkillConfig:
     allowed_capabilities: tuple[str, ...] = ()
     enabled: bool = True
     open_question_scenarios: tuple[str, ...] = ()
+    task_types: tuple[str, ...] = ()
 
 
 class BaseSkill(ABC):
@@ -86,6 +87,10 @@ class BaseSkill(ABC):
     @property
     def open_question_scenarios(self) -> tuple[str, ...]:
         return self.config.open_question_scenarios
+
+    @property
+    def task_types(self) -> tuple[str, ...]:
+        return self.config.task_types
 
     @property
     def instruction_file(self) -> str:
