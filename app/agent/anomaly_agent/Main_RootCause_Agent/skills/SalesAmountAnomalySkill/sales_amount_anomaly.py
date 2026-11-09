@@ -37,7 +37,7 @@ class SalesAmountAnomalySkill(BaseSkill):
                 "先确认销售额变化方向，再按维度贡献与指标拆解逐层分析，"
                 "所有结论必须引用查询证据。"
             ),
-            allowed_capabilities=(),
+            allowed_capabilities=("change_inspection",),
             enabled=True,
             open_question_scenarios=(),
             task_types=(

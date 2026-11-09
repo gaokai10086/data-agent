@@ -28,6 +28,10 @@ class MainRootCausePhase1Test(unittest.TestCase):
                 "skill_result",
                 "schema_result",
                 "parsed_result",
+                "supervisor_decision",
+                "observations",
+                "step_count",
+                "stop_reason",
             },
         )
 

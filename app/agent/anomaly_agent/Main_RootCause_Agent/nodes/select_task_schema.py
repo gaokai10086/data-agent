@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import load_skill
 from app.agent.anomaly_agent.Main_RootCause_Agent.state import RootCauseState
-from app.agent.anomaly_agent.Main_RootCause_Agent.task_schemas import (
+from app.agent.anomaly_agent.Main_RootCause_Agent.schemas import (
     TASK_SCHEMA_REGISTRY,
     get_task_schema,
 )

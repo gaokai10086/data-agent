@@ -8,13 +8,16 @@ from app.agent.anomaly_agent.Main_RootCause_Agent.graph import main_root_cause_a
 def test_main_root_cause_graph_runs_only_phase1_chain():
     assert set(main_root_cause_agent.nodes) >= {
         "receive_question", "extract_metrics", "select_skill", "load_skill",
-        "select_task_schema", "parse_task_request",
+        "select_task_schema", "parse_task_request", "supervisor_reason",
+        "action_executor",
     }
     edges = {(e.source, e.target) for e in main_root_cause_agent.get_graph().edges}
     assert ("receive_question", "extract_metrics") in edges
     assert ("extract_metrics", "select_skill") in edges
     assert ("load_skill", "select_task_schema") in edges
-    assert ("parse_task_request", END) in edges
+    assert ("parse_task_request", "supervisor_reason") in edges
+    assert ("supervisor_reason", "action_executor") in edges
+    assert ("action_executor", "supervisor_reason") in edges
     assert ("select_skill", END) in edges
 
 

@@ -1,0 +1,225 @@
+{
+  "generated_at": "20261109T162109",
+  "test_type": "deterministic_mock",
+  "total": 6,
+  "machine_passed": 6,
+  "cases": [
+    {
+      "id": "case_1_ready",
+      "raw_question": "为什么2025年7月销售额比6月下降？",
+      "skill_name": "sales_amount_anomaly",
+      "selected_task_type": "period_comparison",
+      "supervisor_decisions": [
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        }
+      ],
+      "observations": [
+        {
+          "step": 1,
+          "action": "change_inspection",
+          "status": "ready",
+          "reason": "change_confirmed",
+          "tool_called": true
+        }
+      ],
+      "tool_call_count": 1,
+      "reason_call_count": 1,
+      "final_status": "ready",
+      "test_type": "mock",
+      "machine_test": "passed",
+      "semantic_review": "pending"
+    },
+    {
+      "id": "case_2_rejected",
+      "raw_question": "为什么2025年7月销售额比6月下降？",
+      "skill_name": "sales_amount_anomaly",
+      "selected_task_type": "period_comparison",
+      "supervisor_decisions": [
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        }
+      ],
+      "observations": [
+        {
+          "step": 1,
+          "action": "change_inspection",
+          "status": "rejected",
+          "reason": "direction_mismatch",
+          "tool_called": true
+        }
+      ],
+      "tool_call_count": 1,
+      "reason_call_count": 1,
+      "final_status": "rejected",
+      "test_type": "mock",
+      "machine_test": "passed",
+      "semantic_review": "pending"
+    },
+    {
+      "id": "case_3_failed_retry",
+      "raw_question": "为什么2025年7月销售额比6月下降？",
+      "skill_name": "sales_amount_anomaly",
+      "selected_task_type": "period_comparison",
+      "supervisor_decisions": [
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        },
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        },
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        }
+      ],
+      "observations": [
+        {
+          "step": 1,
+          "action": "change_inspection",
+          "status": "failed",
+          "reason": "test",
+          "tool_called": true
+        },
+        {
+          "step": 2,
+          "action": "change_inspection",
+          "status": "failed",
+          "reason": "test",
+          "tool_called": true
+        },
+        {
+          "step": 3,
+          "action": "change_inspection",
+          "status": "blocked",
+          "reason": "相同参数技术失败已重试，拒绝再次执行",
+          "tool_called": false
+        }
+      ],
+      "tool_call_count": 2,
+      "reason_call_count": 3,
+      "final_status": "retry_exhausted",
+      "test_type": "mock",
+      "machine_test": "passed",
+      "semantic_review": "pending"
+    },
+    {
+      "id": "case_4_unauthorized",
+      "raw_question": "为什么2025年7月销售额比6月下降？",
+      "skill_name": "sales_amount_anomaly",
+      "selected_task_type": "period_comparison",
+      "supervisor_decisions": [
+        {
+          "action": "call_tool",
+          "tool_name": "not_registered"
+        }
+      ],
+      "observations": [
+        {
+          "step": 1,
+          "action": "not_registered",
+          "status": "blocked",
+          "reason": "未注册 Action：not_registered",
+          "tool_called": false
+        }
+      ],
+      "tool_call_count": 0,
+      "reason_call_count": 1,
+      "final_status": "invalid_action",
+      "test_type": "mock",
+      "machine_test": "passed",
+      "semantic_review": "pending"
+    },
+    {
+      "id": "case_5_duplicate",
+      "raw_question": "为什么2025年7月销售额比6月下降？",
+      "skill_name": "sales_amount_anomaly",
+      "selected_task_type": "period_comparison",
+      "supervisor_decisions": [
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        },
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        }
+      ],
+      "observations": [
+        {
+          "step": 1,
+          "action": "change_inspection",
+          "status": "ready",
+          "reason": "test",
+          "tool_called": true
+        },
+        {
+          "step": 2,
+          "action": "change_inspection",
+          "status": "blocked",
+          "reason": "相同参数已完成变化检验，拒绝重复执行",
+          "tool_called": false
+        }
+      ],
+      "tool_call_count": 1,
+      "reason_call_count": 2,
+      "final_status": "duplicate_action",
+      "test_type": "mock",
+      "machine_test": "passed",
+      "semantic_review": "pending"
+    },
+    {
+      "id": "case_6_budget_exhausted",
+      "raw_question": "为什么销售额持续下降？",
+      "skill_name": "sales_amount_anomaly",
+      "selected_task_type": "period_comparison",
+      "supervisor_decisions": [
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        },
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        },
+        {
+          "action": "call_tool",
+          "tool_name": "change_inspection"
+        }
+      ],
+      "observations": [
+        {
+          "step": 1,
+          "action": "change_inspection",
+          "status": "ready",
+          "reason": "test",
+          "tool_called": true
+        },
+        {
+          "step": 2,
+          "action": "change_inspection",
+          "status": "ready",
+          "reason": "test",
+          "tool_called": true
+        },
+        {
+          "step": 3,
+          "action": "change_inspection",
+          "status": "ready",
+          "reason": "test",
+          "tool_called": true
+        }
+      ],
+      "tool_call_count": 3,
+      "reason_call_count": 3,
+      "final_status": "budget_exhausted",
+      "test_type": "mock",
+      "machine_test": "passed",
+      "semantic_review": "pending"
+    }
+  ]
+}

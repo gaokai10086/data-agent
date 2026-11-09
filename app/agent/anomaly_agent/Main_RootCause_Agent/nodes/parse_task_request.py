@@ -10,7 +10,7 @@ from langgraph.runtime import Runtime
 from pydantic import ValidationError
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.state import RootCauseState
-from app.agent.anomaly_agent.Main_RootCause_Agent.task_schemas import get_task_schema
+from app.agent.anomaly_agent.Main_RootCause_Agent.schemas import get_task_schema
 from app.agent.data_agent.context import DataAgentContext
 from app.core.llm import get_context_llm
 from app.prompt.prompt_loader import load_prompt
