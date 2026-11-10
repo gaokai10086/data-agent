@@ -100,6 +100,19 @@ def resolve_skill_capabilities(skill: BaseSkill) -> dict[str, list[str]]:
     }
 
 
+def validate_skill_strategy(skill: BaseSkill) -> None:
+    """校验策略契约本身，不把未实现工具伪装成可执行能力。"""
+    strategy = skill.strategy
+    if strategy.change_inspection_required and "change_inspection" not in skill.allowed_capabilities:
+        raise ValueError(f"Skill {skill.name} 必须声明 change_inspection 能力")
+    if strategy.max_analysis_rounds < 1 or strategy.max_dimensions < 1:
+        raise ValueError(f"Skill {skill.name} 的分析预算必须为正数")
+    if strategy.max_query_budget < strategy.max_dimensions:
+        raise ValueError(f"Skill {skill.name} 的查询预算不足以支持维度分析")
+    if strategy.dimension_source != "metric_context.dimensions":
+        raise ValueError(f"Skill {skill.name} 必须从 MetricContext/Meta 获取维度")
+
+
 def match_skill(metrics: list[str], question: str) -> SkillMatchResult:
     """基于指标和原问题从已启用 Skill 中匹配唯一候选。"""
     normalized_metrics = [metric.strip() for metric in metrics if metric.strip()]

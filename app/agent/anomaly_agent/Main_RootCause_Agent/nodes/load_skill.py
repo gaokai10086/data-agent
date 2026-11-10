@@ -3,6 +3,7 @@
 from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import (
     load_skill,
     resolve_skill_capabilities,
+    validate_skill_strategy,
 )
 from app.agent.anomaly_agent.Main_RootCause_Agent.state import RootCauseState
 
@@ -15,6 +16,9 @@ def load_skill_node(state: RootCauseState) -> dict[str, object]:
         raise ValueError("load_skill 需要在 matched 之后调用")
 
     skill = load_skill(name)
+    validate_skill_strategy(skill)
+    if not skill.load_instructions().strip():
+        raise ValueError(f"Skill 策略文件为空：{skill.instruction_file}")
     capabilities = resolve_skill_capabilities(skill)
     if capabilities["unavailable_capabilities"]:
         raise ValueError(

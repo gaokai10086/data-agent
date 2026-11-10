@@ -1,6 +1,11 @@
 """销售额异动分析 Skill 的可执行实现。"""
 
-from app.agent.anomaly_agent.Main_RootCause_Agent.skills.base import BaseSkill, SkillConfig
+from app.agent.anomaly_agent.Main_RootCause_Agent.skills.base import (
+    AttributionToolContract,
+    BaseSkill,
+    SkillConfig,
+    SkillStrategy,
+)
 
 
 class SalesAmountAnomalySkill(BaseSkill):
@@ -46,6 +51,54 @@ class SalesAmountAnomalySkill(BaseSkill):
                 "dimension_attribution",
                 "metric_decomposition",
                 "hypothesis_analysis",
+            ),
+            strategy=SkillStrategy(
+                change_inspection_required=True,
+                dimension_source="metric_context.dimensions",
+                preserve_filters=True,
+                ambiguity_action="reject",
+                allow_dynamic_dimension_selection=True,
+                max_analysis_rounds=3,
+                max_dimensions=3,
+                max_query_budget=8,
+                max_depth=2,
+                tool_contracts=(
+                    AttributionToolContract(
+                        name="dimension_group_query",
+                        purpose="按一个已验证维度统计目标周期和对比周期的指标值",
+                    ),
+                    AttributionToolContract(
+                        name="dimension_period_comparison",
+                        purpose="比较维度在两个周期的指标变化",
+                        implemented=True,
+                    ),
+                    AttributionToolContract(
+                        name="contribution_calculation",
+                        purpose="用确定性代码计算净变化贡献和贡献率",
+                    ),
+                    AttributionToolContract(
+                        name="reconciliation_check",
+                        purpose="校验维度分组变化额与总体变化额是否对账",
+                    ),
+                    AttributionToolContract(
+                        name="drilldown_validation",
+                        purpose="校验下钻维度、筛选继承和查询预算",
+                    ),
+                ),
+                evidence_requirements=(
+                    "每个维度必须有两个周期的真实指标值",
+                    "贡献金额和贡献率必须由确定性代码计算",
+                    "必须记录分组变化额与总体变化额的对账结果",
+                    "必须区分净变化贡献与下降贡献",
+                    "贡献关系不得直接表述为业务因果",
+                ),
+                termination_conditions=(
+                    "ChangeInspection 非 ready",
+                    "达到分析轮次、维度数量或查询预算上限",
+                    "没有新的合法维度或证据不足",
+                    "已分析相同维度和筛选范围",
+                    "对账失败且无法安全解释",
+                ),
             ),
         )
 

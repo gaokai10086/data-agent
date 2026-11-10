@@ -4,6 +4,37 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import inspect
 from pathlib import Path
+from typing import Literal
+
+
+@dataclass(frozen=True)
+class AttributionToolContract:
+    """未来归因工具的策略契约；未实现工具不会进入 Action 注册表。"""
+
+    name: str
+    purpose: str
+    implemented: bool = False
+
+
+@dataclass(frozen=True)
+class SkillStrategy:
+    """可被未来子 Agent 消费的确定性策略配置。"""
+
+    change_inspection_required: bool = True
+    ready_status: str = "ready"
+    rejected_action: Literal["stop"] = "stop"
+    failed_action: Literal["handle_failure"] = "handle_failure"
+    dimension_source: str = "metric_context.dimensions"
+    preserve_filters: bool = True
+    ambiguity_action: Literal["reject"] = "reject"
+    allow_dynamic_dimension_selection: bool = True
+    max_analysis_rounds: int = 3
+    max_dimensions: int = 3
+    max_query_budget: int = 8
+    max_depth: int = 2
+    tool_contracts: tuple[AttributionToolContract, ...] = ()
+    evidence_requirements: tuple[str, ...] = ()
+    termination_conditions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -29,6 +60,7 @@ class SkillConfig:
     enabled: bool = True
     open_question_scenarios: tuple[str, ...] = ()
     task_types: tuple[str, ...] = ()
+    strategy: SkillStrategy = SkillStrategy()
 
 
 class BaseSkill(ABC):
@@ -91,6 +123,10 @@ class BaseSkill(ABC):
     @property
     def task_types(self) -> tuple[str, ...]:
         return self.config.task_types
+
+    @property
+    def strategy(self) -> SkillStrategy:
+        return self.config.strategy
 
     @property
     def instruction_file(self) -> str:

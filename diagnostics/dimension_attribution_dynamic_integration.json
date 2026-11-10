@@ -1,0 +1,1320 @@
+{
+  "question": "为什么 2026 年 8 月北京销售额比 7 月下降？",
+  "status": "passed",
+  "inspection": {
+    "status": "ready",
+    "reason": "change_confirmed",
+    "request_id": "dimension-attribution-dynamic-2026-08-beijing",
+    "user_message": "销售额从233378.95变为120953.99，下降112424.96，幅度约48.17%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+    "metric_context": {
+      "metric_key": "sales_amount",
+      "name": "销售额",
+      "description": "订单状态为“已完成”的订单实际支付金额之和。",
+      "formula": "SUM(fact_order.pay_amount)",
+      "fact_table": "fact_order",
+      "measure_column": "pay_amount",
+      "aggregation": "SUM",
+      "time_column": "pay_time",
+      "filters": [
+        {
+          "value": "已完成",
+          "column": "fact_order.order_status",
+          "operator": "="
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "支付时间",
+          "column": "fact_order.pay_time",
+          "aliases": [],
+          "determines": []
+        },
+        {
+          "name": "门店",
+          "column": "dim_store.store_name",
+          "aliases": [],
+          "determines": []
+        },
+        {
+          "name": "大区",
+          "column": "dim_store.region",
+          "aliases": [],
+          "determines": []
+        },
+        {
+          "name": "渠道",
+          "column": "dim_store.channel_type",
+          "aliases": [],
+          "determines": []
+        },
+        {
+          "name": "用户",
+          "column": "dim_user.user_id",
+          "aliases": [],
+          "determines": []
+        },
+        {
+          "name": "促销活动",
+          "column": "dim_promotion.promo_name",
+          "aliases": [],
+          "determines": []
+        },
+        {
+          "name": "城市",
+          "column": "dim_store.city",
+          "aliases": [
+            "门店城市"
+          ],
+          "determines": [
+            "dim_store.region"
+          ]
+        }
+      ],
+      "aliases": [
+        "销售金额",
+        "成交金额",
+        "实付金额"
+      ],
+      "decomposition": {
+        "version": 1,
+        "type": "product",
+        "factors": [
+          {
+            "factor_key": "order_count",
+            "name": "订单数量",
+            "source": {
+              "type": "metric",
+              "metric_key": "order_count"
+            }
+          },
+          {
+            "factor_key": "avg_order_amount",
+            "name": "平均支付订单金额",
+            "source": {
+              "type": "ratio",
+              "numerator_metric_key": "sales_amount",
+              "denominator_metric_key": "order_count"
+            }
+          }
+        ],
+        "scope_policy": "inherit",
+        "zero_denominator_policy": "unavailable"
+      }
+    },
+    "overall_result": {
+      "request_id": "dimension-attribution-dynamic-2026-08-beijing",
+      "metric_key": "sales_amount",
+      "schema_version": "1.0",
+      "analysis_type": "overall_comparison",
+      "target_period": "2026-08",
+      "comparison_period": "2026-07",
+      "current_value": "120953.99",
+      "comparison_value": "233378.95",
+      "change_amount": "-112424.96",
+      "change_rate": "-0.4817270794988151245003030479"
+    },
+    "verification": {
+      "decision": "continue",
+      "reason": "change_confirmed",
+      "expected_direction": "decrease",
+      "actual_direction": "decrease",
+      "summary": "销售额从233378.95变为120953.99，下降112424.96，幅度约48.17%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+      "warnings": []
+    }
+  },
+  "nodes": [
+    "main_reason",
+    "execute_attribution_tools",
+    "main_reason",
+    "execute_attribution_tools",
+    "main_reason",
+    "execute_attribution_tools",
+    "main_reason",
+    "finalize_attribution"
+  ],
+  "state": {
+    "request_id": "dimension-attribution-dynamic-2026-08-beijing",
+    "observations": [
+      "observation_id='3f5dbaa659794007b0c5bb72de85aafe' tool_name='dimension_period_comparison' status='ok' dimension_column='dim_store.store_name' task_id='293711b9543f5310f58f117c' depth=0 parent_scope=[] query_count=2 evidence={'members': [{'group_value': '京东自营官方旗舰店', 'comparison_value': '55252.34', 'current_value': '40230.93', 'change_amount': '-15021.41', 'change_rate': '-0.2718692095212619049256556374', 'net_contribution_rate': '0.1336127671292922852718826851'}, {'group_value': '北京测试线上旗舰店', 'comparison_value': '56400.00', 'current_value': '46000.00', 'change_amount': '-10400.00', 'change_rate': '-0.1843971631205673758865248227', 'net_contribution_rate': '0.09250614810091993806357591766'}, {'group_value': '北京测试线下旗舰店', 'comparison_value': '37600.00', 'current_value': '18000.00', 'change_amount': '-19600.00', 'change_rate': '-0.5212765957446808510638297872', 'net_contribution_rate': '0.1743385098825029601967392294'}, {'group_value': '北京王府井旗舰店', 'comparison_value': '84126.61', 'current_value': '16723.06', 'change_amount': '-67403.55', 'change_rate': '-0.8012155725756689827392307856', 'net_contribution_rate': '0.5995425748872848164678021678'}], 'reconciliation': {'comparison_sum': '233378.95', 'current_sum': '120953.99', 'summed_change_amount': '-112424.96', 'overall_comparison_value': '233378.95', 'overall_current_value': '120953.99', 'overall_change_amount': '-112424.96', 'comparison_matches': True, 'current_matches': True, 'change_matches': True, 'tolerance': '0.01'}, 'sql_by_period': {'2026-08': \"SELECT\\n  ds.store_name AS dimension_value,\\n  SUM(fo.pay_amount) AS `value`\\nFROM dim_store ds\\nLEFT JOIN fact_order fo\\n  ON ds.store_id = fo.store_id\\n  AND fo.order_status = '已完成'\\n  AND fo.pay_time >= '2026-08-01 00:00:00'\\n  AND fo.pay_time < '2026-09-01 00:00:00'\\nWHERE ds.city = '北京'\\nGROUP BY ds.store_name\", '2026-07': \"SELECT\\n    d.store_name AS dimension_value,\\n    SUM(o.pay_amount) AS `value`\\nFROM dim_store AS d\\nLEFT JOIN fact_order AS o\\n    ON d.store_id = o.store_id\\n    AND o.order_status = '已完成'\\n    AND o.pay_time >= '2026-07-01'\\n    AND o.pay_time < '2026-08-01'\\nWHERE d.city = '北京'\\nGROUP BY d.store_name\"}, 'informative': True, 'null_member_present': False} error=None",
+      "observation_id='093fed064e5f4cee80849d707bfc2223' tool_name='dimension_period_comparison' status='ok' dimension_column='dim_store.channel_type' task_id='3224214097afde03baf2efc2' depth=0 parent_scope=[] query_count=2 evidence={'members': [{'group_value': '线上商城', 'comparison_value': '56400.00', 'current_value': '46000.00', 'change_amount': '-10400.00', 'change_rate': '-0.1843971631205673758865248227', 'net_contribution_rate': '0.09250614810091993806357591766'}, {'group_value': '线上自营', 'comparison_value': '55252.34', 'current_value': '40230.93', 'change_amount': '-15021.41', 'change_rate': '-0.2718692095212619049256556374', 'net_contribution_rate': '0.1336127671292922852718826851'}, {'group_value': '线下旗舰店', 'comparison_value': '121726.61', 'current_value': '34723.06', 'change_amount': '-87003.55', 'change_rate': '-0.7147455268819200666148510995', 'net_contribution_rate': '0.7738810847697877766645413972'}], 'reconciliation': {'comparison_sum': '233378.95', 'current_sum': '120953.99', 'summed_change_amount': '-112424.96', 'overall_comparison_value': '233378.95', 'overall_current_value': '120953.99', 'overall_change_amount': '-112424.96', 'comparison_matches': True, 'current_matches': True, 'change_matches': True, 'tolerance': '0.01'}, 'sql_by_period': {'2026-08': \"SELECT s.channel_type AS dimension_value, SUM(o.pay_amount) AS value\\nFROM dim_store s\\nLEFT JOIN fact_order o\\n  ON s.store_id = o.store_id\\n AND o.order_status = '已完成'\\n AND o.pay_time >= '2026-08-01 00:00:00'\\n AND o.pay_time < '2026-09-01 00:00:00'\\nWHERE s.city = '北京'\\nGROUP BY s.channel_type\", '2026-07': \"SELECT\\n  ds.channel_type AS dimension_value,\\n  SUM(fo.pay_amount) AS `value`\\nFROM dim_store ds\\nLEFT JOIN fact_order fo\\n  ON fo.store_id = ds.store_id\\n AND fo.order_status = '已完成'\\n AND fo.pay_time >= '2026-07-01 00:00:00'\\n AND fo.pay_time < '2026-08-01 00:00:00'\\nWHERE ds.city = '北京'\\nGROUP BY ds.channel_type\"}, 'informative': True, 'null_member_present': False} error=None",
+      "observation_id='a1834044169b489cb595819c5ef3d9f9' tool_name='dimension_period_comparison' status='ok' dimension_column='dim_promotion.promo_name' task_id='26d65dd7ee9a20d3973ee6aa' depth=0 parent_scope=[] query_count=2 evidence={'members': [{'group_value': '618年中狂欢满减', 'comparison_value': '40768.28', 'current_value': '16459.06', 'change_amount': '-24309.22', 'change_rate': '-0.5962777924405935202564346595', 'net_contribution_rate': '0.2162261832247927862282539393'}, {'group_value': '北京2026年7月暑期促销', 'comparison_value': '54000.00', 'current_value': '0', 'change_amount': '-54000.00', 'change_rate': '-1', 'net_contribution_rate': '0.4803203843701612168685672648'}, {'group_value': '双11巅峰大促8折', 'comparison_value': '9889.62', 'current_value': '987.52', 'change_amount': '-8902.10', 'change_rate': '-0.9001458094446500472212279137', 'net_contribution_rate': '0.07918259432780763275343838237'}, {'group_value': '周末会员专属狂欢券', 'comparison_value': '12667.14', 'current_value': '19194.41', 'change_amount': '6527.27', 'change_rate': '0.5152915338426827208035910237', 'net_contribution_rate': '-0.05805890435718189270425357501'}, {'group_value': '大牌爆款秒杀狂欢', 'comparison_value': '3779.32', 'current_value': '868.61', 'change_amount': '-2910.71', 'change_rate': '-0.7701676492067356032302107257', 'net_contribution_rate': '0.02589024714796429547317606339'}, {'group_value': '常态无优惠', 'comparison_value': '38147.21', 'current_value': '7545.00', 'change_amount': '-30602.21', 'change_rate': '-0.8022135825922787013781610765', 'net_contribution_rate': '0.2722012086995628017123599599'}, {'group_value': '春季焕新季88折', 'comparison_value': '34127.38', 'current_value': '11899.39', 'change_amount': '-22227.99', 'change_rate': '-0.6513242446387621903585918403', 'net_contribution_rate': '0.1977140129736314782767100829'}, {'group_value': '测试常态无优惠', 'comparison_value': '40000.00', 'current_value': '64000.00', 'change_amount': '24000.00', 'change_rate': '0.6', 'net_contribution_rate': '-0.2134757263867383186082521177'}], 'reconciliation': {'comparison_sum': '233378.95', 'current_sum': '120953.99', 'summed_change_amount': '-112424.96', 'overall_comparison_value': '233378.95', 'overall_current_value': '120953.99', 'overall_change_amount': '-112424.96', 'comparison_matches': True, 'current_matches': True, 'change_matches': True, 'tolerance': '0.01'}, 'sql_by_period': {'2026-08': \"SELECT dp.promo_name AS dimension_value,\\n       SUM(fo.pay_amount) AS `value`\\nFROM fact_order fo\\nLEFT JOIN dim_store ds ON fo.store_id = ds.store_id\\nLEFT JOIN dim_promotion dp ON fo.promo_id = dp.promo_id\\nWHERE fo.order_status = '已完成'\\n  AND fo.pay_time >= '2026-08-01 00:00:00'\\n  AND fo.pay_time < '2026-09-01 00:00:00'\\n  AND ds.city = '北京'\\nGROUP BY dp.promo_name\", '2026-07': \"SELECT\\n  dp.promo_name AS dimension_value,\\n  SUM(fo.pay_amount) AS value\\nFROM fact_order fo\\nLEFT JOIN dim_store ds\\n  ON fo.store_id = ds.store_id\\nLEFT JOIN dim_promotion dp\\n  ON fo.promo_id = dp.promo_id\\nWHERE fo.order_status = '已完成'\\n  AND fo.pay_time >= '2026-07-01 00:00:00'\\n  AND fo.pay_time < '2026-08-01 00:00:00'\\n  AND ds.city = '北京'\\nGROUP BY dp.promo_name\"}, 'informative': True, 'null_member_present': False} error=None"
+    ],
+    "decisions": [
+      "action='execute_tool' tool_name='dimension_period_comparison' dimension_column='dim_store.store_name' parent_scope=[] depth=0 task_id='293711b9543f5310f58f117c' stop_reason=None reason='问题没有明确指定归因维度；先按门店维度对比 2026 年 7 月与 8 月销售额，定位北京销售额下降主要来自哪些门店。'",
+      "action='execute_tool' tool_name='dimension_period_comparison' dimension_column='dim_store.channel_type' parent_scope=[] depth=0 task_id='3224214097afde03baf2efc2' stop_reason=None reason='门店维度已显示北京销售额下降，下一步按允许的渠道维度比较 2026-08 与 2026-07，定位渠道结构变化对下降的贡献。'",
+      "action='execute_tool' tool_name='dimension_period_comparison' dimension_column='dim_promotion.promo_name' parent_scope=[] depth=0 task_id='26d65dd7ee9a20d3973ee6aa' stop_reason=None reason='按促销活动拆解北京 2026-08 与 2026-07 的销售额变化，定位促销因素对下降的贡献。'",
+      "action='finish' tool_name=None dimension_column=None parent_scope=[] depth=0 task_id=None stop_reason='budget_exhausted' reason='达到最大分析轮次'"
+    ],
+    "round_count": 4,
+    "decision": {
+      "action": "finish",
+      "tool_name": null,
+      "dimension_column": null,
+      "parent_scope": [],
+      "depth": 0,
+      "task_id": null,
+      "stop_reason": "budget_exhausted",
+      "reason": "达到最大分析轮次"
+    },
+    "query_count": 6,
+    "analyzed_dimensions": [
+      "dim_store.store_name",
+      "dim_store.channel_type",
+      "dim_promotion.promo_name"
+    ],
+    "analyzed_task_ids": [
+      "293711b9543f5310f58f117c",
+      "3224214097afde03baf2efc2",
+      "26d65dd7ee9a20d3973ee6aa"
+    ],
+    "attributions": [
+      "group_value='618年中狂欢满减' comparison_value=Decimal('40768.28') current_value=Decimal('16459.06') change_amount=Decimal('-24309.22') change_rate=Decimal('-0.5962777924405935202564346595') net_contribution_rate=Decimal('0.2162261832247927862282539393')",
+      "group_value='北京2026年7月暑期促销' comparison_value=Decimal('54000.00') current_value=Decimal('0') change_amount=Decimal('-54000.00') change_rate=Decimal('-1') net_contribution_rate=Decimal('0.4803203843701612168685672648')",
+      "group_value='双11巅峰大促8折' comparison_value=Decimal('9889.62') current_value=Decimal('987.52') change_amount=Decimal('-8902.10') change_rate=Decimal('-0.9001458094446500472212279137') net_contribution_rate=Decimal('0.07918259432780763275343838237')",
+      "group_value='周末会员专属狂欢券' comparison_value=Decimal('12667.14') current_value=Decimal('19194.41') change_amount=Decimal('6527.27') change_rate=Decimal('0.5152915338426827208035910237') net_contribution_rate=Decimal('-0.05805890435718189270425357501')",
+      "group_value='大牌爆款秒杀狂欢' comparison_value=Decimal('3779.32') current_value=Decimal('868.61') change_amount=Decimal('-2910.71') change_rate=Decimal('-0.7701676492067356032302107257') net_contribution_rate=Decimal('0.02589024714796429547317606339')",
+      "group_value='常态无优惠' comparison_value=Decimal('38147.21') current_value=Decimal('7545.00') change_amount=Decimal('-30602.21') change_rate=Decimal('-0.8022135825922787013781610765') net_contribution_rate=Decimal('0.2722012086995628017123599599')",
+      "group_value='春季焕新季88折' comparison_value=Decimal('34127.38') current_value=Decimal('11899.39') change_amount=Decimal('-22227.99') change_rate=Decimal('-0.6513242446387621903585918403') net_contribution_rate=Decimal('0.1977140129736314782767100829')",
+      "group_value='测试常态无优惠' comparison_value=Decimal('40000.00') current_value=Decimal('64000.00') change_amount=Decimal('24000.00') change_rate=Decimal('0.6') net_contribution_rate=Decimal('-0.2134757263867383186082521177')"
+    ],
+    "reconciliation": {
+      "comparison_sum": "233378.95",
+      "current_sum": "120953.99",
+      "summed_change_amount": "-112424.96",
+      "overall_comparison_value": "233378.95",
+      "overall_current_value": "120953.99",
+      "overall_change_amount": "-112424.96",
+      "comparison_matches": true,
+      "current_matches": true,
+      "change_matches": true,
+      "tolerance": "0.01"
+    },
+    "sql_by_period": {
+      "293711b9543f5310f58f117c:2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON ds.store_id = fo.store_id\n  AND fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+      "293711b9543f5310f58f117c:2026-07": "SELECT\n    d.store_name AS dimension_value,\n    SUM(o.pay_amount) AS `value`\nFROM dim_store AS d\nLEFT JOIN fact_order AS o\n    ON d.store_id = o.store_id\n    AND o.order_status = '已完成'\n    AND o.pay_time >= '2026-07-01'\n    AND o.pay_time < '2026-08-01'\nWHERE d.city = '北京'\nGROUP BY d.store_name",
+      "3224214097afde03baf2efc2:2026-08": "SELECT s.channel_type AS dimension_value, SUM(o.pay_amount) AS value\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.channel_type",
+      "3224214097afde03baf2efc2:2026-07": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.channel_type",
+      "26d65dd7ee9a20d3973ee6aa:2026-08": "SELECT dp.promo_name AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name",
+      "26d65dd7ee9a20d3973ee6aa:2026-07": "SELECT\n  dp.promo_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp\n  ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name"
+    },
+    "paths": [
+      "task_id='293711b9543f5310f58f117c' depth=0 dimension_column='dim_store.store_name' parent_scope=[] attributions=[DimensionMemberAttribution(group_value='京东自营官方旗舰店', comparison_value=Decimal('55252.34'), current_value=Decimal('40230.93'), change_amount=Decimal('-15021.41'), change_rate=Decimal('-0.2718692095212619049256556374'), net_contribution_rate=Decimal('0.1336127671292922852718826851')), DimensionMemberAttribution(group_value='北京测试线上旗舰店', comparison_value=Decimal('56400.00'), current_value=Decimal('46000.00'), change_amount=Decimal('-10400.00'), change_rate=Decimal('-0.1843971631205673758865248227'), net_contribution_rate=Decimal('0.09250614810091993806357591766')), DimensionMemberAttribution(group_value='北京测试线下旗舰店', comparison_value=Decimal('37600.00'), current_value=Decimal('18000.00'), change_amount=Decimal('-19600.00'), change_rate=Decimal('-0.5212765957446808510638297872'), net_contribution_rate=Decimal('0.1743385098825029601967392294')), DimensionMemberAttribution(group_value='北京王府井旗舰店', comparison_value=Decimal('84126.61'), current_value=Decimal('16723.06'), change_amount=Decimal('-67403.55'), change_rate=Decimal('-0.8012155725756689827392307856'), net_contribution_rate=Decimal('0.5995425748872848164678021678'))] reconciliation=ReconciliationResult(comparison_sum=Decimal('233378.95'), current_sum=Decimal('120953.99'), summed_change_amount=Decimal('-112424.96'), overall_comparison_value=Decimal('233378.95'), overall_current_value=Decimal('120953.99'), overall_change_amount=Decimal('-112424.96'), comparison_matches=True, current_matches=True, change_matches=True, tolerance=Decimal('0.01')) sql_by_period={'2026-08': \"SELECT\\n  ds.store_name AS dimension_value,\\n  SUM(fo.pay_amount) AS `value`\\nFROM dim_store ds\\nLEFT JOIN fact_order fo\\n  ON ds.store_id = fo.store_id\\n  AND fo.order_status = '已完成'\\n  AND fo.pay_time >= '2026-08-01 00:00:00'\\n  AND fo.pay_time < '2026-09-01 00:00:00'\\nWHERE ds.city = '北京'\\nGROUP BY ds.store_name\", '2026-07': \"SELECT\\n    d.store_name AS dimension_value,\\n    SUM(o.pay_amount) AS `value`\\nFROM dim_store AS d\\nLEFT JOIN fact_order AS o\\n    ON d.store_id = o.store_id\\n    AND o.order_status = '已完成'\\n    AND o.pay_time >= '2026-07-01'\\n    AND o.pay_time < '2026-08-01'\\nWHERE d.city = '北京'\\nGROUP BY d.store_name\"} informative=True null_member_present=False",
+      "task_id='3224214097afde03baf2efc2' depth=0 dimension_column='dim_store.channel_type' parent_scope=[] attributions=[DimensionMemberAttribution(group_value='线上商城', comparison_value=Decimal('56400.00'), current_value=Decimal('46000.00'), change_amount=Decimal('-10400.00'), change_rate=Decimal('-0.1843971631205673758865248227'), net_contribution_rate=Decimal('0.09250614810091993806357591766')), DimensionMemberAttribution(group_value='线上自营', comparison_value=Decimal('55252.34'), current_value=Decimal('40230.93'), change_amount=Decimal('-15021.41'), change_rate=Decimal('-0.2718692095212619049256556374'), net_contribution_rate=Decimal('0.1336127671292922852718826851')), DimensionMemberAttribution(group_value='线下旗舰店', comparison_value=Decimal('121726.61'), current_value=Decimal('34723.06'), change_amount=Decimal('-87003.55'), change_rate=Decimal('-0.7147455268819200666148510995'), net_contribution_rate=Decimal('0.7738810847697877766645413972'))] reconciliation=ReconciliationResult(comparison_sum=Decimal('233378.95'), current_sum=Decimal('120953.99'), summed_change_amount=Decimal('-112424.96'), overall_comparison_value=Decimal('233378.95'), overall_current_value=Decimal('120953.99'), overall_change_amount=Decimal('-112424.96'), comparison_matches=True, current_matches=True, change_matches=True, tolerance=Decimal('0.01')) sql_by_period={'2026-08': \"SELECT s.channel_type AS dimension_value, SUM(o.pay_amount) AS value\\nFROM dim_store s\\nLEFT JOIN fact_order o\\n  ON s.store_id = o.store_id\\n AND o.order_status = '已完成'\\n AND o.pay_time >= '2026-08-01 00:00:00'\\n AND o.pay_time < '2026-09-01 00:00:00'\\nWHERE s.city = '北京'\\nGROUP BY s.channel_type\", '2026-07': \"SELECT\\n  ds.channel_type AS dimension_value,\\n  SUM(fo.pay_amount) AS `value`\\nFROM dim_store ds\\nLEFT JOIN fact_order fo\\n  ON fo.store_id = ds.store_id\\n AND fo.order_status = '已完成'\\n AND fo.pay_time >= '2026-07-01 00:00:00'\\n AND fo.pay_time < '2026-08-01 00:00:00'\\nWHERE ds.city = '北京'\\nGROUP BY ds.channel_type\"} informative=True null_member_present=False",
+      "task_id='26d65dd7ee9a20d3973ee6aa' depth=0 dimension_column='dim_promotion.promo_name' parent_scope=[] attributions=[DimensionMemberAttribution(group_value='618年中狂欢满减', comparison_value=Decimal('40768.28'), current_value=Decimal('16459.06'), change_amount=Decimal('-24309.22'), change_rate=Decimal('-0.5962777924405935202564346595'), net_contribution_rate=Decimal('0.2162261832247927862282539393')), DimensionMemberAttribution(group_value='北京2026年7月暑期促销', comparison_value=Decimal('54000.00'), current_value=Decimal('0'), change_amount=Decimal('-54000.00'), change_rate=Decimal('-1'), net_contribution_rate=Decimal('0.4803203843701612168685672648')), DimensionMemberAttribution(group_value='双11巅峰大促8折', comparison_value=Decimal('9889.62'), current_value=Decimal('987.52'), change_amount=Decimal('-8902.10'), change_rate=Decimal('-0.9001458094446500472212279137'), net_contribution_rate=Decimal('0.07918259432780763275343838237')), DimensionMemberAttribution(group_value='周末会员专属狂欢券', comparison_value=Decimal('12667.14'), current_value=Decimal('19194.41'), change_amount=Decimal('6527.27'), change_rate=Decimal('0.5152915338426827208035910237'), net_contribution_rate=Decimal('-0.05805890435718189270425357501')), DimensionMemberAttribution(group_value='大牌爆款秒杀狂欢', comparison_value=Decimal('3779.32'), current_value=Decimal('868.61'), change_amount=Decimal('-2910.71'), change_rate=Decimal('-0.7701676492067356032302107257'), net_contribution_rate=Decimal('0.02589024714796429547317606339')), DimensionMemberAttribution(group_value='常态无优惠', comparison_value=Decimal('38147.21'), current_value=Decimal('7545.00'), change_amount=Decimal('-30602.21'), change_rate=Decimal('-0.8022135825922787013781610765'), net_contribution_rate=Decimal('0.2722012086995628017123599599')), DimensionMemberAttribution(group_value='春季焕新季88折', comparison_value=Decimal('34127.38'), current_value=Decimal('11899.39'), change_amount=Decimal('-22227.99'), change_rate=Decimal('-0.6513242446387621903585918403'), net_contribution_rate=Decimal('0.1977140129736314782767100829')), DimensionMemberAttribution(group_value='测试常态无优惠', comparison_value=Decimal('40000.00'), current_value=Decimal('64000.00'), change_amount=Decimal('24000.00'), change_rate=Decimal('0.6'), net_contribution_rate=Decimal('-0.2134757263867383186082521177'))] reconciliation=ReconciliationResult(comparison_sum=Decimal('233378.95'), current_sum=Decimal('120953.99'), summed_change_amount=Decimal('-112424.96'), overall_comparison_value=Decimal('233378.95'), overall_current_value=Decimal('120953.99'), overall_change_amount=Decimal('-112424.96'), comparison_matches=True, current_matches=True, change_matches=True, tolerance=Decimal('0.01')) sql_by_period={'2026-08': \"SELECT dp.promo_name AS dimension_value,\\n       SUM(fo.pay_amount) AS `value`\\nFROM fact_order fo\\nLEFT JOIN dim_store ds ON fo.store_id = ds.store_id\\nLEFT JOIN dim_promotion dp ON fo.promo_id = dp.promo_id\\nWHERE fo.order_status = '已完成'\\n  AND fo.pay_time >= '2026-08-01 00:00:00'\\n  AND fo.pay_time < '2026-09-01 00:00:00'\\n  AND ds.city = '北京'\\nGROUP BY dp.promo_name\", '2026-07': \"SELECT\\n  dp.promo_name AS dimension_value,\\n  SUM(fo.pay_amount) AS value\\nFROM fact_order fo\\nLEFT JOIN dim_store ds\\n  ON fo.store_id = ds.store_id\\nLEFT JOIN dim_promotion dp\\n  ON fo.promo_id = dp.promo_id\\nWHERE fo.order_status = '已完成'\\n  AND fo.pay_time >= '2026-07-01 00:00:00'\\n  AND fo.pay_time < '2026-08-01 00:00:00'\\n  AND ds.city = '北京'\\nGROUP BY dp.promo_name\"} informative=True null_member_present=False"
+    ],
+    "current_depth": 0,
+    "stop_reason": "budget_exhausted",
+    "result": {
+      "request_id": "dimension-attribution-dynamic-2026-08-beijing",
+      "status": "completed",
+      "completion_status": "partial",
+      "reason": "completed",
+      "stop_reason": "budget_exhausted",
+      "analyzed_dimensions": [
+        "dim_store.store_name",
+        "dim_store.channel_type",
+        "dim_promotion.promo_name"
+      ],
+      "decisions": [
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.store_name",
+          "parent_scope": [],
+          "depth": 0,
+          "task_id": "293711b9543f5310f58f117c",
+          "stop_reason": null,
+          "reason": "问题没有明确指定归因维度；先按门店维度对比 2026 年 7 月与 8 月销售额，定位北京销售额下降主要来自哪些门店。"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.channel_type",
+          "parent_scope": [],
+          "depth": 0,
+          "task_id": "3224214097afde03baf2efc2",
+          "stop_reason": null,
+          "reason": "门店维度已显示北京销售额下降，下一步按允许的渠道维度比较 2026-08 与 2026-07，定位渠道结构变化对下降的贡献。"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_promotion.promo_name",
+          "parent_scope": [],
+          "depth": 0,
+          "task_id": "26d65dd7ee9a20d3973ee6aa",
+          "stop_reason": null,
+          "reason": "按促销活动拆解北京 2026-08 与 2026-07 的销售额变化，定位促销因素对下降的贡献。"
+        },
+        {
+          "action": "finish",
+          "tool_name": null,
+          "dimension_column": null,
+          "parent_scope": [],
+          "depth": 0,
+          "task_id": null,
+          "stop_reason": "budget_exhausted",
+          "reason": "达到最大分析轮次"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "3f5dbaa659794007b0c5bb72de85aafe",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.store_name",
+          "task_id": "293711b9543f5310f58f117c",
+          "depth": 0,
+          "parent_scope": [],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "京东自营官方旗舰店",
+                "comparison_value": "55252.34",
+                "current_value": "40230.93",
+                "change_amount": "-15021.41",
+                "change_rate": "-0.2718692095212619049256556374",
+                "net_contribution_rate": "0.1336127671292922852718826851"
+              },
+              {
+                "group_value": "北京测试线上旗舰店",
+                "comparison_value": "56400.00",
+                "current_value": "46000.00",
+                "change_amount": "-10400.00",
+                "change_rate": "-0.1843971631205673758865248227",
+                "net_contribution_rate": "0.09250614810091993806357591766"
+              },
+              {
+                "group_value": "北京测试线下旗舰店",
+                "comparison_value": "37600.00",
+                "current_value": "18000.00",
+                "change_amount": "-19600.00",
+                "change_rate": "-0.5212765957446808510638297872",
+                "net_contribution_rate": "0.1743385098825029601967392294"
+              },
+              {
+                "group_value": "北京王府井旗舰店",
+                "comparison_value": "84126.61",
+                "current_value": "16723.06",
+                "change_amount": "-67403.55",
+                "change_rate": "-0.8012155725756689827392307856",
+                "net_contribution_rate": "0.5995425748872848164678021678"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "233378.95",
+              "current_sum": "120953.99",
+              "summed_change_amount": "-112424.96",
+              "overall_comparison_value": "233378.95",
+              "overall_current_value": "120953.99",
+              "overall_change_amount": "-112424.96",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON ds.store_id = fo.store_id\n  AND fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+              "2026-07": "SELECT\n    d.store_name AS dimension_value,\n    SUM(o.pay_amount) AS `value`\nFROM dim_store AS d\nLEFT JOIN fact_order AS o\n    ON d.store_id = o.store_id\n    AND o.order_status = '已完成'\n    AND o.pay_time >= '2026-07-01'\n    AND o.pay_time < '2026-08-01'\nWHERE d.city = '北京'\nGROUP BY d.store_name"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "093fed064e5f4cee80849d707bfc2223",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.channel_type",
+          "task_id": "3224214097afde03baf2efc2",
+          "depth": 0,
+          "parent_scope": [],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "线上商城",
+                "comparison_value": "56400.00",
+                "current_value": "46000.00",
+                "change_amount": "-10400.00",
+                "change_rate": "-0.1843971631205673758865248227",
+                "net_contribution_rate": "0.09250614810091993806357591766"
+              },
+              {
+                "group_value": "线上自营",
+                "comparison_value": "55252.34",
+                "current_value": "40230.93",
+                "change_amount": "-15021.41",
+                "change_rate": "-0.2718692095212619049256556374",
+                "net_contribution_rate": "0.1336127671292922852718826851"
+              },
+              {
+                "group_value": "线下旗舰店",
+                "comparison_value": "121726.61",
+                "current_value": "34723.06",
+                "change_amount": "-87003.55",
+                "change_rate": "-0.7147455268819200666148510995",
+                "net_contribution_rate": "0.7738810847697877766645413972"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "233378.95",
+              "current_sum": "120953.99",
+              "summed_change_amount": "-112424.96",
+              "overall_comparison_value": "233378.95",
+              "overall_current_value": "120953.99",
+              "overall_change_amount": "-112424.96",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT s.channel_type AS dimension_value, SUM(o.pay_amount) AS value\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.channel_type",
+              "2026-07": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.channel_type"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "a1834044169b489cb595819c5ef3d9f9",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_promotion.promo_name",
+          "task_id": "26d65dd7ee9a20d3973ee6aa",
+          "depth": 0,
+          "parent_scope": [],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "618年中狂欢满减",
+                "comparison_value": "40768.28",
+                "current_value": "16459.06",
+                "change_amount": "-24309.22",
+                "change_rate": "-0.5962777924405935202564346595",
+                "net_contribution_rate": "0.2162261832247927862282539393"
+              },
+              {
+                "group_value": "北京2026年7月暑期促销",
+                "comparison_value": "54000.00",
+                "current_value": "0",
+                "change_amount": "-54000.00",
+                "change_rate": "-1",
+                "net_contribution_rate": "0.4803203843701612168685672648"
+              },
+              {
+                "group_value": "双11巅峰大促8折",
+                "comparison_value": "9889.62",
+                "current_value": "987.52",
+                "change_amount": "-8902.10",
+                "change_rate": "-0.9001458094446500472212279137",
+                "net_contribution_rate": "0.07918259432780763275343838237"
+              },
+              {
+                "group_value": "周末会员专属狂欢券",
+                "comparison_value": "12667.14",
+                "current_value": "19194.41",
+                "change_amount": "6527.27",
+                "change_rate": "0.5152915338426827208035910237",
+                "net_contribution_rate": "-0.05805890435718189270425357501"
+              },
+              {
+                "group_value": "大牌爆款秒杀狂欢",
+                "comparison_value": "3779.32",
+                "current_value": "868.61",
+                "change_amount": "-2910.71",
+                "change_rate": "-0.7701676492067356032302107257",
+                "net_contribution_rate": "0.02589024714796429547317606339"
+              },
+              {
+                "group_value": "常态无优惠",
+                "comparison_value": "38147.21",
+                "current_value": "7545.00",
+                "change_amount": "-30602.21",
+                "change_rate": "-0.8022135825922787013781610765",
+                "net_contribution_rate": "0.2722012086995628017123599599"
+              },
+              {
+                "group_value": "春季焕新季88折",
+                "comparison_value": "34127.38",
+                "current_value": "11899.39",
+                "change_amount": "-22227.99",
+                "change_rate": "-0.6513242446387621903585918403",
+                "net_contribution_rate": "0.1977140129736314782767100829"
+              },
+              {
+                "group_value": "测试常态无优惠",
+                "comparison_value": "40000.00",
+                "current_value": "64000.00",
+                "change_amount": "24000.00",
+                "change_rate": "0.6",
+                "net_contribution_rate": "-0.2134757263867383186082521177"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "233378.95",
+              "current_sum": "120953.99",
+              "summed_change_amount": "-112424.96",
+              "overall_comparison_value": "233378.95",
+              "overall_current_value": "120953.99",
+              "overall_change_amount": "-112424.96",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT dp.promo_name AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name",
+              "2026-07": "SELECT\n  dp.promo_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp\n  ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          "error": null
+        }
+      ],
+      "summary": "维度归因完成，已返回真实查询证据。",
+      "total_query_count": 6,
+      "attributions": [
+        {
+          "group_value": "618年中狂欢满减",
+          "comparison_value": "40768.28",
+          "current_value": "16459.06",
+          "change_amount": "-24309.22",
+          "change_rate": "-0.5962777924405935202564346595",
+          "net_contribution_rate": "0.2162261832247927862282539393"
+        },
+        {
+          "group_value": "北京2026年7月暑期促销",
+          "comparison_value": "54000.00",
+          "current_value": "0",
+          "change_amount": "-54000.00",
+          "change_rate": "-1",
+          "net_contribution_rate": "0.4803203843701612168685672648"
+        },
+        {
+          "group_value": "双11巅峰大促8折",
+          "comparison_value": "9889.62",
+          "current_value": "987.52",
+          "change_amount": "-8902.10",
+          "change_rate": "-0.9001458094446500472212279137",
+          "net_contribution_rate": "0.07918259432780763275343838237"
+        },
+        {
+          "group_value": "周末会员专属狂欢券",
+          "comparison_value": "12667.14",
+          "current_value": "19194.41",
+          "change_amount": "6527.27",
+          "change_rate": "0.5152915338426827208035910237",
+          "net_contribution_rate": "-0.05805890435718189270425357501"
+        },
+        {
+          "group_value": "大牌爆款秒杀狂欢",
+          "comparison_value": "3779.32",
+          "current_value": "868.61",
+          "change_amount": "-2910.71",
+          "change_rate": "-0.7701676492067356032302107257",
+          "net_contribution_rate": "0.02589024714796429547317606339"
+        },
+        {
+          "group_value": "常态无优惠",
+          "comparison_value": "38147.21",
+          "current_value": "7545.00",
+          "change_amount": "-30602.21",
+          "change_rate": "-0.8022135825922787013781610765",
+          "net_contribution_rate": "0.2722012086995628017123599599"
+        },
+        {
+          "group_value": "春季焕新季88折",
+          "comparison_value": "34127.38",
+          "current_value": "11899.39",
+          "change_amount": "-22227.99",
+          "change_rate": "-0.6513242446387621903585918403",
+          "net_contribution_rate": "0.1977140129736314782767100829"
+        },
+        {
+          "group_value": "测试常态无优惠",
+          "comparison_value": "40000.00",
+          "current_value": "64000.00",
+          "change_amount": "24000.00",
+          "change_rate": "0.6",
+          "net_contribution_rate": "-0.2134757263867383186082521177"
+        }
+      ],
+      "reconciliation": {
+        "comparison_sum": "233378.95",
+        "current_sum": "120953.99",
+        "summed_change_amount": "-112424.96",
+        "overall_comparison_value": "233378.95",
+        "overall_current_value": "120953.99",
+        "overall_change_amount": "-112424.96",
+        "comparison_matches": true,
+        "current_matches": true,
+        "change_matches": true,
+        "tolerance": "0.01"
+      },
+      "paths": [
+        {
+          "task_id": "293711b9543f5310f58f117c",
+          "depth": 0,
+          "dimension_column": "dim_store.store_name",
+          "parent_scope": [],
+          "attributions": [
+            {
+              "group_value": "京东自营官方旗舰店",
+              "comparison_value": "55252.34",
+              "current_value": "40230.93",
+              "change_amount": "-15021.41",
+              "change_rate": "-0.2718692095212619049256556374",
+              "net_contribution_rate": "0.1336127671292922852718826851"
+            },
+            {
+              "group_value": "北京测试线上旗舰店",
+              "comparison_value": "56400.00",
+              "current_value": "46000.00",
+              "change_amount": "-10400.00",
+              "change_rate": "-0.1843971631205673758865248227",
+              "net_contribution_rate": "0.09250614810091993806357591766"
+            },
+            {
+              "group_value": "北京测试线下旗舰店",
+              "comparison_value": "37600.00",
+              "current_value": "18000.00",
+              "change_amount": "-19600.00",
+              "change_rate": "-0.5212765957446808510638297872",
+              "net_contribution_rate": "0.1743385098825029601967392294"
+            },
+            {
+              "group_value": "北京王府井旗舰店",
+              "comparison_value": "84126.61",
+              "current_value": "16723.06",
+              "change_amount": "-67403.55",
+              "change_rate": "-0.8012155725756689827392307856",
+              "net_contribution_rate": "0.5995425748872848164678021678"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "233378.95",
+            "current_sum": "120953.99",
+            "summed_change_amount": "-112424.96",
+            "overall_comparison_value": "233378.95",
+            "overall_current_value": "120953.99",
+            "overall_change_amount": "-112424.96",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON ds.store_id = fo.store_id\n  AND fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+            "2026-07": "SELECT\n    d.store_name AS dimension_value,\n    SUM(o.pay_amount) AS `value`\nFROM dim_store AS d\nLEFT JOIN fact_order AS o\n    ON d.store_id = o.store_id\n    AND o.order_status = '已完成'\n    AND o.pay_time >= '2026-07-01'\n    AND o.pay_time < '2026-08-01'\nWHERE d.city = '北京'\nGROUP BY d.store_name"
+          },
+          "informative": true,
+          "null_member_present": false
+        },
+        {
+          "task_id": "3224214097afde03baf2efc2",
+          "depth": 0,
+          "dimension_column": "dim_store.channel_type",
+          "parent_scope": [],
+          "attributions": [
+            {
+              "group_value": "线上商城",
+              "comparison_value": "56400.00",
+              "current_value": "46000.00",
+              "change_amount": "-10400.00",
+              "change_rate": "-0.1843971631205673758865248227",
+              "net_contribution_rate": "0.09250614810091993806357591766"
+            },
+            {
+              "group_value": "线上自营",
+              "comparison_value": "55252.34",
+              "current_value": "40230.93",
+              "change_amount": "-15021.41",
+              "change_rate": "-0.2718692095212619049256556374",
+              "net_contribution_rate": "0.1336127671292922852718826851"
+            },
+            {
+              "group_value": "线下旗舰店",
+              "comparison_value": "121726.61",
+              "current_value": "34723.06",
+              "change_amount": "-87003.55",
+              "change_rate": "-0.7147455268819200666148510995",
+              "net_contribution_rate": "0.7738810847697877766645413972"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "233378.95",
+            "current_sum": "120953.99",
+            "summed_change_amount": "-112424.96",
+            "overall_comparison_value": "233378.95",
+            "overall_current_value": "120953.99",
+            "overall_change_amount": "-112424.96",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT s.channel_type AS dimension_value, SUM(o.pay_amount) AS value\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.channel_type",
+            "2026-07": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.channel_type"
+          },
+          "informative": true,
+          "null_member_present": false
+        },
+        {
+          "task_id": "26d65dd7ee9a20d3973ee6aa",
+          "depth": 0,
+          "dimension_column": "dim_promotion.promo_name",
+          "parent_scope": [],
+          "attributions": [
+            {
+              "group_value": "618年中狂欢满减",
+              "comparison_value": "40768.28",
+              "current_value": "16459.06",
+              "change_amount": "-24309.22",
+              "change_rate": "-0.5962777924405935202564346595",
+              "net_contribution_rate": "0.2162261832247927862282539393"
+            },
+            {
+              "group_value": "北京2026年7月暑期促销",
+              "comparison_value": "54000.00",
+              "current_value": "0",
+              "change_amount": "-54000.00",
+              "change_rate": "-1",
+              "net_contribution_rate": "0.4803203843701612168685672648"
+            },
+            {
+              "group_value": "双11巅峰大促8折",
+              "comparison_value": "9889.62",
+              "current_value": "987.52",
+              "change_amount": "-8902.10",
+              "change_rate": "-0.9001458094446500472212279137",
+              "net_contribution_rate": "0.07918259432780763275343838237"
+            },
+            {
+              "group_value": "周末会员专属狂欢券",
+              "comparison_value": "12667.14",
+              "current_value": "19194.41",
+              "change_amount": "6527.27",
+              "change_rate": "0.5152915338426827208035910237",
+              "net_contribution_rate": "-0.05805890435718189270425357501"
+            },
+            {
+              "group_value": "大牌爆款秒杀狂欢",
+              "comparison_value": "3779.32",
+              "current_value": "868.61",
+              "change_amount": "-2910.71",
+              "change_rate": "-0.7701676492067356032302107257",
+              "net_contribution_rate": "0.02589024714796429547317606339"
+            },
+            {
+              "group_value": "常态无优惠",
+              "comparison_value": "38147.21",
+              "current_value": "7545.00",
+              "change_amount": "-30602.21",
+              "change_rate": "-0.8022135825922787013781610765",
+              "net_contribution_rate": "0.2722012086995628017123599599"
+            },
+            {
+              "group_value": "春季焕新季88折",
+              "comparison_value": "34127.38",
+              "current_value": "11899.39",
+              "change_amount": "-22227.99",
+              "change_rate": "-0.6513242446387621903585918403",
+              "net_contribution_rate": "0.1977140129736314782767100829"
+            },
+            {
+              "group_value": "测试常态无优惠",
+              "comparison_value": "40000.00",
+              "current_value": "64000.00",
+              "change_amount": "24000.00",
+              "change_rate": "0.6",
+              "net_contribution_rate": "-0.2134757263867383186082521177"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "233378.95",
+            "current_sum": "120953.99",
+            "summed_change_amount": "-112424.96",
+            "overall_comparison_value": "233378.95",
+            "overall_current_value": "120953.99",
+            "overall_change_amount": "-112424.96",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT dp.promo_name AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name",
+            "2026-07": "SELECT\n  dp.promo_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp\n  ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name"
+          },
+          "informative": true,
+          "null_member_present": false
+        }
+      ]
+    }
+  },
+  "result": {
+    "request_id": "dimension-attribution-dynamic-2026-08-beijing",
+    "status": "completed",
+    "completion_status": "partial",
+    "reason": "completed",
+    "stop_reason": "budget_exhausted",
+    "analyzed_dimensions": [
+      "dim_store.store_name",
+      "dim_store.channel_type",
+      "dim_promotion.promo_name"
+    ],
+    "decisions": [
+      {
+        "action": "execute_tool",
+        "tool_name": "dimension_period_comparison",
+        "dimension_column": "dim_store.store_name",
+        "parent_scope": [],
+        "depth": 0,
+        "task_id": "293711b9543f5310f58f117c",
+        "stop_reason": null,
+        "reason": "问题没有明确指定归因维度；先按门店维度对比 2026 年 7 月与 8 月销售额，定位北京销售额下降主要来自哪些门店。"
+      },
+      {
+        "action": "execute_tool",
+        "tool_name": "dimension_period_comparison",
+        "dimension_column": "dim_store.channel_type",
+        "parent_scope": [],
+        "depth": 0,
+        "task_id": "3224214097afde03baf2efc2",
+        "stop_reason": null,
+        "reason": "门店维度已显示北京销售额下降，下一步按允许的渠道维度比较 2026-08 与 2026-07，定位渠道结构变化对下降的贡献。"
+      },
+      {
+        "action": "execute_tool",
+        "tool_name": "dimension_period_comparison",
+        "dimension_column": "dim_promotion.promo_name",
+        "parent_scope": [],
+        "depth": 0,
+        "task_id": "26d65dd7ee9a20d3973ee6aa",
+        "stop_reason": null,
+        "reason": "按促销活动拆解北京 2026-08 与 2026-07 的销售额变化，定位促销因素对下降的贡献。"
+      },
+      {
+        "action": "finish",
+        "tool_name": null,
+        "dimension_column": null,
+        "parent_scope": [],
+        "depth": 0,
+        "task_id": null,
+        "stop_reason": "budget_exhausted",
+        "reason": "达到最大分析轮次"
+      }
+    ],
+    "observations": [
+      {
+        "observation_id": "3f5dbaa659794007b0c5bb72de85aafe",
+        "tool_name": "dimension_period_comparison",
+        "status": "ok",
+        "dimension_column": "dim_store.store_name",
+        "task_id": "293711b9543f5310f58f117c",
+        "depth": 0,
+        "parent_scope": [],
+        "query_count": 2,
+        "evidence": {
+          "members": [
+            {
+              "group_value": "京东自营官方旗舰店",
+              "comparison_value": "55252.34",
+              "current_value": "40230.93",
+              "change_amount": "-15021.41",
+              "change_rate": "-0.2718692095212619049256556374",
+              "net_contribution_rate": "0.1336127671292922852718826851"
+            },
+            {
+              "group_value": "北京测试线上旗舰店",
+              "comparison_value": "56400.00",
+              "current_value": "46000.00",
+              "change_amount": "-10400.00",
+              "change_rate": "-0.1843971631205673758865248227",
+              "net_contribution_rate": "0.09250614810091993806357591766"
+            },
+            {
+              "group_value": "北京测试线下旗舰店",
+              "comparison_value": "37600.00",
+              "current_value": "18000.00",
+              "change_amount": "-19600.00",
+              "change_rate": "-0.5212765957446808510638297872",
+              "net_contribution_rate": "0.1743385098825029601967392294"
+            },
+            {
+              "group_value": "北京王府井旗舰店",
+              "comparison_value": "84126.61",
+              "current_value": "16723.06",
+              "change_amount": "-67403.55",
+              "change_rate": "-0.8012155725756689827392307856",
+              "net_contribution_rate": "0.5995425748872848164678021678"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "233378.95",
+            "current_sum": "120953.99",
+            "summed_change_amount": "-112424.96",
+            "overall_comparison_value": "233378.95",
+            "overall_current_value": "120953.99",
+            "overall_change_amount": "-112424.96",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON ds.store_id = fo.store_id\n  AND fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+            "2026-07": "SELECT\n    d.store_name AS dimension_value,\n    SUM(o.pay_amount) AS `value`\nFROM dim_store AS d\nLEFT JOIN fact_order AS o\n    ON d.store_id = o.store_id\n    AND o.order_status = '已完成'\n    AND o.pay_time >= '2026-07-01'\n    AND o.pay_time < '2026-08-01'\nWHERE d.city = '北京'\nGROUP BY d.store_name"
+          },
+          "informative": true,
+          "null_member_present": false
+        },
+        "error": null
+      },
+      {
+        "observation_id": "093fed064e5f4cee80849d707bfc2223",
+        "tool_name": "dimension_period_comparison",
+        "status": "ok",
+        "dimension_column": "dim_store.channel_type",
+        "task_id": "3224214097afde03baf2efc2",
+        "depth": 0,
+        "parent_scope": [],
+        "query_count": 2,
+        "evidence": {
+          "members": [
+            {
+              "group_value": "线上商城",
+              "comparison_value": "56400.00",
+              "current_value": "46000.00",
+              "change_amount": "-10400.00",
+              "change_rate": "-0.1843971631205673758865248227",
+              "net_contribution_rate": "0.09250614810091993806357591766"
+            },
+            {
+              "group_value": "线上自营",
+              "comparison_value": "55252.34",
+              "current_value": "40230.93",
+              "change_amount": "-15021.41",
+              "change_rate": "-0.2718692095212619049256556374",
+              "net_contribution_rate": "0.1336127671292922852718826851"
+            },
+            {
+              "group_value": "线下旗舰店",
+              "comparison_value": "121726.61",
+              "current_value": "34723.06",
+              "change_amount": "-87003.55",
+              "change_rate": "-0.7147455268819200666148510995",
+              "net_contribution_rate": "0.7738810847697877766645413972"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "233378.95",
+            "current_sum": "120953.99",
+            "summed_change_amount": "-112424.96",
+            "overall_comparison_value": "233378.95",
+            "overall_current_value": "120953.99",
+            "overall_change_amount": "-112424.96",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT s.channel_type AS dimension_value, SUM(o.pay_amount) AS value\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.channel_type",
+            "2026-07": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.channel_type"
+          },
+          "informative": true,
+          "null_member_present": false
+        },
+        "error": null
+      },
+      {
+        "observation_id": "a1834044169b489cb595819c5ef3d9f9",
+        "tool_name": "dimension_period_comparison",
+        "status": "ok",
+        "dimension_column": "dim_promotion.promo_name",
+        "task_id": "26d65dd7ee9a20d3973ee6aa",
+        "depth": 0,
+        "parent_scope": [],
+        "query_count": 2,
+        "evidence": {
+          "members": [
+            {
+              "group_value": "618年中狂欢满减",
+              "comparison_value": "40768.28",
+              "current_value": "16459.06",
+              "change_amount": "-24309.22",
+              "change_rate": "-0.5962777924405935202564346595",
+              "net_contribution_rate": "0.2162261832247927862282539393"
+            },
+            {
+              "group_value": "北京2026年7月暑期促销",
+              "comparison_value": "54000.00",
+              "current_value": "0",
+              "change_amount": "-54000.00",
+              "change_rate": "-1",
+              "net_contribution_rate": "0.4803203843701612168685672648"
+            },
+            {
+              "group_value": "双11巅峰大促8折",
+              "comparison_value": "9889.62",
+              "current_value": "987.52",
+              "change_amount": "-8902.10",
+              "change_rate": "-0.9001458094446500472212279137",
+              "net_contribution_rate": "0.07918259432780763275343838237"
+            },
+            {
+              "group_value": "周末会员专属狂欢券",
+              "comparison_value": "12667.14",
+              "current_value": "19194.41",
+              "change_amount": "6527.27",
+              "change_rate": "0.5152915338426827208035910237",
+              "net_contribution_rate": "-0.05805890435718189270425357501"
+            },
+            {
+              "group_value": "大牌爆款秒杀狂欢",
+              "comparison_value": "3779.32",
+              "current_value": "868.61",
+              "change_amount": "-2910.71",
+              "change_rate": "-0.7701676492067356032302107257",
+              "net_contribution_rate": "0.02589024714796429547317606339"
+            },
+            {
+              "group_value": "常态无优惠",
+              "comparison_value": "38147.21",
+              "current_value": "7545.00",
+              "change_amount": "-30602.21",
+              "change_rate": "-0.8022135825922787013781610765",
+              "net_contribution_rate": "0.2722012086995628017123599599"
+            },
+            {
+              "group_value": "春季焕新季88折",
+              "comparison_value": "34127.38",
+              "current_value": "11899.39",
+              "change_amount": "-22227.99",
+              "change_rate": "-0.6513242446387621903585918403",
+              "net_contribution_rate": "0.1977140129736314782767100829"
+            },
+            {
+              "group_value": "测试常态无优惠",
+              "comparison_value": "40000.00",
+              "current_value": "64000.00",
+              "change_amount": "24000.00",
+              "change_rate": "0.6",
+              "net_contribution_rate": "-0.2134757263867383186082521177"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "233378.95",
+            "current_sum": "120953.99",
+            "summed_change_amount": "-112424.96",
+            "overall_comparison_value": "233378.95",
+            "overall_current_value": "120953.99",
+            "overall_change_amount": "-112424.96",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT dp.promo_name AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name",
+            "2026-07": "SELECT\n  dp.promo_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp\n  ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name"
+          },
+          "informative": true,
+          "null_member_present": false
+        },
+        "error": null
+      }
+    ],
+    "summary": "维度归因完成，已返回真实查询证据。",
+    "total_query_count": 6,
+    "attributions": [
+      {
+        "group_value": "618年中狂欢满减",
+        "comparison_value": "40768.28",
+        "current_value": "16459.06",
+        "change_amount": "-24309.22",
+        "change_rate": "-0.5962777924405935202564346595",
+        "net_contribution_rate": "0.2162261832247927862282539393"
+      },
+      {
+        "group_value": "北京2026年7月暑期促销",
+        "comparison_value": "54000.00",
+        "current_value": "0",
+        "change_amount": "-54000.00",
+        "change_rate": "-1",
+        "net_contribution_rate": "0.4803203843701612168685672648"
+      },
+      {
+        "group_value": "双11巅峰大促8折",
+        "comparison_value": "9889.62",
+        "current_value": "987.52",
+        "change_amount": "-8902.10",
+        "change_rate": "-0.9001458094446500472212279137",
+        "net_contribution_rate": "0.07918259432780763275343838237"
+      },
+      {
+        "group_value": "周末会员专属狂欢券",
+        "comparison_value": "12667.14",
+        "current_value": "19194.41",
+        "change_amount": "6527.27",
+        "change_rate": "0.5152915338426827208035910237",
+        "net_contribution_rate": "-0.05805890435718189270425357501"
+      },
+      {
+        "group_value": "大牌爆款秒杀狂欢",
+        "comparison_value": "3779.32",
+        "current_value": "868.61",
+        "change_amount": "-2910.71",
+        "change_rate": "-0.7701676492067356032302107257",
+        "net_contribution_rate": "0.02589024714796429547317606339"
+      },
+      {
+        "group_value": "常态无优惠",
+        "comparison_value": "38147.21",
+        "current_value": "7545.00",
+        "change_amount": "-30602.21",
+        "change_rate": "-0.8022135825922787013781610765",
+        "net_contribution_rate": "0.2722012086995628017123599599"
+      },
+      {
+        "group_value": "春季焕新季88折",
+        "comparison_value": "34127.38",
+        "current_value": "11899.39",
+        "change_amount": "-22227.99",
+        "change_rate": "-0.6513242446387621903585918403",
+        "net_contribution_rate": "0.1977140129736314782767100829"
+      },
+      {
+        "group_value": "测试常态无优惠",
+        "comparison_value": "40000.00",
+        "current_value": "64000.00",
+        "change_amount": "24000.00",
+        "change_rate": "0.6",
+        "net_contribution_rate": "-0.2134757263867383186082521177"
+      }
+    ],
+    "reconciliation": {
+      "comparison_sum": "233378.95",
+      "current_sum": "120953.99",
+      "summed_change_amount": "-112424.96",
+      "overall_comparison_value": "233378.95",
+      "overall_current_value": "120953.99",
+      "overall_change_amount": "-112424.96",
+      "comparison_matches": true,
+      "current_matches": true,
+      "change_matches": true,
+      "tolerance": "0.01"
+    },
+    "paths": [
+      {
+        "task_id": "293711b9543f5310f58f117c",
+        "depth": 0,
+        "dimension_column": "dim_store.store_name",
+        "parent_scope": [],
+        "attributions": [
+          {
+            "group_value": "京东自营官方旗舰店",
+            "comparison_value": "55252.34",
+            "current_value": "40230.93",
+            "change_amount": "-15021.41",
+            "change_rate": "-0.2718692095212619049256556374",
+            "net_contribution_rate": "0.1336127671292922852718826851"
+          },
+          {
+            "group_value": "北京测试线上旗舰店",
+            "comparison_value": "56400.00",
+            "current_value": "46000.00",
+            "change_amount": "-10400.00",
+            "change_rate": "-0.1843971631205673758865248227",
+            "net_contribution_rate": "0.09250614810091993806357591766"
+          },
+          {
+            "group_value": "北京测试线下旗舰店",
+            "comparison_value": "37600.00",
+            "current_value": "18000.00",
+            "change_amount": "-19600.00",
+            "change_rate": "-0.5212765957446808510638297872",
+            "net_contribution_rate": "0.1743385098825029601967392294"
+          },
+          {
+            "group_value": "北京王府井旗舰店",
+            "comparison_value": "84126.61",
+            "current_value": "16723.06",
+            "change_amount": "-67403.55",
+            "change_rate": "-0.8012155725756689827392307856",
+            "net_contribution_rate": "0.5995425748872848164678021678"
+          }
+        ],
+        "reconciliation": {
+          "comparison_sum": "233378.95",
+          "current_sum": "120953.99",
+          "summed_change_amount": "-112424.96",
+          "overall_comparison_value": "233378.95",
+          "overall_current_value": "120953.99",
+          "overall_change_amount": "-112424.96",
+          "comparison_matches": true,
+          "current_matches": true,
+          "change_matches": true,
+          "tolerance": "0.01"
+        },
+        "sql_by_period": {
+          "2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON ds.store_id = fo.store_id\n  AND fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+          "2026-07": "SELECT\n    d.store_name AS dimension_value,\n    SUM(o.pay_amount) AS `value`\nFROM dim_store AS d\nLEFT JOIN fact_order AS o\n    ON d.store_id = o.store_id\n    AND o.order_status = '已完成'\n    AND o.pay_time >= '2026-07-01'\n    AND o.pay_time < '2026-08-01'\nWHERE d.city = '北京'\nGROUP BY d.store_name"
+        },
+        "informative": true,
+        "null_member_present": false
+      },
+      {
+        "task_id": "3224214097afde03baf2efc2",
+        "depth": 0,
+        "dimension_column": "dim_store.channel_type",
+        "parent_scope": [],
+        "attributions": [
+          {
+            "group_value": "线上商城",
+            "comparison_value": "56400.00",
+            "current_value": "46000.00",
+            "change_amount": "-10400.00",
+            "change_rate": "-0.1843971631205673758865248227",
+            "net_contribution_rate": "0.09250614810091993806357591766"
+          },
+          {
+            "group_value": "线上自营",
+            "comparison_value": "55252.34",
+            "current_value": "40230.93",
+            "change_amount": "-15021.41",
+            "change_rate": "-0.2718692095212619049256556374",
+            "net_contribution_rate": "0.1336127671292922852718826851"
+          },
+          {
+            "group_value": "线下旗舰店",
+            "comparison_value": "121726.61",
+            "current_value": "34723.06",
+            "change_amount": "-87003.55",
+            "change_rate": "-0.7147455268819200666148510995",
+            "net_contribution_rate": "0.7738810847697877766645413972"
+          }
+        ],
+        "reconciliation": {
+          "comparison_sum": "233378.95",
+          "current_sum": "120953.99",
+          "summed_change_amount": "-112424.96",
+          "overall_comparison_value": "233378.95",
+          "overall_current_value": "120953.99",
+          "overall_change_amount": "-112424.96",
+          "comparison_matches": true,
+          "current_matches": true,
+          "change_matches": true,
+          "tolerance": "0.01"
+        },
+        "sql_by_period": {
+          "2026-08": "SELECT s.channel_type AS dimension_value, SUM(o.pay_amount) AS value\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.channel_type",
+          "2026-07": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.channel_type"
+        },
+        "informative": true,
+        "null_member_present": false
+      },
+      {
+        "task_id": "26d65dd7ee9a20d3973ee6aa",
+        "depth": 0,
+        "dimension_column": "dim_promotion.promo_name",
+        "parent_scope": [],
+        "attributions": [
+          {
+            "group_value": "618年中狂欢满减",
+            "comparison_value": "40768.28",
+            "current_value": "16459.06",
+            "change_amount": "-24309.22",
+            "change_rate": "-0.5962777924405935202564346595",
+            "net_contribution_rate": "0.2162261832247927862282539393"
+          },
+          {
+            "group_value": "北京2026年7月暑期促销",
+            "comparison_value": "54000.00",
+            "current_value": "0",
+            "change_amount": "-54000.00",
+            "change_rate": "-1",
+            "net_contribution_rate": "0.4803203843701612168685672648"
+          },
+          {
+            "group_value": "双11巅峰大促8折",
+            "comparison_value": "9889.62",
+            "current_value": "987.52",
+            "change_amount": "-8902.10",
+            "change_rate": "-0.9001458094446500472212279137",
+            "net_contribution_rate": "0.07918259432780763275343838237"
+          },
+          {
+            "group_value": "周末会员专属狂欢券",
+            "comparison_value": "12667.14",
+            "current_value": "19194.41",
+            "change_amount": "6527.27",
+            "change_rate": "0.5152915338426827208035910237",
+            "net_contribution_rate": "-0.05805890435718189270425357501"
+          },
+          {
+            "group_value": "大牌爆款秒杀狂欢",
+            "comparison_value": "3779.32",
+            "current_value": "868.61",
+            "change_amount": "-2910.71",
+            "change_rate": "-0.7701676492067356032302107257",
+            "net_contribution_rate": "0.02589024714796429547317606339"
+          },
+          {
+            "group_value": "常态无优惠",
+            "comparison_value": "38147.21",
+            "current_value": "7545.00",
+            "change_amount": "-30602.21",
+            "change_rate": "-0.8022135825922787013781610765",
+            "net_contribution_rate": "0.2722012086995628017123599599"
+          },
+          {
+            "group_value": "春季焕新季88折",
+            "comparison_value": "34127.38",
+            "current_value": "11899.39",
+            "change_amount": "-22227.99",
+            "change_rate": "-0.6513242446387621903585918403",
+            "net_contribution_rate": "0.1977140129736314782767100829"
+          },
+          {
+            "group_value": "测试常态无优惠",
+            "comparison_value": "40000.00",
+            "current_value": "64000.00",
+            "change_amount": "24000.00",
+            "change_rate": "0.6",
+            "net_contribution_rate": "-0.2134757263867383186082521177"
+          }
+        ],
+        "reconciliation": {
+          "comparison_sum": "233378.95",
+          "current_sum": "120953.99",
+          "summed_change_amount": "-112424.96",
+          "overall_comparison_value": "233378.95",
+          "overall_current_value": "120953.99",
+          "overall_change_amount": "-112424.96",
+          "comparison_matches": true,
+          "current_matches": true,
+          "change_matches": true,
+          "tolerance": "0.01"
+        },
+        "sql_by_period": {
+          "2026-08": "SELECT dp.promo_name AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name",
+          "2026-07": "SELECT\n  dp.promo_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nLEFT JOIN dim_promotion dp\n  ON fo.promo_id = dp.promo_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\nGROUP BY dp.promo_name"
+        },
+        "informative": true,
+        "null_member_present": false
+      }
+    ]
+  },
+  "pending_tasks": [],
+  "elapsed_ms": 90497.8
+}
