@@ -4,6 +4,7 @@
 文件路径：app/data_agent/nodes/column_recall.py
 ================================================================================
 """
+import asyncio
 from typing import Any, List, Dict
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.qdrant_client import qdrant_client_manager
@@ -50,7 +51,10 @@ async def column_recall(state: Dict[str, Any], runtime: Any = None) -> Dict[str,
         if not term or not term.strip():
             continue
         try:
-            query_vector = embedding_client.embed_query(term)
+            if hasattr(embedding_client, "aembed_documents"):
+                query_vector = (await embedding_client.aembed_documents([term]))[0]
+            else:
+                query_vector = await asyncio.to_thread(embedding_client.embed_query, term)
             # 调用仓储检索
             matched_items = await repo.search(query_vector, limit=10)
 

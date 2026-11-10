@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 from pydantic import ValidationError
 
-from app.agent.anomaly_agent.Change_Inspection_Agent.tools.overall_comparison import (
+from app.agent.anomaly_agent.common.change_inspection.tools.overall_comparison import (
     OverallComparisonHandler,
 )
 from app.agent.anomaly_agent.common import verify_metric_change

@@ -38,6 +38,7 @@ def _observation_summary(observations: list[dict]) -> str:
             "status": item.get("status"),
             "reason": item.get("reason"),
             "tool_called": item.get("tool_called"),
+            "evidence": item.get("evidence"),
         }
         for item in observations
     ]

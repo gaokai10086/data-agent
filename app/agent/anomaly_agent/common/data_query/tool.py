@@ -12,6 +12,7 @@ from app.agent.data_agent.query_graph import data_query_graph
 from app.agent.data_agent.state import DataAgentState
 from app.core.context import query_task_context, query_task_ctx_var
 from app.repositories.mysql.dw_mysql_repository import DWMySQLRepository
+from app.repositories.mysql.meta_mysql_repository import MetaMySQLRepository
 
 
 class DataQueryTool:
@@ -34,24 +35,43 @@ class DataQueryTool:
         result: dict[str, Any] = {}
         try:
             # 每个工具调用使用独立 Session，允许多个 Agent 查询并发执行。
-            async with session_factory() as dw_session:
+            meta_session_factory = runtime.context.get("meta_session_factory")
+            if meta_session_factory is None:
+                return self._failure(
+                    request,
+                    "missing_meta_session_factory",
+                    "缺少 meta_session_factory，不能安全并发执行查询",
+                )
+            # Each DataQuery invocation owns both database sessions.  Reusing a
+            # repository from the parent RuntimeContext would reuse its
+            # AsyncSession across concurrent graph tasks, which SQLAlchemy
+            # explicitly disallows.
+            async with meta_session_factory() as meta_session, session_factory() as dw_session:
                 query_context = dict(runtime.context)
                 query_context["dw_mysql_repository"] = DWMySQLRepository(dw_session)
+                query_context["meta_mysql_repository"] = MetaMySQLRepository(meta_session)
+                stream = None
                 with query_task_context(
                     request_id=request.request_id,
                     role=request.role or request.purpose,
                     period=request.period,
                     metric_key=request.metric_key,
                 ):
-                    async for mode, chunk in data_query_graph.astream(
+                    stream = data_query_graph.astream(
                         input=DataAgentState(query=request.query),
                         context=query_context,
                         stream_mode=["custom", "values"],
-                    ):
-                        if mode == "custom":
-                            self._forward_event(runtime, chunk, request)
-                        elif mode == "values" and isinstance(chunk, dict):
-                            result = chunk
+                    )
+                    try:
+                        async for mode, chunk in stream:
+                            if mode == "custom":
+                                self._forward_event(runtime, chunk, request)
+                            elif mode == "values" and isinstance(chunk, dict):
+                                result = chunk
+                    finally:
+                        close_stream = getattr(stream, "aclose", None)
+                        if close_stream is not None:
+                            await close_stream()
         except Exception as exc:
             return self._failure(request, "query_exception", str(exc))
 

@@ -1,7 +1,7 @@
 """异动分析类型到处理器的动态路由表。"""
 
-from app.agent.anomaly_agent.Change_Inspection_Agent.tools.base import BaseAnomalyHandler
-from app.agent.anomaly_agent.Change_Inspection_Agent.tools.overall_comparison import OverallComparisonHandler
+from app.agent.anomaly_agent.common.change_inspection.tools.base import BaseAnomalyHandler
+from app.agent.anomaly_agent.common.change_inspection.tools.overall_comparison import OverallComparisonHandler
 
 
 class UnsupportedAnalysisTypeError(ValueError):

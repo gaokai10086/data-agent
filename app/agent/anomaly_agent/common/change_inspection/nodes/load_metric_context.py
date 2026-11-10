@@ -16,7 +16,7 @@ from app.agent.anomaly_agent.schemas import (
     MetricContext,
     MetricDimension,
 )
-from app.agent.anomaly_agent.Change_Inspection_Agent.state import PreparationState
+from app.agent.anomaly_agent.common.change_inspection.state import PreparationState
 from app.service.metric_decomposition_service import validate_metric_decomposition
 from app.agent.data_agent.context import DataAgentContext
 

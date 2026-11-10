@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from langgraph.runtime import Runtime
 
-from app.agent.anomaly_agent.Change_Inspection_Agent.tools.base import BaseAnomalyHandler
-from app.agent.anomaly_agent.Change_Inspection_Agent.state import PreparationState
+from app.agent.anomaly_agent.common.change_inspection.tools.base import BaseAnomalyHandler
+from app.agent.anomaly_agent.common.change_inspection.state import PreparationState
 from app.agent.anomaly_agent.common.data_query import DataQueryRequest, DataQueryTool
 from app.agent.anomaly_agent.schemas import (
     AnalysisRequest,
@@ -119,13 +120,26 @@ class OverallComparisonHandler(BaseAnomalyHandler):
         """按请求和指标上下文执行两个周期的总体对比。"""
 
         async def query_period(period: str, role: str) -> Decimal | None:
-            logger.info("开始周期查询")
+            started = time.monotonic()
+            logger.info("开始周期查询：period={} role={}", period, role)
             try:
                 value = await execute_period_query(period, role)
             except Exception as exc:
-                logger.error("周期查询失败：{}", exc)
+                logger.exception(
+                    "周期查询失败：period={} role={} elapsed_ms={} error={}",
+                    period,
+                    role,
+                    round((time.monotonic() - started) * 1000, 1),
+                    exc,
+                )
                 raise
-            logger.info("周期查询完成：{}", value)
+            logger.info(
+                "周期查询完成：period={} role={} elapsed_ms={} success=true value={}",
+                period,
+                role,
+                round((time.monotonic() - started) * 1000, 1),
+                value,
+            )
             return value
 
         async def execute_period_query(period: str, role: str) -> Decimal | None:
@@ -149,11 +163,36 @@ class OverallComparisonHandler(BaseAnomalyHandler):
                 )
             return extract_single_value(result.rows, period)
 
-        # 两个周期互相独立，必须并发调用 Data Agent，避免把两次查询延迟串联。
-        current_value, comparison_value = await asyncio.gather(
-            query_period(request.target_period, "目标"),
-            query_period(request.comparison_period, "对比"),
-        )
+        # DataQueryTool 为每个调用创建独立 Meta/DW Session，因此两个周期
+        # 可以安全并发执行。显式管理子任务，确保一个周期失败时另一个
+        # 周期不会遗留后台 Graph 任务。
+        tasks = [
+            asyncio.create_task(
+                query_period(request.target_period, "目标"),
+                name=f"change-inspection-{request.request_id}-target",
+            ),
+            asyncio.create_task(
+                query_period(request.comparison_period, "对比"),
+                name=f"change-inspection-{request.request_id}-comparison",
+            ),
+        ]
+        try:
+            current_value, comparison_value = await asyncio.gather(*tasks)
+        except BaseException:
+            pending = [task for task in tasks if not task.done()]
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            raise
+        finally:
+            # Normally gather has completed both tasks. This also handles
+            # cancellation of the handler itself without leaving child tasks.
+            pending = [task for task in tasks if not task.done()]
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
         change_amount, change_rate = calculate_change(current_value, comparison_value)
         return OverallComparisonResult(
             request_id=request.request_id,

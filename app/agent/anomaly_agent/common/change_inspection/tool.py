@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from langgraph.runtime import Runtime
 
-from app.agent.anomaly_agent.Change_Inspection_Agent.nodes.load_metric_context import (
+from app.agent.anomaly_agent.common.change_inspection.nodes.load_metric_context import (
     resolve_metric_context,
 )
-from app.agent.anomaly_agent.Change_Inspection_Agent.nodes.verify_change import assess_change
-from app.agent.anomaly_agent.Change_Inspection_Agent.tools.registry import get_anomaly_handler
+from app.agent.anomaly_agent.common.change_inspection.nodes.verify_change import assess_change
+from app.agent.anomaly_agent.common.change_inspection.tools.registry import get_anomaly_handler
 from app.agent.anomaly_agent.schemas import (
     AnalysisRequest,
     ChangeVerification,

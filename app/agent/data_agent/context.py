@@ -18,5 +18,7 @@ class DataAgentContext(TypedDict):
     dw_mysql_repository: DWMySQLRepository  # 数据仓库MySQL库
     # 并发查询时为每个子任务创建独立 AsyncSession，不能复用同一个 Session。
     dw_session_factory: Any
+    # Meta session factory used to give each DataQuery task its own session.
+    meta_session_factory: Any
     llm_provider: str  # 当前请求选择的模型供应商
     llm_model_tier: str  # 当前请求选择的模型规格

@@ -270,6 +270,7 @@ async def action_executor(
 def _evidence(outcome: InspectionOutcome) -> dict[str, Any]:
     overall = outcome.overall_result
     return {
+        "metric": outcome.metric_context.name if outcome.metric_context else None,
         "metric_key": outcome.metric_context.metric_key if outcome.metric_context else None,
         "target_period": overall.target_period if overall else None,
         "comparison_period": overall.comparison_period if overall else None,

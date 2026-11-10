@@ -34,6 +34,7 @@ class ChatService:
                  column_qdrant_repository: ColumnQdrantRepository,
                  value_es_repository: ValueESRepository,
                  metric_qdrant_repository: MetricQdrantRepository,
+                 meta_session_factory=None,
                  ):
         # 由 LangGraph 编译出的工作流状态图，所有的“找表、写 SQL、自愈报错、生成图表”都是这个图里的节点
         self.graph = graph
@@ -41,6 +42,7 @@ class ChatService:
         self.meta_mysql_repository = meta_mysql_repository
         self.dw_mysql_repository = dw_mysql_repository
         self.dw_session_factory = dw_session_factory
+        self.meta_session_factory = meta_session_factory
         self.column_qdrant_repository = column_qdrant_repository
         self.value_es_repository = value_es_repository
         self.metric_qdrant_repository = metric_qdrant_repository
@@ -56,6 +58,7 @@ class ChatService:
             meta_mysql_repository=self.meta_mysql_repository,
             dw_mysql_repository=self.dw_mysql_repository,
             dw_session_factory=self.dw_session_factory,
+            meta_session_factory=self.meta_session_factory,
             llm_provider=provider,
             llm_model_tier=model_tier,
         )

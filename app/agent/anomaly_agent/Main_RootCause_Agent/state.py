@@ -47,6 +47,7 @@ class RootCauseState(TypedDict, total=False):
     skill_result: SkillResult
     schema_result: SchemaResult
     parsed_result: ParsedResult
+
     supervisor_decision: SupervisorDecision
     observations: list[Observation]
     step_count: int

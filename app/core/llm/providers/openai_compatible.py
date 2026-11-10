@@ -41,4 +41,5 @@ class OpenAICompatibleProvider(LLMProvider):
             temperature=temperature,
             streaming=streaming,
             max_retries=max_retries,
+            timeout=60.0,
         )

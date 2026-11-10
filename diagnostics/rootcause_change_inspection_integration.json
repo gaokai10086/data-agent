@@ -1,0 +1,357 @@
+{
+  "question": "为什么 2026 年 8 月北京销售额相比 7 月上涨？",
+  "status": "completed_rejected",
+  "elapsed_ms": 16441.1,
+  "nodes": [
+    "receive_question",
+    "extract_metrics",
+    "select_skill",
+    "load_skill",
+    "select_task_schema",
+    "parse_task_request",
+    "supervisor_reason",
+    "action_executor"
+  ],
+  "observations": [
+    {
+      "step": 1,
+      "action_name": "change_inspection",
+      "status": "rejected",
+      "reason": "direction_mismatch",
+      "evidence": {
+        "metric": "销售额",
+        "metric_key": "sales_amount",
+        "target_period": "2026-08",
+        "comparison_period": "2026-07",
+        "current_value": "120953.99",
+        "comparison_value": "233378.95",
+        "change_amount": "-112424.96",
+        "change_rate": "-0.4817270794988151245003030479"
+      },
+      "error": null,
+      "tool_called": true,
+      "dedupe_key": "change_inspection|销售额|2026-08|2026-07|mom|increase|(('城市', '北京', '='),)",
+      "inspection_outcome": {
+        "status": "rejected",
+        "reason": "direction_mismatch",
+        "request_id": "5c95a5f03c3b45e2b8a4d73c2f9cba15",
+        "user_message": "查询结果显示销售额从233378.95变为120953.99，实际下降，不支持问题中“上升”的前提。",
+        "metric_context": {
+          "metric_key": "sales_amount",
+          "name": "销售额",
+          "description": "订单状态为“已完成”的订单实际支付金额之和。",
+          "formula": "SUM(fact_order.pay_amount)",
+          "fact_table": "fact_order",
+          "measure_column": "pay_amount",
+          "aggregation": "SUM",
+          "time_column": "pay_time",
+          "filters": [
+            {
+              "value": "已完成",
+              "column": "fact_order.order_status",
+              "operator": "="
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "支付时间",
+              "column": "fact_order.pay_time",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "门店",
+              "column": "dim_store.store_name",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "大区",
+              "column": "dim_store.region",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "渠道",
+              "column": "dim_store.channel_type",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "用户",
+              "column": "dim_user.user_id",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "促销活动",
+              "column": "dim_promotion.promo_name",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "城市",
+              "column": "dim_store.city",
+              "aliases": [
+                "门店城市"
+              ],
+              "determines": [
+                "dim_store.region"
+              ]
+            }
+          ],
+          "aliases": [
+            "销售金额",
+            "成交金额",
+            "实付金额"
+          ],
+          "decomposition": {
+            "version": 1,
+            "type": "product",
+            "factors": [
+              {
+                "factor_key": "order_count",
+                "name": "订单数量",
+                "source": {
+                  "type": "metric",
+                  "metric_key": "order_count"
+                }
+              },
+              {
+                "factor_key": "avg_order_amount",
+                "name": "平均支付订单金额",
+                "source": {
+                  "type": "ratio",
+                  "numerator_metric_key": "sales_amount",
+                  "denominator_metric_key": "order_count"
+                }
+              }
+            ],
+            "scope_policy": "inherit",
+            "zero_denominator_policy": "unavailable"
+          }
+        },
+        "overall_result": {
+          "request_id": "5c95a5f03c3b45e2b8a4d73c2f9cba15",
+          "metric_key": "sales_amount",
+          "schema_version": "1.0",
+          "analysis_type": "overall_comparison",
+          "target_period": "2026-08",
+          "comparison_period": "2026-07",
+          "current_value": "120953.99",
+          "comparison_value": "233378.95",
+          "change_amount": "-112424.96",
+          "change_rate": "-0.4817270794988151245003030479"
+        },
+        "verification": {
+          "decision": "stop",
+          "reason": "direction_mismatch",
+          "expected_direction": "increase",
+          "actual_direction": "decrease",
+          "summary": "查询结果显示销售额从233378.95变为120953.99，实际下降，不支持问题中“上升”的前提。",
+          "warnings": []
+        }
+      }
+    }
+  ],
+  "supervisor_decisions": {
+    "action": "call_tool",
+    "tool_name": "change_inspection",
+    "reason": "首次决策，存在允许的 change_inspection，调用以检验北京销售额变化"
+  },
+  "evidence": {},
+  "final_state": {
+    "raw_question": "为什么 2026 年 8 月北京销售额相比 7 月上涨？",
+    "extracted_metrics": [
+      "销售额"
+    ],
+    "skill_result": {
+      "status": "matched",
+      "reason": "指标全部由同一 Skill 支持",
+      "skill_name": "sales_amount_anomaly"
+    },
+    "schema_result": {
+      "status": "matched",
+      "reason": "问题明确比较 2026 年 8 月与 7 月的销售额变化，并围绕该周期变化询问原因，最匹配 period_comparison。",
+      "task_type": "period_comparison",
+      "schema_name": "PeriodComparisonRequest"
+    },
+    "parsed_result": {
+      "status": "passed",
+      "parsed_request": {
+        "metric": "销售额",
+        "target_period": {
+          "year": 2026,
+          "month": 8
+        },
+        "comparison_period": {
+          "year": 2026,
+          "month": 7
+        },
+        "filters": [
+          {
+            "dimension": "城市",
+            "value": "北京",
+            "operator": "="
+          }
+        ],
+        "expected_direction": "increase",
+        "missing_info": []
+      },
+      "errors": [],
+      "missing_info": []
+    },
+    "supervisor_decision": {
+      "action": "call_tool",
+      "tool_name": "change_inspection",
+      "reason": "首次决策，存在允许的 change_inspection，调用以检验北京销售额变化"
+    },
+    "step_count": 1,
+    "observations": [
+      {
+        "step": 1,
+        "action_name": "change_inspection",
+        "status": "rejected",
+        "reason": "direction_mismatch",
+        "evidence": {
+          "metric": "销售额",
+          "metric_key": "sales_amount",
+          "target_period": "2026-08",
+          "comparison_period": "2026-07",
+          "current_value": "120953.99",
+          "comparison_value": "233378.95",
+          "change_amount": "-112424.96",
+          "change_rate": "-0.4817270794988151245003030479"
+        },
+        "error": null,
+        "tool_called": true,
+        "dedupe_key": "change_inspection|销售额|2026-08|2026-07|mom|increase|(('城市', '北京', '='),)",
+        "inspection_outcome": {
+          "status": "rejected",
+          "reason": "direction_mismatch",
+          "request_id": "5c95a5f03c3b45e2b8a4d73c2f9cba15",
+          "user_message": "查询结果显示销售额从233378.95变为120953.99，实际下降，不支持问题中“上升”的前提。",
+          "metric_context": {
+            "metric_key": "sales_amount",
+            "name": "销售额",
+            "description": "订单状态为“已完成”的订单实际支付金额之和。",
+            "formula": "SUM(fact_order.pay_amount)",
+            "fact_table": "fact_order",
+            "measure_column": "pay_amount",
+            "aggregation": "SUM",
+            "time_column": "pay_time",
+            "filters": [
+              {
+                "value": "已完成",
+                "column": "fact_order.order_status",
+                "operator": "="
+              }
+            ],
+            "dimensions": [
+              {
+                "name": "支付时间",
+                "column": "fact_order.pay_time",
+                "aliases": [],
+                "determines": []
+              },
+              {
+                "name": "门店",
+                "column": "dim_store.store_name",
+                "aliases": [],
+                "determines": []
+              },
+              {
+                "name": "大区",
+                "column": "dim_store.region",
+                "aliases": [],
+                "determines": []
+              },
+              {
+                "name": "渠道",
+                "column": "dim_store.channel_type",
+                "aliases": [],
+                "determines": []
+              },
+              {
+                "name": "用户",
+                "column": "dim_user.user_id",
+                "aliases": [],
+                "determines": []
+              },
+              {
+                "name": "促销活动",
+                "column": "dim_promotion.promo_name",
+                "aliases": [],
+                "determines": []
+              },
+              {
+                "name": "城市",
+                "column": "dim_store.city",
+                "aliases": [
+                  "门店城市"
+                ],
+                "determines": [
+                  "dim_store.region"
+                ]
+              }
+            ],
+            "aliases": [
+              "销售金额",
+              "成交金额",
+              "实付金额"
+            ],
+            "decomposition": {
+              "version": 1,
+              "type": "product",
+              "factors": [
+                {
+                  "factor_key": "order_count",
+                  "name": "订单数量",
+                  "source": {
+                    "type": "metric",
+                    "metric_key": "order_count"
+                  }
+                },
+                {
+                  "factor_key": "avg_order_amount",
+                  "name": "平均支付订单金额",
+                  "source": {
+                    "type": "ratio",
+                    "numerator_metric_key": "sales_amount",
+                    "denominator_metric_key": "order_count"
+                  }
+                }
+              ],
+              "scope_policy": "inherit",
+              "zero_denominator_policy": "unavailable"
+            }
+          },
+          "overall_result": {
+            "request_id": "5c95a5f03c3b45e2b8a4d73c2f9cba15",
+            "metric_key": "sales_amount",
+            "schema_version": "1.0",
+            "analysis_type": "overall_comparison",
+            "target_period": "2026-08",
+            "comparison_period": "2026-07",
+            "current_value": "120953.99",
+            "comparison_value": "233378.95",
+            "change_amount": "-112424.96",
+            "change_rate": "-0.4817270794988151245003030479"
+          },
+          "verification": {
+            "decision": "stop",
+            "reason": "direction_mismatch",
+            "expected_direction": "increase",
+            "actual_direction": "decrease",
+            "summary": "查询结果显示销售额从233378.95变为120953.99，实际下降，不支持问题中“上升”的前提。",
+            "warnings": []
+          }
+        }
+      }
+    ],
+    "stop_reason": "rejected"
+  },
+  "custom_event_count": 34,
+  "values_ok": false,
+  "pending_tasks": []
+}

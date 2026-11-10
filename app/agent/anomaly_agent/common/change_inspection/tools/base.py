@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from langgraph.runtime import Runtime
 
-from app.agent.anomaly_agent.Change_Inspection_Agent.state import PreparationState
+from app.agent.anomaly_agent.common.change_inspection.state import PreparationState
 from app.agent.anomaly_agent.schemas import (
     AnalysisRequest,
     BaseAnomalyResult,

@@ -10,6 +10,7 @@ from langgraph.runtime import Runtime
 from pydantic import ValidationError
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.state import RootCauseState
+from app.agent.anomaly_agent.Main_RootCause_Agent.parsing.filter_grounding import ground_task_filters
 from app.agent.anomaly_agent.Main_RootCause_Agent.schemas import get_task_schema
 from app.agent.data_agent.context import DataAgentContext
 from app.core.llm import get_context_llm
@@ -47,6 +48,9 @@ async def parse_task_request(
                 "missing_info": [],
             },
         }
+
+    if hasattr(parsed, "filters"):
+        parsed = await ground_task_filters(parsed, state["raw_question"], runtime)
 
     return {
         "parsed_result": {

@@ -10,6 +10,7 @@
     5. 返回增量契约字典 {"retrieved_examples": [...] }，无缝注入全局 State
 ================================================================================
 """
+import asyncio
 from typing import Any, List, Dict
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.qdrant_client import qdrant_client_manager
@@ -66,7 +67,10 @@ async def example_recall(state: Dict[str, Any], runtime: Any = None) -> Dict[str
         if not term or not term.strip():
             continue
         try:
-            query_vector = embedding_client.embed_query(term)
+            if hasattr(embedding_client, "aembed_documents"):
+                query_vector = (await embedding_client.aembed_documents([term]))[0]
+            else:
+                query_vector = await asyncio.to_thread(embedding_client.embed_query, term)
             # 门禁阈值设为 0.40，放行语义高度对齐但用词稍有差异的数仓范式
             matched_items = await repo.search(query_vector, score_threshold=0.40, limit=3)
 

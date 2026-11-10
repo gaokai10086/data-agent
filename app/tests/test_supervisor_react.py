@@ -23,7 +23,7 @@ def outcome(status: str, reason: str = "test"):
     return SimpleNamespace(
         status=status,
         reason=reason,
-        metric_context=SimpleNamespace(metric_key="sales_amount"),
+        metric_context=SimpleNamespace(metric_key="sales_amount", name="销售额"),
         overall_result=SimpleNamespace(
             target_period="2025-07",
             comparison_period="2025-06",
@@ -140,6 +140,27 @@ class SupervisorReactTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["observations"][-1]["status"], "blocked")
         self.assertFalse(result["observations"][-1]["tool_called"])
         self.assertEqual(result["stop_reason"], "invalid_action")
+
+    async def test_registered_but_unauthorized_action_is_blocked(self):
+        spec = ActionSpec(
+            name="other",
+            capability="data_query",
+            task_type="period_comparison",
+            executor=AsyncMock(),
+        )
+        with patch.dict(ACTION_REGISTRY, {"other": spec}):
+            result = await action_executor(
+                base_state(supervisor_decision={
+                    "action": "call_tool",
+                    "tool_name": "other",
+                    "reason": "x",
+                }),
+                runtime(),
+            )
+
+        self.assertEqual(result["observations"][-1]["status"], "blocked")
+        self.assertEqual(result["stop_reason"], "unauthorized_action")
+        self.assertFalse(result["observations"][-1]["tool_called"])
 
     async def test_duplicate_ready_action_is_blocked(self):
         mock_tool = AsyncMock(return_value=outcome("ready"))

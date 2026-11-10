@@ -8,6 +8,7 @@
     3. 通过 LCEL 管道异步调用核心 LLM 生成高精、语法对齐的纯文本 SQL
 ================================================================================
 """
+import asyncio
 from typing import List, Dict, Any
 import yaml
 from langchain_core.output_parsers import StrOutputParser
@@ -98,11 +99,14 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
             ]
         )
         output_parser = StrOutputParser()
-        llm = get_context_llm(runtime, temperature=0.1, streaming=False)
+        logger.info("GenerateSQL: 开始获取 LLM 客户端")
+        llm = get_context_llm(runtime, temperature=0.1, streaming=False, max_retries=0)
+        logger.info("GenerateSQL: LLM 客户端获取完成")
         chain = prompt | llm | output_parser
 
         # 4. 异步推理调用 (使用 safe_dump 保持层级排版，提升大模型解析准确度)
-        result = await chain.ainvoke({
+        logger.info("GenerateSQL: 即将调用 LLM")
+        result = await asyncio.wait_for(chain.ainvoke({
             "table_infos": yaml.safe_dump(table_infos, allow_unicode=True, sort_keys=False) if table_infos else "暂无可用表结构",
             "table_relations": yaml.safe_dump(table_relations, allow_unicode=True, sort_keys=False) if table_relations else "暂无已确认的多表关联关系",
             "metric_infos": yaml.safe_dump(metric_infos, allow_unicode=True, sort_keys=False) if metric_infos else "暂无预定义指标",
@@ -114,7 +118,8 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
                 allow_unicode=True, sort_keys=False,
             ),
             "query": query
-        })
+        }), timeout=60.0)
+        logger.info("GenerateSQL: LLM 调用成功返回")
 
         # 5. 代码纯净度清洗：剔除模型偶然生成的 ```sql 标签或多余分号
         clean_result = result.strip()
