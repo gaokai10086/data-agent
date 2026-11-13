@@ -20,12 +20,18 @@ class SalesAmountSkillStrategyTest(unittest.TestCase):
         self.assertIn("DimensionAttributionAgent", instructions)
         self.assertTrue(self.skill.strategy.change_inspection_required)
         self.assertEqual(self.skill.strategy.dimension_source, "metric_context.dimensions")
-        self.assertEqual(self.skill.strategy.max_query_budget, 8)
+        self.assertEqual(self.skill.strategy.max_analysis_rounds, 8)
+        self.assertEqual(self.skill.strategy.max_dimensions, 6)
+        self.assertEqual(self.skill.strategy.max_query_budget, 16)
+        self.assertEqual(self.skill.strategy.max_depth, 3)
 
     def test_allowed_capabilities_are_subset_of_real_capabilities(self):
         resolved = resolve_skill_capabilities(self.skill)
         self.assertEqual(resolved["unavailable_capabilities"], [])
-        self.assertEqual(resolved["available_capabilities"], ["change_inspection"])
+        self.assertEqual(
+            resolved["available_capabilities"],
+            ["business_diagnosis", "change_inspection", "dimension_attribution", "metric_decomposition"],
+        )
         self.assertNotIn("dimension_group_query", ACTION_REGISTRY)
         self.assertNotIn("contribution_calculation", ACTION_REGISTRY)
         self.assertIn("change_inspection", AVAILABLE_CAPABILITIES)
@@ -40,6 +46,7 @@ class SalesAmountSkillStrategyTest(unittest.TestCase):
                 "contribution_calculation",
                 "reconciliation_check",
                 "drilldown_validation",
+                "scoped_metric_decomposition",
             ],
         )
 

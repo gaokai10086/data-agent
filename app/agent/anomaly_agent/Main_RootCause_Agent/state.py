@@ -32,13 +32,20 @@ class SupervisorDecision(TypedDict, total=False):
 class Observation(TypedDict, total=False):
     step: int
     action_name: str
-    status: Literal["ready", "rejected", "failed", "blocked"]
+    status: Literal["ready", "rejected", "failed", "blocked", "completed", "partial", "unavailable"]
     reason: str
     evidence: dict | None
     error: str | None
     tool_called: bool
     dedupe_key: str
     inspection_outcome: dict | None
+    attribution_result: dict | None
+    completion_status: str | None
+    attribution_stop_reason: str | None
+    decomposition_result: dict | None
+    decomposition_stop_reason: str | None
+    business_diagnosis_result: dict | None
+    business_diagnosis_stop_reason: str | None
 
 
 class RootCauseState(TypedDict, total=False):

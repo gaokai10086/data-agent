@@ -76,12 +76,13 @@ class DataQueryTool:
             return self._failure(request, "query_exception", str(exc))
 
         error_message = result.get("error_response") or result.get("error")
+        sql_evidence = result.get("sql_evidence") or result.get("sql")
         if error_message:
             return self._failure(
                 request,
                 result.get("sql_error_kind") or "query_failed",
                 str(error_message),
-                sql=result.get("sql"),
+                sql=sql_evidence,
                 metadata=self._safe_metadata(result),
             )
 
@@ -91,7 +92,7 @@ class DataQueryTool:
                 request,
                 "invalid_result",
                 "查询结果不是结构化行列表",
-                sql=result.get("sql"),
+                sql=sql_evidence,
                 metadata=self._safe_metadata(result),
             )
 
@@ -100,7 +101,7 @@ class DataQueryTool:
                 request,
                 "result_limit_exceeded",
                 f"查询结果超过最大行数限制：{request.max_rows}",
-                sql=result.get("sql"),
+                sql=sql_evidence,
                 metadata=self._safe_metadata(result),
             )
 
@@ -111,14 +112,14 @@ class DataQueryTool:
                 request,
                 "missing_expected_columns",
                 f"查询结果缺少字段：{', '.join(missing_columns)}",
-                sql=result.get("sql"),
+                sql=sql_evidence,
                 metadata=self._safe_metadata(result),
             )
 
         return DataQueryResult(
             success=True,
             rows=rows,
-            sql=result.get("sql"),
+            sql=sql_evidence,
             columns=columns,
             request_id=request.request_id,
             purpose=request.purpose,

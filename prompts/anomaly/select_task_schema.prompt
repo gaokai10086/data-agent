@@ -9,6 +9,8 @@
 3. 如果多个类型无法区分，status 返回 "ambiguous"。
 4. 如果问题明显包含多个独立任务目标且需要拆解，status 返回 "unsupported_multi_task"。
 5. 不要因为找不到匹配项就默认选择 period_comparison。
+6. “为什么某周期指标变化，哪些渠道/维度影响最大”是一个维度归因任务；周期变化核验是它的必需前置步骤，不属于另一个独立任务。选择 dimension_attribution，不返回 unsupported_multi_task。
+7. 如果问题同时提到渠道/维度贡献和订单量、客单价等构成因素，优先选择 metric_decomposition 作为可执行的主 Schema；Supervisor 会在同一份 ChangeInspection 证据上依次调度两个专业 Agent。
 
 返回 JSON：{{"status": "matched" 或 "unsupported" 或 "ambiguous" 或 "unsupported_multi_task", "task_type": "所选类型或 null", "reason": "选择理由"}}
 

@@ -34,16 +34,25 @@
 ## 可使用的能力
 
 - 总体销售额变化核验
-- 维度贡献分析（策略契约已定义；当前 Action 注册表尚未实现）
-- 已发布指标公式拆解（策略契约已定义；当前 Action 注册表尚未实现）
+- 维度贡献分析（仅在 ChangeInspection.ready 后执行）
+- 已发布指标公式拆解（仅在 ChangeInspection.ready 后执行，使用 `metric_decomposition` Action）
+- 受控业务诊断（仅在已有归因/拆解证据和 ChangeInspection.ready 后执行，使用 `business_diagnosis` Action）
 
-## 未来 DimensionAttributionAgent 策略契约
+## 专业 Agent 调度
+
+- `metric_decomposition` 与 `dimension_attribution` 都必须复用同一请求已经验证的 `InspectionOutcome.ready`。
+- 用户同时要求渠道贡献和订单量/客单价因素时，Supervisor 可以在两个专业 Agent 之间顺序调度；每个 Agent 只执行一次相同参数的任务。
+- 专业 Agent 的 `completed`、`partial`、`failed` 必须通过 Observation 原样保留；partial 只代表已有证据的部分完成，不能表述为完整根因结论。
+- `business_diagnosis` 只消费同一请求的真实归因、拆解和变化证据；未经验证的业务假设必须保持 `unverified`，不得把统计贡献直接改写成因果结论。
+
+## DimensionAttributionAgent 策略契约
 
 - 维度来源：`MetricContext.dimensions`；不得在 Skill 中硬编码数据库字段清单。
 - 用户明确指定的维度优先，但必须同时存在于 Meta 维度和当前指标允许范围内。
 - 未指定维度时，子 Agent 可动态选择尚未分析且证据充分的维度。
-- 每次下钻继承原始筛选条件，最多 3 个分析轮次、3 个维度、8 次查询、2 层深度。
-- 维度分组查询、双周期对比、贡献计算、对账校验和下钻合法性检查分别是未来工具契约；未注册工具不得调用。
+- 每次下钻继承原始筛选条件，最多 8 个分析轮次、6 个维度、16 次实际 SQL 查询、3 层深度；双周期查询至少计 2 次，重试按实际执行次数计。
+- 已实现双周期维度对比并在内部执行确定性贡献计算与对账；其他未注册工具不得调用。
+- 已对账的真实维度成员可以使用 `scoped_metric_decomposition` 验证该成员范围内的订单量与客单价；成员、维度和父级证据必须来自 AttributionPath，不能由模型编造。
 - 必须保存两个周期值、净变化贡献、下降贡献、贡献率及对账结果。
 - 零基数、缺失值、部分维度上涨和对账失败都必须结构化记录。
 - 贡献表示统计关系，不能直接表述为业务因果。

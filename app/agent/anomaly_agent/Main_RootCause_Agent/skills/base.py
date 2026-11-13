@@ -28,10 +28,10 @@ class SkillStrategy:
     preserve_filters: bool = True
     ambiguity_action: Literal["reject"] = "reject"
     allow_dynamic_dimension_selection: bool = True
-    max_analysis_rounds: int = 3
-    max_dimensions: int = 3
-    max_query_budget: int = 8
-    max_depth: int = 2
+    max_analysis_rounds: int = 8
+    max_dimensions: int = 6
+    max_query_budget: int = 16
+    max_depth: int = 3
     tool_contracts: tuple[AttributionToolContract, ...] = ()
     evidence_requirements: tuple[str, ...] = ()
     termination_conditions: tuple[str, ...] = ()

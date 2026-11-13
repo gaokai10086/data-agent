@@ -42,7 +42,9 @@ class SalesAmountAnomalySkill(BaseSkill):
                 "先确认销售额变化方向，再按维度贡献与指标拆解逐层分析，"
                 "所有结论必须引用查询证据。"
             ),
-            allowed_capabilities=("change_inspection",),
+            allowed_capabilities=(
+                "change_inspection", "dimension_attribution", "metric_decomposition", "business_diagnosis",
+            ),
             enabled=True,
             open_question_scenarios=(),
             task_types=(
@@ -58,10 +60,10 @@ class SalesAmountAnomalySkill(BaseSkill):
                 preserve_filters=True,
                 ambiguity_action="reject",
                 allow_dynamic_dimension_selection=True,
-                max_analysis_rounds=3,
-                max_dimensions=3,
-                max_query_budget=8,
-                max_depth=2,
+                max_analysis_rounds=8,
+                max_dimensions=6,
+                max_query_budget=16,
+                max_depth=3,
                 tool_contracts=(
                     AttributionToolContract(
                         name="dimension_group_query",
@@ -83,6 +85,11 @@ class SalesAmountAnomalySkill(BaseSkill):
                     AttributionToolContract(
                         name="drilldown_validation",
                         purpose="校验下钻维度、筛选继承和查询预算",
+                    ),
+                    AttributionToolContract(
+                        name="scoped_metric_decomposition",
+                        purpose="在已对账维度成员范围内验证指标拆解",
+                        implemented=True,
                     ),
                 ),
                 evidence_requirements=(

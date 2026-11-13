@@ -1,0 +1,120 @@
+{
+  "request_id": "f9035b1bf3d543fbbb7c87d312194e5d",
+  "status": "completed",
+  "completion_status": "complete",
+  "findings": [
+    {
+      "finding_id": "fact_overall_change",
+      "category": "verified_fact",
+      "statement": "销售额 从 233378.95 变为 120953.99，变化额为 -112424.96。",
+      "evidence_ids": [
+        "ev_fa0b0dc7b05ad14b"
+      ]
+    },
+    {
+      "finding_id": "finding_ev_dc888ac4a92fd6eb",
+      "category": "statistical_finding",
+      "statement": "维度 dim_store.channel_type 中，成员 线下旗舰店 的统计变化额最大，为 -87003.55；这表示统计贡献，不等同于业务因果。",
+      "evidence_ids": [
+        "ev_dc888ac4a92fd6eb"
+      ]
+    },
+    {
+      "finding_id": "finding_ev_2e7bff1b984e73b0_order_count",
+      "category": "statistical_finding",
+      "statement": "因素 订单数量 的对称分解贡献为 -68472.9705493283927744326077。",
+      "evidence_ids": [
+        "ev_2e7bff1b984e73b0"
+      ]
+    },
+    {
+      "finding_id": "finding_ev_2e7bff1b984e73b0_avg_order_amount",
+      "category": "statistical_finding",
+      "statement": "因素 平均支付订单金额 的对称分解贡献为 -43951.98945067160722556739223。",
+      "evidence_ids": [
+        "ev_2e7bff1b984e73b0"
+      ]
+    },
+    {
+      "finding_id": "F1",
+      "category": "verified_fact",
+      "statement": "2026年8月北京销售额为120953.99，较2026年7月233378.95下降112424.96，降幅约48.17%。",
+      "evidence_ids": [
+        "ev_fa0b0dc7b05ad14b"
+      ]
+    },
+    {
+      "finding_id": "F2",
+      "category": "statistical_finding",
+      "statement": "渠道归因显示，线下旗舰店减少87003.55（降幅约71.47%，净贡献率约77.39%），线上自营减少15021.41（降幅约27.19%，净贡献率约13.36%），线上商城减少10400.00（降幅约18.44%，净贡献率约9.25%）；三类渠道变动合计与总体变动一致。",
+      "evidence_ids": [
+        "ev_dc888ac4a92fd6eb"
+      ]
+    },
+    {
+      "finding_id": "F3",
+      "category": "statistical_finding",
+      "statement": "订单数量由127降至85，减少42单；按指标拆解，订单量因素贡献约-68472.97，占总体下降约60.91%。",
+      "evidence_ids": [
+        "ev_2e7bff1b984e73b0"
+      ]
+    },
+    {
+      "finding_id": "F4",
+      "category": "statistical_finding",
+      "statement": "平均支付订单金额由1837.63降至1422.99，减少约414.64；按指标拆解，客单价因素贡献约-43951.99，占总体下降约39.09%。",
+      "evidence_ids": [
+        "ev_2e7bff1b984e73b0"
+      ]
+    },
+    {
+      "finding_id": "F5",
+      "category": "evidence_gap",
+      "statement": "现有证据未包含线下旗舰店下降的具体业务驱动、渠道级订单量与客单价拆解、流量与转化、促销、商品结构、库存或退款等信息，无法确认根因。",
+      "evidence_ids": [
+        "ev_dc888ac4a92fd6eb",
+        "ev_2e7bff1b984e73b0"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "hypothesis_id": "H1",
+      "statement": "线下旗舰店销售额大幅下降可能与门店客流、转化、促销活动或商品供给变化有关，但现有证据无法验证具体原因。",
+      "status": "hypothesis",
+      "supporting_evidence_ids": [
+        "ev_dc888ac4a92fd6eb"
+      ],
+      "validation_metrics": [],
+      "executable": false
+    },
+    {
+      "hypothesis_id": "H2",
+      "statement": "整体订单量下降的具体原因，如流量、转化率、活动节奏或商品可得性变化，尚未验证，需要补充相关证据。",
+      "status": "evidence_gap",
+      "supporting_evidence_ids": [
+        "ev_2e7bff1b984e73b0"
+      ],
+      "validation_metrics": [],
+      "executable": false
+    },
+    {
+      "hypothesis_id": "H3",
+      "statement": "平均支付订单金额下降的具体原因，如商品结构、折扣与价格、客户结构变化，尚未验证，需要补充相关证据。",
+      "status": "evidence_gap",
+      "supporting_evidence_ids": [
+        "ev_2e7bff1b984e73b0"
+      ],
+      "validation_metrics": [],
+      "executable": false
+    }
+  ],
+  "evidence_ids": [
+    "ev_fa0b0dc7b05ad14b",
+    "ev_dc888ac4a92fd6eb",
+    "ev_2e7bff1b984e73b0"
+  ],
+  "stop_reason": "completed",
+  "summary": "已基于真实分析证据整理统计结论；未验证的内容仍保留为假设或证据缺口。",
+  "total_query_count": 0
+}

@@ -1,0 +1,1380 @@
+{
+  "scenario": "B",
+  "question": "为什么 2026 年 8 月北京销售额相比 7 月下降？请进一步诊断主要影响因素。",
+  "status": "passed",
+  "acceptance": true,
+  "nodes": [
+    "receive_question",
+    "extract_metrics",
+    "select_skill",
+    "load_skill",
+    "select_task_schema",
+    "parse_task_request",
+    "supervisor_reason",
+    "action_executor",
+    "supervisor_reason",
+    "action_executor",
+    "supervisor_reason",
+    "action_executor",
+    "supervisor_reason"
+  ],
+  "observations": [
+    {
+      "step": 1,
+      "action_name": "change_inspection",
+      "status": "ready",
+      "reason": "change_confirmed",
+      "evidence": {
+        "metric": "销售额",
+        "metric_key": "sales_amount",
+        "target_period": "2026-08",
+        "comparison_period": "2026-07",
+        "current_value": "120953.99",
+        "comparison_value": "233378.95",
+        "change_amount": "-112424.96",
+        "change_rate": "-0.4817270794988151245003030479"
+      },
+      "error": null,
+      "tool_called": true,
+      "dedupe_key": "change_inspection|销售额|2026-08|2026-07|mom|decrease|(('城市', '北京', '='),)",
+      "inspection_outcome": {
+        "status": "ready",
+        "reason": "change_confirmed",
+        "request_id": "db119be1ad014109a0762a51b1376824",
+        "user_message": "销售额从233378.95变为120953.99，下降112424.96，幅度约48.17%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+        "metric_context": {
+          "metric_key": "sales_amount",
+          "name": "销售额",
+          "description": "订单状态为“已完成”的订单实际支付金额之和。",
+          "formula": "SUM(fact_order.pay_amount)",
+          "fact_table": "fact_order",
+          "measure_column": "pay_amount",
+          "aggregation": "SUM",
+          "time_column": "pay_time",
+          "filters": [
+            {
+              "value": "已完成",
+              "column": "fact_order.order_status",
+              "operator": "="
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "支付时间",
+              "column": "fact_order.pay_time",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "门店",
+              "column": "dim_store.store_name",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "大区",
+              "column": "dim_store.region",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "渠道",
+              "column": "dim_store.channel_type",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "用户",
+              "column": "dim_user.user_id",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "促销活动",
+              "column": "dim_promotion.promo_name",
+              "aliases": [],
+              "determines": []
+            },
+            {
+              "name": "城市",
+              "column": "dim_store.city",
+              "aliases": [
+                "门店城市"
+              ],
+              "determines": [
+                "dim_store.region"
+              ]
+            }
+          ],
+          "aliases": [
+            "销售金额",
+            "成交金额",
+            "实付金额"
+          ],
+          "decomposition": {
+            "version": 1,
+            "type": "product",
+            "factors": [
+              {
+                "factor_key": "order_count",
+                "name": "订单数量",
+                "source": {
+                  "type": "metric",
+                  "metric_key": "order_count"
+                }
+              },
+              {
+                "factor_key": "avg_order_amount",
+                "name": "平均支付订单金额",
+                "source": {
+                  "type": "ratio",
+                  "numerator_metric_key": "sales_amount",
+                  "denominator_metric_key": "order_count"
+                }
+              }
+            ],
+            "scope_policy": "inherit",
+            "zero_denominator_policy": "unavailable"
+          }
+        },
+        "overall_result": {
+          "request_id": "db119be1ad014109a0762a51b1376824",
+          "metric_key": "sales_amount",
+          "schema_version": "1.0",
+          "analysis_type": "overall_comparison",
+          "target_period": "2026-08",
+          "comparison_period": "2026-07",
+          "current_value": "120953.99",
+          "comparison_value": "233378.95",
+          "change_amount": "-112424.96",
+          "change_rate": "-0.4817270794988151245003030479"
+        },
+        "verification": {
+          "decision": "continue",
+          "reason": "change_confirmed",
+          "expected_direction": "decrease",
+          "actual_direction": "decrease",
+          "summary": "销售额从233378.95变为120953.99，下降112424.96，幅度约48.17%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+          "warnings": []
+        }
+      }
+    },
+    {
+      "step": 2,
+      "action_name": "dimension_attribution",
+      "status": "completed",
+      "reason": "completed",
+      "completion_status": "complete",
+      "attribution_stop_reason": "completed",
+      "evidence": {
+        "paths": [
+          {
+            "task_id": "293711b9543f5310f58f117c",
+            "depth": 0,
+            "dimension_column": "dim_store.store_name",
+            "parent_scope": [],
+            "attributions": [
+              {
+                "group_value": "京东自营官方旗舰店",
+                "comparison_value": "55252.34",
+                "current_value": "40230.93",
+                "change_amount": "-15021.41",
+                "change_rate": "-0.2718692095212619049256556374",
+                "net_contribution_rate": "0.1336127671292922852718826851"
+              },
+              {
+                "group_value": "北京测试线上旗舰店",
+                "comparison_value": "56400.00",
+                "current_value": "46000.00",
+                "change_amount": "-10400.00",
+                "change_rate": "-0.1843971631205673758865248227",
+                "net_contribution_rate": "0.09250614810091993806357591766"
+              },
+              {
+                "group_value": "北京测试线下旗舰店",
+                "comparison_value": "37600.00",
+                "current_value": "18000.00",
+                "change_amount": "-19600.00",
+                "change_rate": "-0.5212765957446808510638297872",
+                "net_contribution_rate": "0.1743385098825029601967392294"
+              },
+              {
+                "group_value": "北京王府井旗舰店",
+                "comparison_value": "84126.61",
+                "current_value": "16723.06",
+                "change_amount": "-67403.55",
+                "change_rate": "-0.8012155725756689827392307856",
+                "net_contribution_rate": "0.5995425748872848164678021678"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "233378.95",
+              "current_sum": "120953.99",
+              "summed_change_amount": "-112424.96",
+              "overall_comparison_value": "233378.95",
+              "overall_current_value": "120953.99",
+              "overall_change_amount": "-112424.96",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-08-01 00:00:00'\n AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+              "2026-07": "SELECT\n  s.store_name AS dimension_value,\n  SUM(o.pay_amount) AS `value`\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-07-01 00:00:00'\n AND o.pay_time < '2026-08-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.store_name"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          {
+            "task_id": "39dc432bd529c1adb4a69fb6",
+            "depth": 1,
+            "dimension_column": "dim_promotion.promo_name",
+            "parent_scope": [
+              {
+                "dimension_column": "dim_store.store_name",
+                "member_value": "北京王府井旗舰店"
+              }
+            ],
+            "attributions": [
+              {
+                "group_value": "618年中狂欢满减",
+                "comparison_value": "17734.95",
+                "current_value": "16459.06",
+                "change_amount": "-1275.89",
+                "change_rate": "-0.07194212557689759486212253206",
+                "net_contribution_rate": "0.01892912168572723543492887244"
+              },
+              {
+                "group_value": "双11巅峰大促8折",
+                "comparison_value": "1890.32",
+                "current_value": "110.40",
+                "change_amount": "-1779.92",
+                "change_rate": "-0.9415971898937745990096914808",
+                "net_contribution_rate": "0.02640691773652871399206718341"
+              },
+              {
+                "group_value": "周末会员专属狂欢券",
+                "comparison_value": "12667.14",
+                "current_value": "0",
+                "change_amount": "-12667.14",
+                "change_rate": "-1",
+                "net_contribution_rate": "0.1879298642282194335461559517"
+              },
+              {
+                "group_value": "大牌爆款秒杀狂欢",
+                "comparison_value": "3779.32",
+                "current_value": "153.60",
+                "change_amount": "-3625.72",
+                "change_rate": "-0.9593577680640961866155816390",
+                "net_contribution_rate": "0.05379123206418653023468348477"
+              },
+              {
+                "group_value": "常态无优惠",
+                "comparison_value": "21927.82",
+                "current_value": "0",
+                "change_amount": "-21927.82",
+                "change_rate": "-1",
+                "net_contribution_rate": "0.3253214407846470994480261054"
+              },
+              {
+                "group_value": "春季焕新季88折",
+                "comparison_value": "26127.06",
+                "current_value": "0",
+                "change_amount": "-26127.06",
+                "change_rate": "-1",
+                "net_contribution_rate": "0.3876214235006909873441384022"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "84126.61",
+              "current_sum": "16723.06",
+              "summed_change_amount": "-67403.55",
+              "overall_comparison_value": "84126.61",
+              "overall_current_value": "16723.06",
+              "overall_change_amount": "-67403.55",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT p.promo_name AS dimension_value, SUM(o.pay_amount) AS value\nFROM fact_order o\nLEFT JOIN dim_store s ON o.store_id = s.store_id\nLEFT JOIN dim_promotion p ON o.promo_id = p.promo_id\nWHERE o.order_status = '已完成'\n  AND o.pay_time >= '2026-08-01 00:00:00'\n  AND o.pay_time < '2026-09-01 00:00:00'\n  AND s.city = '北京'\n  AND s.store_name = '北京王府井旗舰店'\nGROUP BY p.promo_name",
+              "2026-07": "SELECT\n    dp.promo_name AS dimension_value,\n    SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_promotion dp\n    ON fo.promo_id = dp.promo_id\nINNER JOIN dim_store ds\n    ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\n  AND ds.store_name = '北京王府井旗舰店'\nGROUP BY dp.promo_name\nORDER BY dp.promo_name IS NULL, dp.promo_name"
+            },
+            "informative": true,
+            "null_member_present": false
+          }
+        ],
+        "nodes": [
+          "main_reason",
+          "execute_attribution_tools",
+          "main_reason",
+          "execute_attribution_tools",
+          "main_reason",
+          "finalize_attribution"
+        ],
+        "total_query_count": 4
+      },
+      "error": null,
+      "tool_called": true,
+      "dedupe_key": "dimension_attribution|销售额|2026-08|2026-07|mom|decrease|(('城市', '北京', '='),)",
+      "inspection_outcome": null,
+      "attribution_result": {
+        "request_id": "db119be1ad014109a0762a51b1376824",
+        "status": "completed",
+        "completion_status": "complete",
+        "reason": "completed",
+        "stop_reason": "completed",
+        "analyzed_dimensions": [
+          "dim_store.store_name",
+          "dim_promotion.promo_name"
+        ],
+        "decisions": [
+          {
+            "action": "execute_tool",
+            "tool_name": "dimension_period_comparison",
+            "dimension_column": "dim_store.store_name",
+            "parent_scope": [],
+            "depth": 0,
+            "task_id": "293711b9543f5310f58f117c",
+            "stop_reason": null,
+            "reason": "用户未指定具体维度，需先定位北京销售额下降的主要影响因素；首选门店维度，按门店拆解 2026 年 8 月相比 7 月的销售额变化，识别下降集中在哪些门店。"
+          },
+          {
+            "action": "execute_tool",
+            "tool_name": "dimension_period_comparison",
+            "dimension_column": "dim_promotion.promo_name",
+            "parent_scope": [
+              {
+                "dimension_column": "dim_store.store_name",
+                "member_value": "北京王府井旗舰店"
+              }
+            ],
+            "depth": 1,
+            "task_id": "39dc432bd529c1adb4a69fb6",
+            "stop_reason": null,
+            "reason": "上一轮显示北京王府井旗舰店降幅最大（-67,403.55，贡献率59.95%），下钻至该门店查看促销活动对销售额下降的影响。"
+          },
+          {
+            "action": "finish",
+            "tool_name": null,
+            "dimension_column": null,
+            "parent_scope": [],
+            "depth": 1,
+            "task_id": null,
+            "stop_reason": "completed",
+            "reason": "已完成下钻诊断：北京8月销售额下降主要来自北京王府井旗舰店，减少67,403.55，贡献约59.95%；该店下降又主要受促销活动缺失/减弱影响，其中春季焕新季88折减少26,127.06（贡献38.76%）、常态无优惠减少21,927.82（贡献32.53%）、周末会员专属狂欢券减少12,667.14（贡献18.79%）。其他门店也有下降但贡献较小。因此主要影响因素为王府井门店及促销活动类别。"
+          }
+        ],
+        "observations": [
+          {
+            "observation_id": "e76db40884fa47a3997504deee340e57",
+            "tool_name": "dimension_period_comparison",
+            "status": "ok",
+            "dimension_column": "dim_store.store_name",
+            "task_id": "293711b9543f5310f58f117c",
+            "depth": 0,
+            "parent_scope": [],
+            "query_count": 2,
+            "evidence": {
+              "members": [
+                {
+                  "group_value": "京东自营官方旗舰店",
+                  "comparison_value": "55252.34",
+                  "current_value": "40230.93",
+                  "change_amount": "-15021.41",
+                  "change_rate": "-0.2718692095212619049256556374",
+                  "net_contribution_rate": "0.1336127671292922852718826851"
+                },
+                {
+                  "group_value": "北京测试线上旗舰店",
+                  "comparison_value": "56400.00",
+                  "current_value": "46000.00",
+                  "change_amount": "-10400.00",
+                  "change_rate": "-0.1843971631205673758865248227",
+                  "net_contribution_rate": "0.09250614810091993806357591766"
+                },
+                {
+                  "group_value": "北京测试线下旗舰店",
+                  "comparison_value": "37600.00",
+                  "current_value": "18000.00",
+                  "change_amount": "-19600.00",
+                  "change_rate": "-0.5212765957446808510638297872",
+                  "net_contribution_rate": "0.1743385098825029601967392294"
+                },
+                {
+                  "group_value": "北京王府井旗舰店",
+                  "comparison_value": "84126.61",
+                  "current_value": "16723.06",
+                  "change_amount": "-67403.55",
+                  "change_rate": "-0.8012155725756689827392307856",
+                  "net_contribution_rate": "0.5995425748872848164678021678"
+                }
+              ],
+              "reconciliation": {
+                "comparison_sum": "233378.95",
+                "current_sum": "120953.99",
+                "summed_change_amount": "-112424.96",
+                "overall_comparison_value": "233378.95",
+                "overall_current_value": "120953.99",
+                "overall_change_amount": "-112424.96",
+                "comparison_matches": true,
+                "current_matches": true,
+                "change_matches": true,
+                "tolerance": "0.01"
+              },
+              "sql_by_period": {
+                "2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-08-01 00:00:00'\n AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+                "2026-07": "SELECT\n  s.store_name AS dimension_value,\n  SUM(o.pay_amount) AS `value`\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-07-01 00:00:00'\n AND o.pay_time < '2026-08-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.store_name"
+              },
+              "informative": true,
+              "null_member_present": false
+            },
+            "error": null
+          },
+          {
+            "observation_id": "aec6df5ffe464a0ba3b64e44b4128d4f",
+            "tool_name": "dimension_period_comparison",
+            "status": "ok",
+            "dimension_column": "dim_promotion.promo_name",
+            "task_id": "39dc432bd529c1adb4a69fb6",
+            "depth": 1,
+            "parent_scope": [
+              {
+                "dimension_column": "dim_store.store_name",
+                "member_value": "北京王府井旗舰店"
+              }
+            ],
+            "query_count": 2,
+            "evidence": {
+              "members": [
+                {
+                  "group_value": "618年中狂欢满减",
+                  "comparison_value": "17734.95",
+                  "current_value": "16459.06",
+                  "change_amount": "-1275.89",
+                  "change_rate": "-0.07194212557689759486212253206",
+                  "net_contribution_rate": "0.01892912168572723543492887244"
+                },
+                {
+                  "group_value": "双11巅峰大促8折",
+                  "comparison_value": "1890.32",
+                  "current_value": "110.40",
+                  "change_amount": "-1779.92",
+                  "change_rate": "-0.9415971898937745990096914808",
+                  "net_contribution_rate": "0.02640691773652871399206718341"
+                },
+                {
+                  "group_value": "周末会员专属狂欢券",
+                  "comparison_value": "12667.14",
+                  "current_value": "0",
+                  "change_amount": "-12667.14",
+                  "change_rate": "-1",
+                  "net_contribution_rate": "0.1879298642282194335461559517"
+                },
+                {
+                  "group_value": "大牌爆款秒杀狂欢",
+                  "comparison_value": "3779.32",
+                  "current_value": "153.60",
+                  "change_amount": "-3625.72",
+                  "change_rate": "-0.9593577680640961866155816390",
+                  "net_contribution_rate": "0.05379123206418653023468348477"
+                },
+                {
+                  "group_value": "常态无优惠",
+                  "comparison_value": "21927.82",
+                  "current_value": "0",
+                  "change_amount": "-21927.82",
+                  "change_rate": "-1",
+                  "net_contribution_rate": "0.3253214407846470994480261054"
+                },
+                {
+                  "group_value": "春季焕新季88折",
+                  "comparison_value": "26127.06",
+                  "current_value": "0",
+                  "change_amount": "-26127.06",
+                  "change_rate": "-1",
+                  "net_contribution_rate": "0.3876214235006909873441384022"
+                }
+              ],
+              "reconciliation": {
+                "comparison_sum": "84126.61",
+                "current_sum": "16723.06",
+                "summed_change_amount": "-67403.55",
+                "overall_comparison_value": "84126.61",
+                "overall_current_value": "16723.06",
+                "overall_change_amount": "-67403.55",
+                "comparison_matches": true,
+                "current_matches": true,
+                "change_matches": true,
+                "tolerance": "0.01"
+              },
+              "sql_by_period": {
+                "2026-08": "SELECT p.promo_name AS dimension_value, SUM(o.pay_amount) AS value\nFROM fact_order o\nLEFT JOIN dim_store s ON o.store_id = s.store_id\nLEFT JOIN dim_promotion p ON o.promo_id = p.promo_id\nWHERE o.order_status = '已完成'\n  AND o.pay_time >= '2026-08-01 00:00:00'\n  AND o.pay_time < '2026-09-01 00:00:00'\n  AND s.city = '北京'\n  AND s.store_name = '北京王府井旗舰店'\nGROUP BY p.promo_name",
+                "2026-07": "SELECT\n    dp.promo_name AS dimension_value,\n    SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_promotion dp\n    ON fo.promo_id = dp.promo_id\nINNER JOIN dim_store ds\n    ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\n  AND ds.store_name = '北京王府井旗舰店'\nGROUP BY dp.promo_name\nORDER BY dp.promo_name IS NULL, dp.promo_name"
+              },
+              "informative": true,
+              "null_member_present": false
+            },
+            "error": null
+          }
+        ],
+        "summary": "维度归因完成，已返回真实查询证据。",
+        "total_query_count": 4,
+        "attributions": [
+          {
+            "group_value": "618年中狂欢满减",
+            "comparison_value": "17734.95",
+            "current_value": "16459.06",
+            "change_amount": "-1275.89",
+            "change_rate": "-0.07194212557689759486212253206",
+            "net_contribution_rate": "0.01892912168572723543492887244"
+          },
+          {
+            "group_value": "双11巅峰大促8折",
+            "comparison_value": "1890.32",
+            "current_value": "110.40",
+            "change_amount": "-1779.92",
+            "change_rate": "-0.9415971898937745990096914808",
+            "net_contribution_rate": "0.02640691773652871399206718341"
+          },
+          {
+            "group_value": "周末会员专属狂欢券",
+            "comparison_value": "12667.14",
+            "current_value": "0",
+            "change_amount": "-12667.14",
+            "change_rate": "-1",
+            "net_contribution_rate": "0.1879298642282194335461559517"
+          },
+          {
+            "group_value": "大牌爆款秒杀狂欢",
+            "comparison_value": "3779.32",
+            "current_value": "153.60",
+            "change_amount": "-3625.72",
+            "change_rate": "-0.9593577680640961866155816390",
+            "net_contribution_rate": "0.05379123206418653023468348477"
+          },
+          {
+            "group_value": "常态无优惠",
+            "comparison_value": "21927.82",
+            "current_value": "0",
+            "change_amount": "-21927.82",
+            "change_rate": "-1",
+            "net_contribution_rate": "0.3253214407846470994480261054"
+          },
+          {
+            "group_value": "春季焕新季88折",
+            "comparison_value": "26127.06",
+            "current_value": "0",
+            "change_amount": "-26127.06",
+            "change_rate": "-1",
+            "net_contribution_rate": "0.3876214235006909873441384022"
+          }
+        ],
+        "reconciliation": {
+          "comparison_sum": "84126.61",
+          "current_sum": "16723.06",
+          "summed_change_amount": "-67403.55",
+          "overall_comparison_value": "84126.61",
+          "overall_current_value": "16723.06",
+          "overall_change_amount": "-67403.55",
+          "comparison_matches": true,
+          "current_matches": true,
+          "change_matches": true,
+          "tolerance": "0.01"
+        },
+        "paths": [
+          {
+            "task_id": "293711b9543f5310f58f117c",
+            "depth": 0,
+            "dimension_column": "dim_store.store_name",
+            "parent_scope": [],
+            "attributions": [
+              {
+                "group_value": "京东自营官方旗舰店",
+                "comparison_value": "55252.34",
+                "current_value": "40230.93",
+                "change_amount": "-15021.41",
+                "change_rate": "-0.2718692095212619049256556374",
+                "net_contribution_rate": "0.1336127671292922852718826851"
+              },
+              {
+                "group_value": "北京测试线上旗舰店",
+                "comparison_value": "56400.00",
+                "current_value": "46000.00",
+                "change_amount": "-10400.00",
+                "change_rate": "-0.1843971631205673758865248227",
+                "net_contribution_rate": "0.09250614810091993806357591766"
+              },
+              {
+                "group_value": "北京测试线下旗舰店",
+                "comparison_value": "37600.00",
+                "current_value": "18000.00",
+                "change_amount": "-19600.00",
+                "change_rate": "-0.5212765957446808510638297872",
+                "net_contribution_rate": "0.1743385098825029601967392294"
+              },
+              {
+                "group_value": "北京王府井旗舰店",
+                "comparison_value": "84126.61",
+                "current_value": "16723.06",
+                "change_amount": "-67403.55",
+                "change_rate": "-0.8012155725756689827392307856",
+                "net_contribution_rate": "0.5995425748872848164678021678"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "233378.95",
+              "current_sum": "120953.99",
+              "summed_change_amount": "-112424.96",
+              "overall_comparison_value": "233378.95",
+              "overall_current_value": "120953.99",
+              "overall_change_amount": "-112424.96",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n  ds.store_name AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-08-01 00:00:00'\n AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.city = '北京'\nGROUP BY ds.store_name",
+              "2026-07": "SELECT\n  s.store_name AS dimension_value,\n  SUM(o.pay_amount) AS `value`\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON s.store_id = o.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-07-01 00:00:00'\n AND o.pay_time < '2026-08-01 00:00:00'\nWHERE s.city = '北京'\nGROUP BY s.store_name"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          {
+            "task_id": "39dc432bd529c1adb4a69fb6",
+            "depth": 1,
+            "dimension_column": "dim_promotion.promo_name",
+            "parent_scope": [
+              {
+                "dimension_column": "dim_store.store_name",
+                "member_value": "北京王府井旗舰店"
+              }
+            ],
+            "attributions": [
+              {
+                "group_value": "618年中狂欢满减",
+                "comparison_value": "17734.95",
+                "current_value": "16459.06",
+                "change_amount": "-1275.89",
+                "change_rate": "-0.07194212557689759486212253206",
+                "net_contribution_rate": "0.01892912168572723543492887244"
+              },
+              {
+                "group_value": "双11巅峰大促8折",
+                "comparison_value": "1890.32",
+                "current_value": "110.40",
+                "change_amount": "-1779.92",
+                "change_rate": "-0.9415971898937745990096914808",
+                "net_contribution_rate": "0.02640691773652871399206718341"
+              },
+              {
+                "group_value": "周末会员专属狂欢券",
+                "comparison_value": "12667.14",
+                "current_value": "0",
+                "change_amount": "-12667.14",
+                "change_rate": "-1",
+                "net_contribution_rate": "0.1879298642282194335461559517"
+              },
+              {
+                "group_value": "大牌爆款秒杀狂欢",
+                "comparison_value": "3779.32",
+                "current_value": "153.60",
+                "change_amount": "-3625.72",
+                "change_rate": "-0.9593577680640961866155816390",
+                "net_contribution_rate": "0.05379123206418653023468348477"
+              },
+              {
+                "group_value": "常态无优惠",
+                "comparison_value": "21927.82",
+                "current_value": "0",
+                "change_amount": "-21927.82",
+                "change_rate": "-1",
+                "net_contribution_rate": "0.3253214407846470994480261054"
+              },
+              {
+                "group_value": "春季焕新季88折",
+                "comparison_value": "26127.06",
+                "current_value": "0",
+                "change_amount": "-26127.06",
+                "change_rate": "-1",
+                "net_contribution_rate": "0.3876214235006909873441384022"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "84126.61",
+              "current_sum": "16723.06",
+              "summed_change_amount": "-67403.55",
+              "overall_comparison_value": "84126.61",
+              "overall_current_value": "16723.06",
+              "overall_change_amount": "-67403.55",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT p.promo_name AS dimension_value, SUM(o.pay_amount) AS value\nFROM fact_order o\nLEFT JOIN dim_store s ON o.store_id = s.store_id\nLEFT JOIN dim_promotion p ON o.promo_id = p.promo_id\nWHERE o.order_status = '已完成'\n  AND o.pay_time >= '2026-08-01 00:00:00'\n  AND o.pay_time < '2026-09-01 00:00:00'\n  AND s.city = '北京'\n  AND s.store_name = '北京王府井旗舰店'\nGROUP BY p.promo_name",
+              "2026-07": "SELECT\n    dp.promo_name AS dimension_value,\n    SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_promotion dp\n    ON fo.promo_id = dp.promo_id\nINNER JOIN dim_store ds\n    ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.city = '北京'\n  AND ds.store_name = '北京王府井旗舰店'\nGROUP BY dp.promo_name\nORDER BY dp.promo_name IS NULL, dp.promo_name"
+            },
+            "informative": true,
+            "null_member_present": false
+          }
+        ]
+      }
+    },
+    {
+      "step": 3,
+      "action_name": "business_diagnosis",
+      "status": "completed",
+      "reason": "已基于真实证据完成受控业务假设验证；统计贡献不等同于业务因果。",
+      "completion_status": "complete",
+      "business_diagnosis_stop_reason": "completed",
+      "evidence": {
+        "findings": [
+          {
+            "finding_id": "fact_overall_change",
+            "category": "verified_fact",
+            "statement": "销售额 从 233378.95 变为 120953.99，变化额为 -112424.96。",
+            "evidence_ids": [
+              "ev_acb9315aaf8de1b8"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_008dee6b0aa409c8",
+            "category": "statistical_finding",
+            "statement": "维度 dim_store.store_name 中，成员 北京王府井旗舰店 的统计变化额最大，为 -67403.55；这表示统计贡献，不等同于业务因果。",
+            "evidence_ids": [
+              "ev_008dee6b0aa409c8"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_8c43d5ac5dfd423b",
+            "category": "statistical_finding",
+            "statement": "维度 dim_promotion.promo_name 中，成员 春季焕新季88折 的统计变化额最大，为 -26127.06；这表示统计贡献，不等同于业务因果。",
+            "evidence_ids": [
+              "ev_8c43d5ac5dfd423b"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_f08167fb4df10e65_order_count",
+            "category": "statistical_finding",
+            "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 订单数量 对称分解贡献为 -83135.81258333333333333333335。",
+            "evidence_ids": [
+              "ev_f08167fb4df10e65"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_f08167fb4df10e65_avg_order_amount",
+            "category": "statistical_finding",
+            "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 平均支付订单金额 对称分解贡献为 15732.26258333333333333333333。",
+            "evidence_ids": [
+              "ev_f08167fb4df10e65"
+            ]
+          },
+          {
+            "finding_id": "gap_decomposition",
+            "category": "evidence_gap",
+            "statement": "尚无已对账的总体指标拆解证据。",
+            "evidence_ids": [
+              "ev_acb9315aaf8de1b8",
+              "ev_008dee6b0aa409c8",
+              "ev_8c43d5ac5dfd423b",
+              "ev_f08167fb4df10e65"
+            ]
+          }
+        ],
+        "hypotheses": [
+          {
+            "hypothesis_id": "h_wangfujing_decline_driver",
+            "statement": "北京王府井旗舰店的销售下滑主要由订单量减少或客单价下降中的某一因素驱动，需通过订单量与客单价分解进一步验证。",
+            "status": "hypothesis",
+            "supporting_evidence_ids": [
+              "ev_008dee6b0aa409c8"
+            ],
+            "validation_metrics": [
+              "order_count",
+              "average_order_value"
+            ],
+            "executable": false
+          },
+          {
+            "hypothesis_id": "h1",
+            "statement": "北京销售额下降主要集中在北京王府井旗舰店。",
+            "status": "evidence_gap",
+            "supporting_evidence_ids": [
+              "ev_008dee6b0aa409c8"
+            ],
+            "validation_metrics": [
+              "sales_amount"
+            ],
+            "executable": false
+          },
+          {
+            "hypothesis_id": "h2",
+            "statement": "北京王府井旗舰店的销售额下降主要由订单数量减少驱动，而非平均支付订单金额下降。",
+            "status": "supported",
+            "supporting_evidence_ids": [
+              "ev_f08167fb4df10e65"
+            ],
+            "validation_metrics": [
+              "order_count",
+              "avg_order_amount",
+              "sales_amount"
+            ],
+            "executable": false
+          },
+          {
+            "hypothesis_id": "h3",
+            "statement": "促销活动减少或失效是北京王府井旗舰店销售额下降的业务原因。",
+            "status": "evidence_gap",
+            "supporting_evidence_ids": [
+              "ev_8c43d5ac5dfd423b"
+            ],
+            "validation_metrics": [
+              "sales_amount"
+            ],
+            "executable": false
+          }
+        ],
+        "evidence_ids": [
+          "ev_acb9315aaf8de1b8",
+          "ev_008dee6b0aa409c8",
+          "ev_8c43d5ac5dfd423b",
+          "ev_f08167fb4df10e65"
+        ],
+        "nodes": [
+          "prepare_evidence",
+          "main_reason",
+          "execute_diagnosis_tools",
+          "main_reason",
+          "finalize_diagnosis"
+        ],
+        "total_query_count": 4
+      },
+      "error": null,
+      "tool_called": true,
+      "dedupe_key": "business_diagnosis|销售额|2026-08|2026-07|mom|decrease|(('城市', '北京', '='),)",
+      "inspection_outcome": null,
+      "business_diagnosis_result": {
+        "request_id": "db119be1ad014109a0762a51b1376824",
+        "status": "completed",
+        "completion_status": "complete",
+        "findings": [
+          {
+            "finding_id": "fact_overall_change",
+            "category": "verified_fact",
+            "statement": "销售额 从 233378.95 变为 120953.99，变化额为 -112424.96。",
+            "evidence_ids": [
+              "ev_acb9315aaf8de1b8"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_008dee6b0aa409c8",
+            "category": "statistical_finding",
+            "statement": "维度 dim_store.store_name 中，成员 北京王府井旗舰店 的统计变化额最大，为 -67403.55；这表示统计贡献，不等同于业务因果。",
+            "evidence_ids": [
+              "ev_008dee6b0aa409c8"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_8c43d5ac5dfd423b",
+            "category": "statistical_finding",
+            "statement": "维度 dim_promotion.promo_name 中，成员 春季焕新季88折 的统计变化额最大，为 -26127.06；这表示统计贡献，不等同于业务因果。",
+            "evidence_ids": [
+              "ev_8c43d5ac5dfd423b"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_f08167fb4df10e65_order_count",
+            "category": "statistical_finding",
+            "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 订单数量 对称分解贡献为 -83135.81258333333333333333335。",
+            "evidence_ids": [
+              "ev_f08167fb4df10e65"
+            ]
+          },
+          {
+            "finding_id": "finding_ev_f08167fb4df10e65_avg_order_amount",
+            "category": "statistical_finding",
+            "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 平均支付订单金额 对称分解贡献为 15732.26258333333333333333333。",
+            "evidence_ids": [
+              "ev_f08167fb4df10e65"
+            ]
+          },
+          {
+            "finding_id": "gap_decomposition",
+            "category": "evidence_gap",
+            "statement": "尚无已对账的总体指标拆解证据。",
+            "evidence_ids": [
+              "ev_acb9315aaf8de1b8",
+              "ev_008dee6b0aa409c8",
+              "ev_8c43d5ac5dfd423b",
+              "ev_f08167fb4df10e65"
+            ]
+          }
+        ],
+        "hypotheses": [
+          {
+            "hypothesis_id": "h_wangfujing_decline_driver",
+            "statement": "北京王府井旗舰店的销售下滑主要由订单量减少或客单价下降中的某一因素驱动，需通过订单量与客单价分解进一步验证。",
+            "status": "hypothesis",
+            "supporting_evidence_ids": [
+              "ev_008dee6b0aa409c8"
+            ],
+            "validation_metrics": [
+              "order_count",
+              "average_order_value"
+            ],
+            "executable": false
+          },
+          {
+            "hypothesis_id": "h1",
+            "statement": "北京销售额下降主要集中在北京王府井旗舰店。",
+            "status": "evidence_gap",
+            "supporting_evidence_ids": [
+              "ev_008dee6b0aa409c8"
+            ],
+            "validation_metrics": [
+              "sales_amount"
+            ],
+            "executable": false
+          },
+          {
+            "hypothesis_id": "h2",
+            "statement": "北京王府井旗舰店的销售额下降主要由订单数量减少驱动，而非平均支付订单金额下降。",
+            "status": "supported",
+            "supporting_evidence_ids": [
+              "ev_f08167fb4df10e65"
+            ],
+            "validation_metrics": [
+              "order_count",
+              "avg_order_amount",
+              "sales_amount"
+            ],
+            "executable": false
+          },
+          {
+            "hypothesis_id": "h3",
+            "statement": "促销活动减少或失效是北京王府井旗舰店销售额下降的业务原因。",
+            "status": "evidence_gap",
+            "supporting_evidence_ids": [
+              "ev_8c43d5ac5dfd423b"
+            ],
+            "validation_metrics": [
+              "sales_amount"
+            ],
+            "executable": false
+          }
+        ],
+        "evidence_ids": [
+          "ev_acb9315aaf8de1b8",
+          "ev_008dee6b0aa409c8",
+          "ev_8c43d5ac5dfd423b",
+          "ev_f08167fb4df10e65"
+        ],
+        "stop_reason": "completed",
+        "summary": "已基于真实证据完成受控业务假设验证；统计贡献不等同于业务因果。",
+        "total_query_count": 4
+      }
+    }
+  ],
+  "inspection": {
+    "step": 1,
+    "action_name": "change_inspection",
+    "status": "ready",
+    "reason": "change_confirmed",
+    "evidence": {
+      "metric": "销售额",
+      "metric_key": "sales_amount",
+      "target_period": "2026-08",
+      "comparison_period": "2026-07",
+      "current_value": "120953.99",
+      "comparison_value": "233378.95",
+      "change_amount": "-112424.96",
+      "change_rate": "-0.4817270794988151245003030479"
+    },
+    "error": null,
+    "tool_called": true,
+    "dedupe_key": "change_inspection|销售额|2026-08|2026-07|mom|decrease|(('城市', '北京', '='),)",
+    "inspection_outcome": {
+      "status": "ready",
+      "reason": "change_confirmed",
+      "request_id": "db119be1ad014109a0762a51b1376824",
+      "user_message": "销售额从233378.95变为120953.99，下降112424.96，幅度约48.17%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+      "metric_context": {
+        "metric_key": "sales_amount",
+        "name": "销售额",
+        "description": "订单状态为“已完成”的订单实际支付金额之和。",
+        "formula": "SUM(fact_order.pay_amount)",
+        "fact_table": "fact_order",
+        "measure_column": "pay_amount",
+        "aggregation": "SUM",
+        "time_column": "pay_time",
+        "filters": [
+          {
+            "value": "已完成",
+            "column": "fact_order.order_status",
+            "operator": "="
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "支付时间",
+            "column": "fact_order.pay_time",
+            "aliases": [],
+            "determines": []
+          },
+          {
+            "name": "门店",
+            "column": "dim_store.store_name",
+            "aliases": [],
+            "determines": []
+          },
+          {
+            "name": "大区",
+            "column": "dim_store.region",
+            "aliases": [],
+            "determines": []
+          },
+          {
+            "name": "渠道",
+            "column": "dim_store.channel_type",
+            "aliases": [],
+            "determines": []
+          },
+          {
+            "name": "用户",
+            "column": "dim_user.user_id",
+            "aliases": [],
+            "determines": []
+          },
+          {
+            "name": "促销活动",
+            "column": "dim_promotion.promo_name",
+            "aliases": [],
+            "determines": []
+          },
+          {
+            "name": "城市",
+            "column": "dim_store.city",
+            "aliases": [
+              "门店城市"
+            ],
+            "determines": [
+              "dim_store.region"
+            ]
+          }
+        ],
+        "aliases": [
+          "销售金额",
+          "成交金额",
+          "实付金额"
+        ],
+        "decomposition": {
+          "version": 1,
+          "type": "product",
+          "factors": [
+            {
+              "factor_key": "order_count",
+              "name": "订单数量",
+              "source": {
+                "type": "metric",
+                "metric_key": "order_count"
+              }
+            },
+            {
+              "factor_key": "avg_order_amount",
+              "name": "平均支付订单金额",
+              "source": {
+                "type": "ratio",
+                "numerator_metric_key": "sales_amount",
+                "denominator_metric_key": "order_count"
+              }
+            }
+          ],
+          "scope_policy": "inherit",
+          "zero_denominator_policy": "unavailable"
+        }
+      },
+      "overall_result": {
+        "request_id": "db119be1ad014109a0762a51b1376824",
+        "metric_key": "sales_amount",
+        "schema_version": "1.0",
+        "analysis_type": "overall_comparison",
+        "target_period": "2026-08",
+        "comparison_period": "2026-07",
+        "current_value": "120953.99",
+        "comparison_value": "233378.95",
+        "change_amount": "-112424.96",
+        "change_rate": "-0.4817270794988151245003030479"
+      },
+      "verification": {
+        "decision": "continue",
+        "reason": "change_confirmed",
+        "expected_direction": "decrease",
+        "actual_direction": "decrease",
+        "summary": "销售额从233378.95变为120953.99，下降112424.96，幅度约48.17%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+        "warnings": []
+      }
+    }
+  },
+  "business_diagnosis": {
+    "step": 3,
+    "action_name": "business_diagnosis",
+    "status": "completed",
+    "reason": "已基于真实证据完成受控业务假设验证；统计贡献不等同于业务因果。",
+    "completion_status": "complete",
+    "business_diagnosis_stop_reason": "completed",
+    "evidence": {
+      "findings": [
+        {
+          "finding_id": "fact_overall_change",
+          "category": "verified_fact",
+          "statement": "销售额 从 233378.95 变为 120953.99，变化额为 -112424.96。",
+          "evidence_ids": [
+            "ev_acb9315aaf8de1b8"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_008dee6b0aa409c8",
+          "category": "statistical_finding",
+          "statement": "维度 dim_store.store_name 中，成员 北京王府井旗舰店 的统计变化额最大，为 -67403.55；这表示统计贡献，不等同于业务因果。",
+          "evidence_ids": [
+            "ev_008dee6b0aa409c8"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_8c43d5ac5dfd423b",
+          "category": "statistical_finding",
+          "statement": "维度 dim_promotion.promo_name 中，成员 春季焕新季88折 的统计变化额最大，为 -26127.06；这表示统计贡献，不等同于业务因果。",
+          "evidence_ids": [
+            "ev_8c43d5ac5dfd423b"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_f08167fb4df10e65_order_count",
+          "category": "statistical_finding",
+          "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 订单数量 对称分解贡献为 -83135.81258333333333333333335。",
+          "evidence_ids": [
+            "ev_f08167fb4df10e65"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_f08167fb4df10e65_avg_order_amount",
+          "category": "statistical_finding",
+          "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 平均支付订单金额 对称分解贡献为 15732.26258333333333333333333。",
+          "evidence_ids": [
+            "ev_f08167fb4df10e65"
+          ]
+        },
+        {
+          "finding_id": "gap_decomposition",
+          "category": "evidence_gap",
+          "statement": "尚无已对账的总体指标拆解证据。",
+          "evidence_ids": [
+            "ev_acb9315aaf8de1b8",
+            "ev_008dee6b0aa409c8",
+            "ev_8c43d5ac5dfd423b",
+            "ev_f08167fb4df10e65"
+          ]
+        }
+      ],
+      "hypotheses": [
+        {
+          "hypothesis_id": "h_wangfujing_decline_driver",
+          "statement": "北京王府井旗舰店的销售下滑主要由订单量减少或客单价下降中的某一因素驱动，需通过订单量与客单价分解进一步验证。",
+          "status": "hypothesis",
+          "supporting_evidence_ids": [
+            "ev_008dee6b0aa409c8"
+          ],
+          "validation_metrics": [
+            "order_count",
+            "average_order_value"
+          ],
+          "executable": false
+        },
+        {
+          "hypothesis_id": "h1",
+          "statement": "北京销售额下降主要集中在北京王府井旗舰店。",
+          "status": "evidence_gap",
+          "supporting_evidence_ids": [
+            "ev_008dee6b0aa409c8"
+          ],
+          "validation_metrics": [
+            "sales_amount"
+          ],
+          "executable": false
+        },
+        {
+          "hypothesis_id": "h2",
+          "statement": "北京王府井旗舰店的销售额下降主要由订单数量减少驱动，而非平均支付订单金额下降。",
+          "status": "supported",
+          "supporting_evidence_ids": [
+            "ev_f08167fb4df10e65"
+          ],
+          "validation_metrics": [
+            "order_count",
+            "avg_order_amount",
+            "sales_amount"
+          ],
+          "executable": false
+        },
+        {
+          "hypothesis_id": "h3",
+          "statement": "促销活动减少或失效是北京王府井旗舰店销售额下降的业务原因。",
+          "status": "evidence_gap",
+          "supporting_evidence_ids": [
+            "ev_8c43d5ac5dfd423b"
+          ],
+          "validation_metrics": [
+            "sales_amount"
+          ],
+          "executable": false
+        }
+      ],
+      "evidence_ids": [
+        "ev_acb9315aaf8de1b8",
+        "ev_008dee6b0aa409c8",
+        "ev_8c43d5ac5dfd423b",
+        "ev_f08167fb4df10e65"
+      ],
+      "nodes": [
+        "prepare_evidence",
+        "main_reason",
+        "execute_diagnosis_tools",
+        "main_reason",
+        "finalize_diagnosis"
+      ],
+      "total_query_count": 4
+    },
+    "error": null,
+    "tool_called": true,
+    "dedupe_key": "business_diagnosis|销售额|2026-08|2026-07|mom|decrease|(('城市', '北京', '='),)",
+    "inspection_outcome": null,
+    "business_diagnosis_result": {
+      "request_id": "db119be1ad014109a0762a51b1376824",
+      "status": "completed",
+      "completion_status": "complete",
+      "findings": [
+        {
+          "finding_id": "fact_overall_change",
+          "category": "verified_fact",
+          "statement": "销售额 从 233378.95 变为 120953.99，变化额为 -112424.96。",
+          "evidence_ids": [
+            "ev_acb9315aaf8de1b8"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_008dee6b0aa409c8",
+          "category": "statistical_finding",
+          "statement": "维度 dim_store.store_name 中，成员 北京王府井旗舰店 的统计变化额最大，为 -67403.55；这表示统计贡献，不等同于业务因果。",
+          "evidence_ids": [
+            "ev_008dee6b0aa409c8"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_8c43d5ac5dfd423b",
+          "category": "statistical_finding",
+          "statement": "维度 dim_promotion.promo_name 中，成员 春季焕新季88折 的统计变化额最大，为 -26127.06；这表示统计贡献，不等同于业务因果。",
+          "evidence_ids": [
+            "ev_8c43d5ac5dfd423b"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_f08167fb4df10e65_order_count",
+          "category": "statistical_finding",
+          "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 订单数量 对称分解贡献为 -83135.81258333333333333333335。",
+          "evidence_ids": [
+            "ev_f08167fb4df10e65"
+          ]
+        },
+        {
+          "finding_id": "finding_ev_f08167fb4df10e65_avg_order_amount",
+          "category": "statistical_finding",
+          "statement": "范围 ['dim_store.store_name=北京王府井旗舰店'] 的因素 平均支付订单金额 对称分解贡献为 15732.26258333333333333333333。",
+          "evidence_ids": [
+            "ev_f08167fb4df10e65"
+          ]
+        },
+        {
+          "finding_id": "gap_decomposition",
+          "category": "evidence_gap",
+          "statement": "尚无已对账的总体指标拆解证据。",
+          "evidence_ids": [
+            "ev_acb9315aaf8de1b8",
+            "ev_008dee6b0aa409c8",
+            "ev_8c43d5ac5dfd423b",
+            "ev_f08167fb4df10e65"
+          ]
+        }
+      ],
+      "hypotheses": [
+        {
+          "hypothesis_id": "h_wangfujing_decline_driver",
+          "statement": "北京王府井旗舰店的销售下滑主要由订单量减少或客单价下降中的某一因素驱动，需通过订单量与客单价分解进一步验证。",
+          "status": "hypothesis",
+          "supporting_evidence_ids": [
+            "ev_008dee6b0aa409c8"
+          ],
+          "validation_metrics": [
+            "order_count",
+            "average_order_value"
+          ],
+          "executable": false
+        },
+        {
+          "hypothesis_id": "h1",
+          "statement": "北京销售额下降主要集中在北京王府井旗舰店。",
+          "status": "evidence_gap",
+          "supporting_evidence_ids": [
+            "ev_008dee6b0aa409c8"
+          ],
+          "validation_metrics": [
+            "sales_amount"
+          ],
+          "executable": false
+        },
+        {
+          "hypothesis_id": "h2",
+          "statement": "北京王府井旗舰店的销售额下降主要由订单数量减少驱动，而非平均支付订单金额下降。",
+          "status": "supported",
+          "supporting_evidence_ids": [
+            "ev_f08167fb4df10e65"
+          ],
+          "validation_metrics": [
+            "order_count",
+            "avg_order_amount",
+            "sales_amount"
+          ],
+          "executable": false
+        },
+        {
+          "hypothesis_id": "h3",
+          "statement": "促销活动减少或失效是北京王府井旗舰店销售额下降的业务原因。",
+          "status": "evidence_gap",
+          "supporting_evidence_ids": [
+            "ev_8c43d5ac5dfd423b"
+          ],
+          "validation_metrics": [
+            "sales_amount"
+          ],
+          "executable": false
+        }
+      ],
+      "evidence_ids": [
+        "ev_acb9315aaf8de1b8",
+        "ev_008dee6b0aa409c8",
+        "ev_8c43d5ac5dfd423b",
+        "ev_f08167fb4df10e65"
+      ],
+      "stop_reason": "completed",
+      "summary": "已基于真实证据完成受控业务假设验证；统计贡献不等同于业务因果。",
+      "total_query_count": 4
+    }
+  },
+  "final_stop_reason": "business_diagnosis_completed:complete:completed",
+  "pending_tasks": [],
+  "elapsed_ms": 136292.0
+}

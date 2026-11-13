@@ -19,6 +19,7 @@ from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import (
 from app.agent.anomaly_agent.DimensionAttribution_Agent.state import DimensionAttributionState
 from app.agent.anomaly_agent.DimensionAttribution_Agent.tools import (
     ATTRIBUTION_TOOL_REGISTRY,
+    AttributionQueryError,
     DimensionPeriodComparisonTool,
 )
 from app.core.llm import get_context_llm
@@ -153,11 +154,11 @@ async def main_reason(state: DimensionAttributionState, runtime=None) -> dict:
         decision = AttributionDecision(action="finish", reason=reason, stop_reason=stop_reason)
         return {**base, "decisions": decisions + [decision], "decision": decision, "stop_reason": stop_reason}
 
-    if rounds > strategy.max_analysis_rounds:
+    if rounds >= strategy.max_analysis_rounds:
         return finish("达到最大分析轮次", "budget_exhausted")
     if input_data.inspection_outcome.status != strategy.ready_status:
         return finish("ChangeInspection 尚未 ready", "verification_not_ready")
-    if state.get("query_count", 0) >= strategy.max_query_budget:
+    if state.get("query_count", 0) + 2 > strategy.max_query_budget:
         return finish("达到查询预算", "budget_exhausted")
     if len(state.get("analyzed_dimensions", [])) >= strategy.max_dimensions:
         return finish("达到最大分析维度数量", "budget_exhausted")
@@ -237,10 +238,14 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
         )
         return {"observations": state.get("observations", []) + [observation], "stop_reason": "no_tools_available"}
     try:
+        remaining = state["input"].skill_strategy.max_query_budget - state.get("query_count", 0)
+        if remaining < 2:
+            raise AttributionQueryError("不足两次 SQL 查询预算", 0)
         payload = await tool.run(
             state["input"], runtime, dimension_column=decision.dimension_column,
             parent_scope=decision.parent_scope, task_id=decision.task_id, depth=decision.depth,
             overall=_scoped_overall(state, decision.parent_scope),
+            query_budget_remaining=remaining,
         )
         observation = AttributionObservation(
             observation_id=uuid.uuid4().hex, tool_name=tool.name, status="ok",
@@ -285,7 +290,11 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
             dimension_column=decision.dimension_column, task_id=decision.task_id,
             depth=decision.depth, parent_scope=decision.parent_scope, error=str(exc),
         )
-        return {"observations": state.get("observations", []) + [observation], "stop_reason": "execution_failed"}
+        return {
+            "observations": state.get("observations", []) + [observation],
+            "query_count": state.get("query_count", 0) + getattr(exc, "actual_sql_count", 0),
+            "stop_reason": "execution_failed",
+        }
 
 
 def finalize_attribution(state: DimensionAttributionState) -> dict:

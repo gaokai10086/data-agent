@@ -21,6 +21,9 @@ SKILL_REGISTRY: dict[str, BaseSkill] = {
 AVAILABLE_CAPABILITIES = {
     "data_query",
     "change_inspection",
+    "dimension_attribution",
+    "metric_decomposition",
+    "business_diagnosis",
 }
 
 
@@ -109,6 +112,10 @@ def validate_skill_strategy(skill: BaseSkill) -> None:
         raise ValueError(f"Skill {skill.name} 的分析预算必须为正数")
     if strategy.max_query_budget < strategy.max_dimensions:
         raise ValueError(f"Skill {skill.name} 的查询预算不足以支持维度分析")
+    if "metric_decomposition" in skill.allowed_capabilities and "metric_decomposition" not in AVAILABLE_CAPABILITIES:
+        raise ValueError(f"Skill {skill.name} 声明了未注册的指标拆解能力")
+    if "business_diagnosis" in skill.allowed_capabilities and "business_diagnosis" not in AVAILABLE_CAPABILITIES:
+        raise ValueError(f"Skill {skill.name} 声明了未注册的业务诊断能力")
     if strategy.dimension_source != "metric_context.dimensions":
         raise ValueError(f"Skill {skill.name} 必须从 MetricContext/Meta 获取维度")
 

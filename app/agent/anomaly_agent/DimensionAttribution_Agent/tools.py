@@ -8,13 +8,21 @@ import json
 import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from types import SimpleNamespace
 
 from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import (
     DimensionScope,
     DimensionMemberAttribution,
     ReconciliationResult,
 )
+from app.core.sql_budget import sql_attempt_budget
 from app.agent.anomaly_agent.common.data_query import DataQueryRequest, DataQueryTool
+
+
+class AttributionQueryError(RuntimeError):
+    def __init__(self, message: str, actual_sql_count: int):
+        super().__init__(message)
+        self.actual_sql_count = actual_sql_count
 
 
 class DimensionPeriodComparisonTool:
@@ -69,6 +77,11 @@ class DimensionPeriodComparisonTool:
         """校验 LLM SQL 是否仍遵守 Meta 指标、周期和范围契约。"""
         if not sql:
             raise ValueError(f"周期 {period} 未返回 SQL")
+        # A row cap can silently drop zero-valued dimension members while sums
+        # still reconcile. Attribution must inspect the complete grouping.
+        sql_without_comments = re.sub(r"/\*.*?\*/|--[^\n]*", " ", sql, flags=re.DOTALL)
+        if re.search(r"\bLIMIT\b", sql_without_comments, flags=re.IGNORECASE):
+            raise ValueError(f"周期 {period} SQL 包含 LIMIT，分组可能不完整")
         normalized = sql.casefold()
         start, end = cls._period_bounds(period)
         required_tokens = (metric.fact_table, metric.measure_column, dimension.column.split(".")[-1], "group by")
@@ -146,6 +159,7 @@ class DimensionPeriodComparisonTool:
         task_id: str | None = None,
         depth: int = 0,
         overall=None,
+        query_budget_remaining: int | None = None,
     ) -> dict[str, Any]:
         request = input_data.request
         metric = input_data.metric_context
@@ -155,6 +169,10 @@ class DimensionPeriodComparisonTool:
         if any(item.dimension_column not in allowed_columns for item in parent_scope):
             raise ValueError("父级范围包含不在 MetricContext 中的维度")
         query_tool = DataQueryTool()
+        def track_event(event):
+            runtime.stream_writer(event)
+
+        query_runtime = SimpleNamespace(context=runtime.context, stream_writer=track_event)
 
         async def one(period: str, role: str):
             return await query_tool.run(
@@ -168,37 +186,47 @@ class DimensionPeriodComparisonTool:
                     expected_columns=["dimension_value", "value"],
                     max_rows=1000,
                 ),
-                runtime,
+                query_runtime,
             )
 
-        current_result, comparison_result = await asyncio.gather(
-            one(request.target_period, "目标"),
-            one(request.comparison_period, "对比"),
-        )
+        try:
+            with sql_attempt_budget(query_budget_remaining if query_budget_remaining is not None else 1_000_000) as budget:
+                current_result, comparison_result = await asyncio.gather(
+                    one(request.target_period, "目标"),
+                    one(request.comparison_period, "对比"),
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            raise AttributionQueryError(str(exc), budget.count) from exc
+        sql_count = budget.count
         if not current_result.success:
-            raise RuntimeError(f"目标周期分组查询失败：{current_result.error_message}")
+            raise AttributionQueryError(f"目标周期分组查询失败：{current_result.error_message}", sql_count)
         if not comparison_result.success:
-            raise RuntimeError(f"对比周期分组查询失败：{comparison_result.error_message}")
+            raise AttributionQueryError(f"对比周期分组查询失败：{comparison_result.error_message}", sql_count)
 
-        self._validate_sql_contract(
-            current_result.sql, request, metric, dimension, request.target_period, parent_scope
-        )
-        self._validate_sql_contract(
-            comparison_result.sql, request, metric, dimension, request.comparison_period, parent_scope
-        )
+        try:
+            self._validate_sql_contract(
+                current_result.sql, request, metric, dimension, request.target_period, parent_scope
+            )
+            self._validate_sql_contract(
+                comparison_result.sql, request, metric, dimension, request.comparison_period, parent_scope
+            )
 
-        current = self._normalize_rows(current_result.rows, request.target_period)
-        comparison = self._normalize_rows(comparison_result.rows, request.comparison_period)
-        overall = overall or input_data.inspection_outcome.overall_result
-        members, reconciliation = self.compute_attributions(current, comparison, overall)
-        non_null_members = {
-            item.group_value for item in members if item.group_value is not None
-        }
-        informative = not (
-            len(non_null_members) == 1
-            and reconciliation.comparison_matches
-            and reconciliation.current_matches
-        )
+            current = self._normalize_rows(current_result.rows, request.target_period)
+            comparison = self._normalize_rows(comparison_result.rows, request.comparison_period)
+            overall = overall or input_data.inspection_outcome.overall_result
+            members, reconciliation = self.compute_attributions(current, comparison, overall)
+            non_null_members = {
+                item.group_value for item in members if item.group_value is not None
+            }
+            informative = not (
+                len(non_null_members) == 1
+                and reconciliation.comparison_matches
+                and reconciliation.current_matches
+            )
+        except Exception as exc:
+            raise AttributionQueryError(str(exc), sql_count) from exc
 
         return {
             "dimension": dimension,
@@ -211,7 +239,7 @@ class DimensionPeriodComparisonTool:
                 request.target_period: current_result.sql or "",
                 request.comparison_period: comparison_result.sql or "",
             },
-            "query_count": 2,
+            "query_count": sql_count,
             "informative": informative,
             "null_member_present": None in current or None in comparison,
         }

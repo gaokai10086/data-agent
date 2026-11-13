@@ -45,6 +45,44 @@ def _observation_summary(observations: list[dict]) -> str:
     return json.dumps(compact, ensure_ascii=False, default=str)
 
 
+def _wants_decomposition(question: str, task_type: str | None) -> bool:
+    return task_type == "metric_decomposition" or any(
+        marker in question for marker in ("订单量", "客单价", "构成因素", "指标拆解")
+    )
+
+
+def _wants_dimension(question: str, task_type: str | None) -> bool:
+    return task_type == "dimension_attribution" or any(
+        marker in question for marker in ("渠道", "商品", "门店", "地区", "维度")
+    )
+
+
+def _wants_business_diagnosis(question: str, task_type: str | None) -> bool:
+    return task_type == "hypothesis_analysis" or any(
+        marker in question for marker in ("进一步诊断", "业务原因", "根因", "驱动因素", "业务驱动")
+    )
+
+
+def _specialist_preference(question: str, task_type: str | None) -> list[str]:
+    """返回受限的专业 Action 顺序；顺序仅用于组合问题，不是 LLM 自由规划。"""
+    decomposition = _wants_decomposition(question, task_type)
+    dimension = _wants_dimension(question, task_type)
+    business = _wants_business_diagnosis(question, task_type)
+    if decomposition and dimension:
+        dim_pos = min((question.find(x) for x in ("渠道", "商品", "门店", "地区", "维度") if x in question), default=10**9)
+        dec_pos = min((question.find(x) for x in ("订单量", "客单价", "构成因素", "指标拆解") if x in question), default=10**9)
+        ordered = ["dimension_attribution", "metric_decomposition"] if dim_pos <= dec_pos else ["metric_decomposition", "dimension_attribution"]
+        return ordered + (["business_diagnosis"] if business else [])
+    if decomposition:
+        return ["metric_decomposition"] + (["business_diagnosis"] if business else [])
+    if dimension:
+        return ["dimension_attribution"] + (["business_diagnosis"] if business else [])
+    if business:
+        return ["business_diagnosis"]
+    # “为什么下降”保留既有默认策略：先做维度贡献。
+    return ["dimension_attribution"]
+
+
 async def supervisor_reason(
     state: RootCauseState,
     runtime: Runtime[DataAgentContext],
@@ -61,6 +99,85 @@ async def supervisor_reason(
     ]
 
     observations = state.get("observations", [])
+    latest = observations[-1] if observations else None
+    if not observations:
+        return {
+            "supervisor_decision": {
+                "action": "call_tool", "tool_name": "change_inspection",
+                "reason": "必须先验证两个周期的实际变化",
+            },
+            "step_count": state.get("step_count", 0) + 1,
+        }
+    if latest and latest.get("action_name") == "change_inspection" and latest.get("status") == "failed":
+        failures = sum(
+            1 for item in observations
+            if item.get("action_name") == "change_inspection" and item.get("status") == "failed"
+        )
+        if failures < 2 and "change_inspection" in allowed_actions:
+            return {
+                "supervisor_decision": {
+                    "action": "call_tool", "tool_name": "change_inspection",
+                    "reason": "变化检验技术失败，按有限重试协议重试一次",
+                },
+                "step_count": state.get("step_count", 0) + 1,
+            }
+        reason = "change_inspection_failed_retry_exhausted"
+        return {
+            "supervisor_decision": {"action": "stop", "tool_name": None, "reason": reason},
+            "step_count": state.get("step_count", 0) + 1,
+            "stop_reason": reason,
+        }
+    question = state.get("raw_question", "")
+    task_type = (state.get("schema_result") or {}).get("task_type")
+    preferences = _specialist_preference(question, task_type)
+    if latest and latest.get("action_name") in {"dimension_attribution", "metric_decomposition", "business_diagnosis"}:
+        status = latest.get("status") or "blocked"
+        completion = latest.get("completion_status") or "none"
+        child_stop = (
+            latest.get("attribution_stop_reason")
+            or latest.get("decomposition_stop_reason")
+            or latest.get("business_diagnosis_stop_reason")
+            or latest.get("reason")
+        )
+        if status in {"failed", "blocked"}:
+            outcome_reason = f"{latest.get('action_name')}_{status}:{completion}:{child_stop}"
+            return {
+                "supervisor_decision": {"action": "stop", "tool_name": None, "reason": outcome_reason},
+                "step_count": state.get("step_count", 0) + 1,
+                "stop_reason": outcome_reason,
+            }
+        done_actions = {
+            item.get("action_name") for item in observations
+            if item.get("action_name") in {"dimension_attribution", "metric_decomposition", "business_diagnosis"}
+            and item.get("status") in {"completed", "partial", "unavailable"}
+        }
+        next_action = next((name for name in preferences if name not in done_actions and name in allowed_actions), None)
+        if next_action:
+            return {
+                "supervisor_decision": {"action": "call_tool", "tool_name": next_action,
+                                        "reason": f"保留上一专业 Agent 证据，继续执行 {next_action}"},
+                "step_count": state.get("step_count", 0) + 1,
+            }
+        outcome_reason = f"{latest.get('action_name')}_{status}:{completion}:{child_stop}"
+        return {
+            "supervisor_decision": {"action": "finish", "tool_name": None, "reason": outcome_reason},
+            "step_count": state.get("step_count", 0) + 1,
+            "stop_reason": outcome_reason,
+        }
+    if (
+        latest and latest.get("action_name") == "change_inspection"
+        and latest.get("status") == "ready"
+        and latest.get("inspection_outcome")
+    ):
+        next_action = next((name for name in preferences if name in allowed_actions), None)
+        if next_action:
+            return {
+                "supervisor_decision": {
+                    "action": "call_tool", "tool_name": next_action,
+                    "reason": f"变化检验 ready，委派已授权的 {next_action} Agent",
+                },
+                "step_count": state.get("step_count", 0) + 1,
+            }
     if len(observations) >= 3:
         return {
             "supervisor_decision": {

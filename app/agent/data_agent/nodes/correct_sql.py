@@ -50,8 +50,17 @@ async def correct_sql(state: DataAgentState, runtime: Runtime[DataAgentContext])
              "date_info": date_info, "db_info": db_info,
              "value_groundings": yaml.safe_dump(prompt_value_evidence(state.get("retrieved_values", [])),
                                                 allow_unicode=True, sort_keys=False)})
-        logger.info(f'校正SQL结果：{result}')
-        return {"sql": result}
+        clean_result = result.strip()
+        if clean_result.startswith("```"):
+            lines = clean_result.split("\n")
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            clean_result = "\n".join(lines).strip()
+        clean_result = clean_result.rstrip(";")
+        logger.info(f'校正SQL结果：{clean_result}')
+        return {"sql": clean_result, "sql_evidence": clean_result}
     except Exception as e:
         logger.error(f'校正SQL失败：{e}')
         raise

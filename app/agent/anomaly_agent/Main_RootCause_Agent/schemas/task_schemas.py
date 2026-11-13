@@ -44,6 +44,7 @@ class DimensionAttributionRequest(BaseModel):
     target_period: MonthPeriod | None = None
     comparison_period: MonthPeriod | None = None
     filters: list[FilterCondition] = Field(default_factory=list)
+    expected_direction: Literal["decrease", "increase", "unspecified"] = "unspecified"
     dimensions: list[str] = Field(default_factory=list)
     missing_info: list[str] = Field(default_factory=list)
 

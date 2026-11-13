@@ -150,5 +150,8 @@ class DWMySQLRepository:
     async def execute_sql(self, sql):
         # 覆盖 Agent 与评测直接执行路径；元数据专用方法保持独立。
         SQLSafetyPolicy.ensure_read_only_sql(sql)
+        # An attribution task installs a context-local budget. Retries count too.
+        from app.core.sql_budget import count_sql_attempt
+        count_sql_attempt()
         result = await self.dw_session.execute(text(sql))
         return [dict(row) for row in result.mappings().fetchall()]

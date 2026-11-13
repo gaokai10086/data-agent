@@ -136,7 +136,7 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
 
         logger.info(f"✨ [GenerateSQL] 成功生成 SQL:\n{clean_result}")
         emit_node_result(runtime, f"SQL 生成完成：{clean_result[:120]}")
-        return {"sql": clean_result}
+        return {"sql": clean_result, "sql_evidence": clean_result}
 
     except Exception as e:
         logger.error(f"❌ [GenerateSQL] 生成 SQL 失败: {e}")

@@ -149,6 +149,7 @@ class DataAgentState(TypedDict):
 
     # ---------------- 4. SQL 生成与自愈反思回路 ----------------
     sql: str                # 生成或修正后的执行 SQL
+    sql_evidence: str       # 生成/修正时保存的原始 SQL 审计证据，不由后续节点覆盖
     error: str | None       # EXPLAIN 预检报错日志 (通过时为 None)
     sql_error_kind: str | None  # repairable/permission/connection/timeout/safety/unknown
     sql_error_stage: str | None # validate/execute

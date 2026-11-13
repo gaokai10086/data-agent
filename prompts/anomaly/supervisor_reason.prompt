@@ -6,12 +6,13 @@
 决策规则：
 1. 第一次 Reason 时，如果存在 change_inspection，选择 call_tool 并指定 tool_name="change_inspection"。
 2. 后续 Reason 必须阅读 Observation：
-   - ready：当前只完成了变化检验，没有归因 Agent，返回 finish，reason 说明 "partial_completion"。
+   - ready：若用户要求订单量、客单价或构成因素，优先选择已授权的 metric_decomposition；若用户要求渠道/维度贡献，选择 dimension_attribution；组合问题可以在两个专业 Action 之间顺序执行。
+   - 专业 Agent Observation：同时读取 status、completion_status、对应 stop_reason 与真实 evidence；partial 不得表述为充分完成，failed 不得表述为业务结论。
    - rejected：业务前提不成立，返回 stop，不要重试。
    - failed：同一技术故障最多允许一次合法重试；重试耗尽后返回 stop。
    - blocked：不要重复调用，返回 stop。
 3. 不得把用户假设当成已验证事实。
-4. finish 表示本轮变化检验完成，不代表根因分析完成。
+4. ChangeInspection 必须先于归因；finish 不自动代表根因分析充分完成。
 
 原始问题：
 {raw_question}
@@ -22,4 +23,4 @@
 Observation 摘要：
 {observations}
 
-返回 JSON：{{"action": "call_tool" 或 "finish" 或 "stop", "tool_name": "change_inspection" 或 null, "reason": "简短原因"}}
+返回 JSON：{{"action": "call_tool" 或 "finish" 或 "stop", "tool_name": "change_inspection"、"dimension_attribution"、"metric_decomposition" 或 null, "reason": "简短原因"}}

@@ -35,7 +35,9 @@ def route_to_supervisor(state: RootCauseState) -> str:
     schema_result = state.get("schema_result") or {}
     if (
         parsed_result.get("status") == "passed"
-        and schema_result.get("task_type") == "period_comparison"
+        and schema_result.get("task_type") in {
+            "period_comparison", "dimension_attribution", "metric_decomposition", "hypothesis_analysis",
+        }
     ):
         return "supervisor_reason"
     return END
