@@ -114,7 +114,7 @@ class DimensionPeriodComparisonTool:
         return values
 
     @staticmethod
-    def compute_attributions(current, comparison, overall):
+    def compute_attributions(current, comparison, overall, *, root_overall=None):
         """纯确定性计算与对账逻辑，供工具和单元测试复用。"""
         if overall is None or overall.current_value is None or overall.comparison_value is None or overall.change_amount is None:
             raise ValueError("缺少总体变化证据，不能执行维度对账")
@@ -125,11 +125,16 @@ class DimensionPeriodComparisonTool:
             current_value = current.get(group, Decimal("0"))
             change_amount = current_value - comparison_value
             change_rate = None if comparison_value == 0 else change_amount / comparison_value
-            contribution_rate = None if overall.change_amount == 0 else change_amount / overall.change_amount
+            overall_base = root_overall or overall
+            overall_rate = None if overall_base.change_amount == 0 else change_amount / overall_base.change_amount
+            parent_rate = None if overall.change_amount == 0 else change_amount / overall.change_amount
             members.append(DimensionMemberAttribution(
                 group_value=group, comparison_value=comparison_value,
                 current_value=current_value, change_amount=change_amount,
-                change_rate=change_rate, net_contribution_rate=contribution_rate,
+                change_rate=change_rate, net_contribution_rate=overall_rate,
+                overall_contribution_rate=overall_rate,
+                parent_contribution_rate=parent_rate,
+                contribution_denominator="overall_and_parent",
             ))
         comparison_sum = sum((item.comparison_value for item in members), Decimal("0"))
         current_sum = sum((item.current_value for item in members), Decimal("0"))
@@ -215,8 +220,11 @@ class DimensionPeriodComparisonTool:
 
             current = self._normalize_rows(current_result.rows, request.target_period)
             comparison = self._normalize_rows(comparison_result.rows, request.comparison_period)
-            overall = overall or input_data.inspection_outcome.overall_result
-            members, reconciliation = self.compute_attributions(current, comparison, overall)
+            parent_overall = overall or input_data.inspection_outcome.overall_result
+            root_overall = input_data.inspection_outcome.overall_result
+            members, reconciliation = self.compute_attributions(
+                current, comparison, parent_overall, root_overall=root_overall
+            )
             non_null_members = {
                 item.group_value for item in members if item.group_value is not None
             }

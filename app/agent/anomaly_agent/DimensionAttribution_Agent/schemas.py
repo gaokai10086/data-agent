@@ -73,6 +73,9 @@ class DimensionMemberAttribution(BaseModel):
     change_amount: Decimal
     change_rate: Decimal | None = None
     net_contribution_rate: Decimal | None = None
+    overall_contribution_rate: Decimal | None = None
+    parent_contribution_rate: Decimal | None = None
+    contribution_denominator: str = "overall"
 
 
 class ReconciliationResult(BaseModel):
@@ -100,6 +103,8 @@ class AttributionPath(BaseModel):
     sql_by_period: dict[str, str] = Field(default_factory=dict)
     informative: bool = True
     null_member_present: bool = False
+    selected_member: str | None = None
+    stop_reason: str | None = None
 
 
 class DimensionAttributionInput(BaseModel):
@@ -161,6 +166,8 @@ class AttributionResult(BaseModel):
     attributions: list[DimensionMemberAttribution] = Field(default_factory=list)
     reconciliation: ReconciliationResult | None = None
     paths: list[AttributionPath] = Field(default_factory=list)
+    current_path: list[DimensionScope] = Field(default_factory=list)
+    abandoned_paths: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_unavailable_contract(self):

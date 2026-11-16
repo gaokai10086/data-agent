@@ -32,3 +32,8 @@ class DimensionAttributionState(TypedDict, total=False):
     sql_by_period: dict[str, str]
     paths: list[object]
     analyzed_task_ids: list[str]
+    # 当前主路径的有效范围；由程序从已对账路径推导，不接受 LLM 直接覆盖。
+    current_scope: list[object]
+    selected_member: object
+    selected_path_task_id: str | None
+    abandoned_paths: list[dict]

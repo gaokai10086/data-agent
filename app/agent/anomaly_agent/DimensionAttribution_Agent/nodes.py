@@ -15,6 +15,7 @@ from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import (
     AttributionObservation,
     AttributionPath,
     AttributionResult,
+    DimensionScope,
 )
 from app.agent.anomaly_agent.DimensionAttribution_Agent.state import DimensionAttributionState
 from app.agent.anomaly_agent.DimensionAttribution_Agent.tools import (
@@ -42,6 +43,19 @@ def _candidate_dimensions(state: DimensionAttributionState):
     if len(explicit) > 1:
         return [], "ambiguous_dimension"
     dimensions = explicit if explicit else list(input_data.metric_context.dimensions)
+    fixed_path = tuple(getattr(input_data.skill_strategy, "dimension_path", ()) or ())
+    # 有真实 current_scope 时执行固定路径；保留旧的无 scope 契约测试/上游调用兼容。
+    if fixed_path and not explicit and (state.get("current_scope") or not state.get("analyzed_dimensions")):
+        analyzed = set(state.get("analyzed_dimensions", []))
+        current_scope = state.get("current_scope", state.get("parent_scope", []))
+        next_index = len(current_scope)
+        if not current_scope:
+            analyzed_path = [index for index, column in enumerate(fixed_path) if column in analyzed]
+            if analyzed_path:
+                next_index = max(analyzed_path) + 1
+        if next_index >= len(fixed_path):
+            return [], None
+        dimensions = [item for item in input_data.metric_context.dimensions if item.column == fixed_path[next_index]]
     fixed_names = {item.dimension for item in input_data.request.filters if item.dimension}
     fixed_columns = {
         item.column for item in input_data.metric_context.dimensions
@@ -54,7 +68,7 @@ def _candidate_dimensions(state: DimensionAttributionState):
         for determined in item.determines
     }
     analyzed = set(state.get("analyzed_dimensions", []))
-    parent_columns = {item.dimension_column for item in state.get("parent_scope", [])}
+    parent_columns = {item.dimension_column for item in state.get("current_scope", state.get("parent_scope", []))}
     candidates = [
         item for item in dimensions
         if item.column not in fixed_columns
@@ -73,6 +87,24 @@ def _observed_member_values(state: DimensionAttributionState, dimension_column: 
         for item in observation.evidence.get("members", []):
             values.add(item.get("group_value"))
     return values
+
+def _derived_scope(state):
+    """从最后一条已对账路径推导下一层范围。"""
+    paths = state.get("paths", [])
+    if not paths:
+        return []
+    path = paths[-1]
+    if not all((path.reconciliation.comparison_matches, path.reconciliation.current_matches, path.reconciliation.change_matches)):
+        return None
+    members = list(path.attributions)
+    if not members or not path.informative:
+        return None
+    overall = path.reconciliation.overall_change_amount
+    same_direction = [m for m in members if m.change_amount * overall < 0]
+    member = sorted(same_direction or members, key=lambda m: abs(m.change_amount), reverse=True)[0]
+    if member.group_value is None:
+        return None
+    return list(path.parent_scope) + [DimensionScope(dimension_column=path.dimension_column, member_value=member.group_value)]
 
 
 def _scoped_overall(state: DimensionAttributionState, parent_scope):
@@ -124,14 +156,15 @@ def _fallback_decision(state, candidates):
     if not candidates:
         return AttributionDecision(action="finish", reason="没有新的合法维度", stop_reason="no_candidate_dimensions")
     dimension = candidates[0]
-    parent_scope = list(state.get("parent_scope", []))
+    parent_scope = list(state.get("current_scope", state.get("parent_scope", [])))
+    depth = len(parent_scope)
     task_id = DimensionPeriodComparisonTool.build_task_id(
-        state["input"], dimension.column, parent_scope, state.get("current_depth", 0)
+        state["input"], dimension.column, parent_scope, depth
     )
     return AttributionDecision(
         action="execute_tool", tool_name="dimension_period_comparison",
         dimension_column=dimension.column, parent_scope=parent_scope,
-        depth=state.get("current_depth", 0), task_id=task_id,
+        depth=depth, task_id=task_id,
         reason="确定性测试回退选择 Meta 允许维度",
     )
 
@@ -175,6 +208,13 @@ async def main_reason(state: DimensionAttributionState, runtime=None) -> dict:
         return finish("当前没有已注册的维度归因工具", "no_tools_available")
     if not candidates:
         return finish("没有新的合法维度", "no_candidate_dimensions")
+    derived_scope = _derived_scope(state)
+    if state.get("paths") and derived_scope is None:
+        # 仅在已对账但无区分性成员时切换候选根维度；对账失败的路径不会进入 paths。
+        last_path = state["paths"][-1]
+        if last_path.informative:
+            return finish("当前分支没有可验证的下钻成员", "no_candidate_dimensions")
+        derived_scope = []
 
     try:
         if runtime is None or not getattr(runtime, "context", None):
@@ -199,13 +239,20 @@ async def main_reason(state: DimensionAttributionState, runtime=None) -> dict:
             stop_reason = "completed"
         return {**base, "decisions": decisions + [decision], "decision": decision, "stop_reason": stop_reason}
 
+    # 父级范围和深度由真实路径唯一推导；LLM 仅负责选择下一维度。
+    # 首轮/旧调用契约允许测试或上游提供已验证 scope；一旦已有路径则只能使用程序推导值。
+    expected_scope = derived_scope if state.get("paths") else list(state.get("current_scope", state.get("parent_scope", [])))
+    if not expected_scope and not state.get("paths"):
+        expected_scope = list(decision.parent_scope)
+    decision = decision.model_copy(update={"parent_scope": expected_scope, "depth": len(expected_scope)})
+
     allowed = {item.column: item for item in candidates}
     if decision.tool_name not in executable:
         return finish("LLM 选择了未注册工具", "illegal_decision")
     if decision.dimension_column not in allowed:
         return finish("LLM 选择了未授权维度", "illegal_decision")
     current_depth = state.get("current_depth", 0)
-    if decision.depth not in {current_depth, current_depth + 1}:
+    if decision.depth != len(expected_scope):
         return finish("LLM 给出的下钻深度与 State 不一致", "illegal_decision")
     if decision.depth > strategy.max_depth:
         return finish("达到最大下钻深度", "max_depth_reached")
@@ -266,6 +313,8 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
             attributions=payload["members"], reconciliation=payload["reconciliation"],
             sql_by_period=payload["sql_by_period"],
             informative=payload["informative"], null_member_present=payload["null_member_present"],
+            selected_member=(sorted(payload["members"], key=lambda m: abs(m.change_amount), reverse=True)[0].group_value
+                             if payload["members"] else None),
         )
         sql_by_period = dict(state.get("sql_by_period", {}))
         for period, sql in payload["sql_by_period"].items():
@@ -283,6 +332,12 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
             "paths": state.get("paths", []) + [path],
             "current_depth": payload["depth"],
             "parent_scope": payload["parent_scope"],
+            "current_scope": payload["parent_scope"] + [
+                DimensionScope(dimension_column=payload["dimension"].column, member_value=(
+                    sorted(payload["members"], key=lambda m: abs(m.change_amount), reverse=True)[0].group_value
+                    if payload["members"] else None
+                ))
+            ],
         }
     except Exception as exc:
         observation = AttributionObservation(
@@ -317,5 +372,7 @@ def finalize_attribution(state: DimensionAttributionState) -> dict:
         summary="维度归因完成，已返回真实查询证据。" if has_paths else "未生成可用的维度归因证据。",
         total_query_count=state.get("query_count", 0), attributions=state.get("attributions", []),
         reconciliation=state.get("reconciliation"), paths=state.get("paths", []),
+        current_path=state.get("current_scope", []),
+        abandoned_paths=state.get("abandoned_paths", []),
     )
     return {"result": result, "decisions": result.decisions}

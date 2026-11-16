@@ -373,9 +373,29 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
             st.info(report["summary"])
 
         charts = [] if status == "rejected" else (report.get("charts") or [])
+        drilldown = report.get("drilldown_path") or []
+        if drilldown:
+            st.markdown("#### 主分析路径")
+            path_lines = []
+            for node in sorted(drilldown, key=lambda item: item.get("depth", 0)):
+                dimension = str(node.get("dimension_column") or "维度").rsplit(".", 1)[-1]
+                member = node.get("selected_member") or "未选择成员"
+                scope = node.get("parent_scope") or []
+                prefix = "　" * int(node.get("depth", 0))
+                parent_text = ""
+                if scope:
+                    parent_text = "（范围：" + "、".join(
+                        f"{str(item.get('dimension_column') or '').rsplit('.', 1)[-1]}={item.get('member_value')}"
+                        for item in scope
+                    ) + "）"
+                path_lines.append(f"{prefix}└── **{dimension} = {member}** {parent_text}")
+            st.markdown("\n".join(path_lines))
         if charts:
             st.markdown("#### 真实对账图表")
-            tabs = st.tabs([str(chart.get("title") or "图表") for chart in charts])
+            tabs = st.tabs([
+                f"第{chart.get('depth', 0)}层 · {chart.get('title') or '图表'}"
+                for chart in charts
+            ])
             for index, (tab, chart) in enumerate(zip(tabs, charts)):
                 with tab:
                     try:

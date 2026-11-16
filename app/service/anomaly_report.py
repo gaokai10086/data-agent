@@ -81,6 +81,8 @@ def _dimension_chart(path: dict[str, Any]) -> dict[str, Any] | None:
             "当前值": item.get("current_value"),
             "变化金额": item.get("change_amount"),
             "净变化贡献率": item.get("net_contribution_rate"),
+            "整体贡献率": item.get("overall_contribution_rate", item.get("net_contribution_rate")),
+            "父级贡献率": item.get("parent_contribution_rate"),
         })
     if not rows:
         return None
@@ -96,7 +98,31 @@ def _dimension_chart(path: dict[str, Any]) -> dict[str, Any] | None:
         "presentation": {"orientation": "horizontal", "sort": "asc"},
         "dimension_column": dimension,
         "reconciliation": path.get("reconciliation"),
+        "depth": path.get("depth", 0),
+        "parent_scope": path.get("parent_scope") or [],
+        "selected_member": path.get("selected_member"),
     }
+
+
+def _drilldown_path(paths: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """把已对账路径转换为前端可读的父子链，保留各层真实证据。"""
+    nodes = []
+    for path in sorted(paths, key=lambda item: item.get("depth", 0)):
+        selected = path.get("selected_member")
+        if selected is None:
+            members = path.get("attributions") or []
+            negatives = [m for m in members if (m.get("change_amount") or 0) < 0]
+            if negatives:
+                selected = min(negatives, key=lambda m: m.get("change_amount") or 0).get("group_value")
+        nodes.append({
+            "depth": path.get("depth", 0),
+            "dimension_column": path.get("dimension_column"),
+            "selected_member": selected,
+            "parent_scope": path.get("parent_scope") or [],
+            "reconciliation": path.get("reconciliation") or {},
+            "stop_reason": path.get("stop_reason"),
+        })
+    return nodes
 
 
 def _dimension_summary(paths: list[dict[str, Any]]) -> str | None:
@@ -258,6 +284,7 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
         "summary": summary,
         "overall": overall,
         "charts": charts,
+        "drilldown_path": _drilldown_path(dimension_paths),
         "diagnosis": diagnosis,
         "sql_evidence": sql_evidence,
         "observations": observations,

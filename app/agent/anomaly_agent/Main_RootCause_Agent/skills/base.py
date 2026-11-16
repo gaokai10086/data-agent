@@ -32,6 +32,8 @@ class SkillStrategy:
     max_dimensions: int = 6
     max_query_budget: int = 16
     max_depth: int = 3
+    # 固定业务下钻路径；为空时才允许动态维度选择。
+    dimension_path: tuple[str, ...] = ()
     tool_contracts: tuple[AttributionToolContract, ...] = ()
     evidence_requirements: tuple[str, ...] = ()
     termination_conditions: tuple[str, ...] = ()

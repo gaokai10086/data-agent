@@ -64,6 +64,10 @@ class SalesAmountAnomalySkill(BaseSkill):
                 max_dimensions=6,
                 max_query_budget=16,
                 max_depth=3,
+                dimension_path=(
+                    "dim_store.channel_type", "dim_store.region",
+                    "dim_store.city", "dim_store.store_name",
+                ),
                 tool_contracts=(
                     AttributionToolContract(
                         name="dimension_group_query",
