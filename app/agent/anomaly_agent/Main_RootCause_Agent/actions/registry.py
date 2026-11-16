@@ -44,10 +44,12 @@ async def run_dimension_attribution(input_data: DimensionAttributionInput, runti
     state: dict[str, Any] = {}
     nodes: list[str] = []
     stream = dimension_attribution_graph.astream(
-        {"input": input_data}, context=runtime.context, stream_mode=["updates", "values"],
+        {"input": input_data}, context=runtime.context, stream_mode=["custom", "updates", "values"],
     )
     try:
         async for mode, chunk in stream:
+            if mode == "custom" and hasattr(runtime, "stream_writer"):
+                runtime.stream_writer(chunk)
             if mode == "updates" and isinstance(chunk, dict):
                 nodes.extend(str(name) for name in chunk)
             if mode == "values" and isinstance(chunk, dict):
@@ -62,10 +64,12 @@ async def run_metric_decomposition(input_data: MetricDecompositionInput, runtime
     state: dict[str, Any] = {}
     nodes: list[str] = []
     stream = metric_decomposition_graph.astream(
-        {"input": input_data}, context=runtime.context, stream_mode=["updates", "values"],
+        {"input": input_data}, context=runtime.context, stream_mode=["custom", "updates", "values"],
     )
     try:
         async for mode, chunk in stream:
+            if mode == "custom" and hasattr(runtime, "stream_writer"):
+                runtime.stream_writer(chunk)
             if mode == "updates" and isinstance(chunk, dict):
                 nodes.extend(str(name) for name in chunk)
             if mode == "values" and isinstance(chunk, dict):
@@ -80,10 +84,12 @@ async def run_business_diagnosis(input_data: BusinessDiagnosisInput, runtime: An
     state: dict[str, Any] = {}
     nodes: list[str] = []
     stream = business_diagnosis_graph.astream(
-        {"input": input_data}, context=runtime.context, stream_mode=["updates", "values"],
+        {"input": input_data}, context=runtime.context, stream_mode=["custom", "updates", "values"],
     )
     try:
         async for mode, chunk in stream:
+            if mode == "custom" and hasattr(runtime, "stream_writer"):
+                runtime.stream_writer(chunk)
             if mode == "updates" and isinstance(chunk, dict):
                 nodes.extend(str(name) for name in chunk)
             if mode == "values" and isinstance(chunk, dict):

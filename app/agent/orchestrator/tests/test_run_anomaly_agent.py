@@ -42,9 +42,12 @@ def build_result(status: str = "matched") -> dict[str, object]:
 class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
     async def call_with_result(self, result):
         runtime = FakeRuntime()
+        async def fake_stream(*args, context, stream_mode):
+            input = args[0]
+            yield "values", result
         with patch(
-            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.ainvoke",
-            new=AsyncMock(return_value=result),
+            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.astream",
+            new=fake_stream,
         ):
             output = await run_anomaly_agent(
                 {
@@ -82,13 +85,14 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
     async def test_input_maps_only_raw_question(self):
         seen = {}
 
-        async def fake_ainvoke(input, context):
+        async def fake_stream(*args, context, stream_mode):
+            input = args[0]
             seen.update(input=input, context=context)
-            return build_result()
+            yield "values", build_result()
 
         with patch(
-            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.ainvoke",
-            new=AsyncMock(side_effect=fake_ainvoke),
+            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.astream",
+            new=fake_stream,
         ):
             await run_anomaly_agent(
                 {"query": "原问题", "rewritten_query": "改写后的问题"},
@@ -113,9 +117,13 @@ class RunAnomalyAgentTest(unittest.IsolatedAsyncioTestCase):
     async def test_ainvoke_exception_returns_structured_failure_without_leak(self):
         runtime = FakeRuntime()
         internal_error = "postgresql://admin:secret@db/internal"
+        async def fake_stream(*args, context, stream_mode):
+            input = args[0]
+            raise RuntimeError(internal_error)
+            yield "values", {}
         with patch(
-            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.ainvoke",
-            new=AsyncMock(side_effect=RuntimeError(internal_error)),
+            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.astream",
+            new=fake_stream,
         ), patch(
             "app.agent.orchestrator.nodes.run_anomaly_agent.logger.exception"
         ) as log_exception:

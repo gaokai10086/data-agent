@@ -13,6 +13,7 @@ from app.agent.anomaly_agent.schemas import PreparationResult
 from app.agent.data_agent.context import DataAgentContext
 from app.agent.orchestrator.state import OrchestratorState
 from app.core.logging import logger
+from app.service.anomaly_report import events_for_new_observations, final_anomaly_event
 
 
 TECHNICAL_FAILURE_MESSAGE = "异动分析暂时无法完成，请稍后重试。"
@@ -48,7 +49,8 @@ async def run_anomaly_agent(
 
     runtime.stream_writer 写出的事件会进入上层 SSE；最终返回值则进入
     OrchestratorState.agent_result，供非流式调用或后续编排使用。当前
-    主 Graph 只运行到 Skill 选择，变化检验与归因节点尚未接入。
+    主 Graph 的 Observation 会被转换为展示层阶段事件；业务计算仍由
+    RootCause 子图和已验收的专业 Agent 负责。
     """
     # 先告诉前端已经进入异动分支；这是进度提示，不代表解析成功。
     runtime.stream_writer({
@@ -60,10 +62,20 @@ async def run_anomaly_agent(
     # 两个 Agent 的 State 不共享：这里只把 query 映射为子 Graph 的 raw_question。
     # 意图识别与路由已在 Orchestrator 完成，不再作为输入传给 Main_RootCause_Agent。
     try:
-        result = await main_root_cause_agent.ainvoke(
+        result: dict[str, object] = {}
+        emitted_steps: set[int] = set()
+        async for mode, chunk in main_root_cause_agent.astream(
             {"raw_question": state.get("rewritten_query") or state.get("query", "")},
             context=runtime.context,
-        )
+            stream_mode=["custom", "values"],
+        ):
+            if mode == "custom":
+                # 子图自定义事件原样穿透；敏感异常仍由各层结构化处理。
+                runtime.stream_writer(chunk)
+            elif mode == "values" and isinstance(chunk, dict):
+                result = chunk
+                for event in events_for_new_observations(result, emitted_steps):
+                    runtime.stream_writer(event)
     except Exception as exc:
         logger.exception("异动分析子图执行失败: {}", exc)
         return _technical_failure(runtime, "anomaly_execution_error")
@@ -92,4 +104,6 @@ async def run_anomaly_agent(
             "agent": "anomaly",
             "skill_name": selected_skill_name,
         })
+    if result.get("observations"):
+        runtime.stream_writer(final_anomaly_event(result))
     return {"agent_result": result}

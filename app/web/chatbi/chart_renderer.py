@@ -377,7 +377,8 @@ def render_chart(chart_config: dict, chart_key: str = "chart") -> None:
                    "yAxis": {"type": "category", "data": [str(value) for value in df[x_column].tolist()], "inverse": True,
                              "axisLabel": {"width": 180, "overflow": "truncate", "color": "#475467"}},
                    "series": [{"name": y_field, "type": "bar", "barMaxWidth": 22, "itemStyle": {"borderRadius": [0, 6, 6, 0]},
-                               "label": {"show": True, "position": "right", "color": "#344054", "formatter": "{c}"},
+                               # 负值柱状图的零点通常在右侧；标签放在柱体内部，避免被画布边界裁切。
+                               "label": {"show": True, "position": "insideLeft", "color": "#fff", "formatter": "{c}"},
                                "data": _echarts_values(df[y_field])}]}
         st_echarts(options=options, height=f"{max(300, min(650, 42 * len(df) + 80))}px", key=f"{chart_key}_hbar")
         return

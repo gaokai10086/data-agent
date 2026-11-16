@@ -38,6 +38,8 @@ def _next_assistant_status(current: str, chunk: object) -> str:
     # P0-1 当前把技术失败编码为 anomaly 的 error_response；兼容该协议。
     if chunk.get("type") == "error_response" and chunk.get("agent") == "anomaly":
         return "failed"
+    if chunk.get("type") == "anomaly_result" and chunk.get("status") == "failed":
+        return "failed"
     return current
 
 
@@ -75,7 +77,11 @@ async def date_query(query: QuerySchema, chat_service=Depends(get_chat_service))
             ):
                 # 细粒度节点只保留在服务端，前端仅接收聚合后的业务进度。
                 if isinstance(chunk, dict) and (
-                    "stage" in chunk or chunk.get("type") == "thought"
+                    ("stage" in chunk or chunk.get("type") == "thought")
+                    and chunk.get("type") not in {
+                        "anomaly_progress", "anomaly_kpi", "anomaly_chart",
+                        "anomaly_sql_result", "anomaly_diagnosis", "anomaly_result",
+                    }
                 ):
                     stage = str(chunk.get("stage") or chunk.get("content") or "")
                     progress = _progress_message(stage)

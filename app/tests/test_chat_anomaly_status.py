@@ -160,6 +160,18 @@ class ChatAnomalyStatusTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(errors[0]["agent"], "anomaly")
         self.assertEqual(assistants[-1].kwargs["status"], "failed")
 
+    async def test_anomaly_stage_events_are_forwarded_and_final_failure_is_persisted(self):
+        payloads = [
+            {"type": "anomaly_progress", "stage": "change_inspection", "request_id": "r1"},
+            {"type": "anomaly_kpi", "stage": "change_inspection", "overall": {"current_value": 1}},
+            {"type": "anomaly_result", "status": "failed", "completion_status": "partial", "report": {}},
+        ]
+        events, assistants, user_updates = await self.collect(payloads)
+        self.assertEqual(events, payloads)
+        self.assertEqual(assistants[-1].kwargs["structured_result"]["type"], "anomaly_result")
+        self.assertEqual(assistants[-1].kwargs["status"], "failed")
+        self.assertEqual(user_updates[-1].kwargs["status"], "failed")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

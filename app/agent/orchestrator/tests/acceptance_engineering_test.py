@@ -61,14 +61,15 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
         }
         seen = {}
 
-        async def fake_ainvoke(input, context):
+        async def fake_stream(*args, context, stream_mode):
+            input = args[0]
             seen.update(input=input, context=context)
-            return child_result
+            yield "values", child_result
 
         events = []
         with patch(
-            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.ainvoke",
-            new=AsyncMock(side_effect=fake_ainvoke),
+            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.astream",
+            new=fake_stream,
         ):
             result = await run_anomaly_agent(
                 {
@@ -97,9 +98,14 @@ class AcceptanceEngineeringTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_anomaly_technical_failure_returns_failed_result(self):
         events = []
+
+        async def failing_stream(*args, context, stream_mode):
+            raise RuntimeError("db down")
+            yield "values", {}
+
         with patch(
-            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.ainvoke",
-            new=AsyncMock(side_effect=RuntimeError("db down")),
+            "app.agent.orchestrator.nodes.run_anomaly_agent.main_root_cause_agent.astream",
+            new=failing_stream,
         ), patch(
             "app.agent.orchestrator.nodes.run_anomaly_agent.logger.exception"
         ):

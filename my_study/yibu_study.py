@@ -1,11 +1,7 @@
-def modify(data):
-    data["count"] = 10
-    data = {"count": 20}
-    return data
+columns = ["name", "age", "city"]
 
-state = {"count": 0}
+values = ["张三", 25, "北京"]
 
-result = modify(state)
+result = dict(zip(columns, values))
 
-print(state["count"])
-print(result["count"])
+print(result)

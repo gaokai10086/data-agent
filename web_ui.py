@@ -231,6 +231,9 @@ def render_anomaly_report_card(payload: dict, container=None, card_instance_key:
     """渲染异动分析的 KPI、归因表和多维对比图。"""
     ctx = container if container is not None else st.container()
     report = payload.get("report") or {}
+    if report.get("schema_version") == "1.0" or "charts" in report:
+        _render_structured_anomaly_report(payload, ctx, card_instance_key)
+        return
     analysis = payload.get("analysis") or {}
     overall = report.get("overall") or analysis.get("overall") or {}
     attributions = analysis.get("attributions") or []
@@ -340,6 +343,83 @@ def render_anomaly_report_card(payload: dict, container=None, card_instance_key:
                 "execution": payload.get("execution") or {},
                 "report": report,
             })
+
+
+def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str | None = None) -> None:
+    """渲染 RootCause 的统一 anomaly_result 快照和阶段事件。"""
+    report = payload.get("report") or payload
+    status = report.get("status") or payload.get("status") or "partial"
+    completion = report.get("completion_status") or payload.get("completion_status") or "partial"
+    labels = {"completed": "分析完成", "partial": "部分完成", "failed": "分析失败", "rejected": "问题前提与实际结果不符，分析已停止"}
+    overall = report.get("overall") or {}
+    with ctx:
+        st.markdown("### 🔎 异动分析诊断报告")
+        if status == "completed" and completion == "complete":
+            st.success(labels["completed"])
+        elif status == "rejected":
+            st.error(labels["rejected"])
+        elif status == "failed":
+            st.error("异动分析失败，已保留已完成的证据。")
+        else:
+            st.warning("异动分析部分完成，以下结果仅包含已验证证据。")
+        kpis = st.columns(4)
+        kpis[0].metric("当前周期", _format_value(overall.get("current_value")))
+        kpis[1].metric("对比周期", _format_value(overall.get("comparison_value")))
+        kpis[2].metric("变化金额", _format_value(overall.get("change_amount")))
+        rate = overall.get("change_rate")
+        kpis[3].metric("变化率", f"{_safe_float(rate) * 100:.2f}%" if rate is not None else "-")
+
+        if report.get("summary"):
+            st.info(report["summary"])
+
+        charts = [] if status == "rejected" else (report.get("charts") or [])
+        if charts:
+            st.markdown("#### 真实对账图表")
+            tabs = st.tabs([str(chart.get("title") or "图表") for chart in charts])
+            for index, (tab, chart) in enumerate(zip(tabs, charts)):
+                with tab:
+                    try:
+                        render_chart(chart, chart_key=f"{card_instance_key or 'anomaly'}_structured_{index}")
+                    except Exception:
+                        # 单个图表配置异常不能让已经返回的 KPI/诊断报告整体丢失。
+                        logger.exception("异动图表渲染失败 index=%s title=%s", index, chart.get("title"))
+                        st.warning("该图表暂时无法渲染，已保留对应数据表和证据。")
+                    reconciliation = chart.get("reconciliation") or {}
+                    if reconciliation:
+                        dimension_checks = ("comparison_matches", "current_matches", "change_matches")
+                        keys = dimension_checks if any(key in reconciliation for key in dimension_checks) else ("matches",)
+                        ok = bool(keys) and all(reconciliation.get(key) is True for key in keys)
+                        st.caption("对账通过" if ok else "对账未完成")
+                    display_rows = []
+                    for row in chart.get("data") or []:
+                        display_row = dict(row)
+                        for key, value in list(display_row.items()):
+                            if "贡献率" in str(key) and value is not None:
+                                try:
+                                    display_row[key] = f"{float(value) * 100:.2f}%"
+                                except (TypeError, ValueError):
+                                    pass
+                        display_rows.append(display_row)
+                    st.dataframe(display_rows, hide_index=True, use_container_width=True)
+
+        diagnosis = report.get("diagnosis") or {}
+        if diagnosis:
+            st.markdown("#### 业务诊断")
+            st.caption(f"状态：{diagnosis.get('status') or '-'} · 完成度：{diagnosis.get('completion_status') or '-'} · 停止原因：{diagnosis.get('stop_reason') or '-'}")
+            for finding in diagnosis.get("findings") or []:
+                st.markdown(f"- **{finding.get('category', 'finding')}**：{finding.get('statement', '')}")
+            for hypothesis in diagnosis.get("hypotheses") or []:
+                st.markdown(f"- **假设 · {hypothesis.get('status', 'unverified')}**：{hypothesis.get('statement', '')}")
+
+        sql_items = report.get("sql_evidence") or []
+        if sql_items:
+            with st.expander("查看真实 SQL 证据", expanded=False):
+                for index, item in enumerate(sql_items):
+                    st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
+                    st.code(item.get("sql") or "", language="sql")
+
+        with st.expander("查看结构化结果与 Observation", expanded=False):
+            st.json({"request_id": report.get("request_id"), "stop_reason": report.get("stop_reason"), "observations": report.get("observations") or []})
 
 
 def render_bi_report_card(report_data: dict, container=None, card_instance_key: str | None = None):
@@ -582,7 +662,10 @@ def _select_remote_conversation(session_id: str) -> None:
     for item in _load_remote_messages(session_id):
         if item.get("role") == "assistant" and item.get("structured_result"):
             payload = item["structured_result"]
-            messages.append({"role": "assistant", "type": payload.get("type", "text"),
+            payload_type = payload.get("type", "text")
+            if payload_type in {"anomaly_result", "change_analysis_report"}:
+                payload_type = "anomaly_report"
+            messages.append({"role": "assistant", "type": payload_type,
                              "report_data": payload, "content": item.get("content", "")})
         else:
             messages.append({"role": item.get("role", "assistant"), "type": "text",
@@ -926,8 +1009,22 @@ if user_query:
         full_text_answer = ""
         report_payload = None
         anomaly_payload = None
+        anomaly_live_payload = {"type": "anomaly_result", "report": {"schema_version": "1.0", "status": "partial", "completion_status": "partial", "charts": [], "sql_evidence": []}}
+        anomaly_seen_event_ids: set[str] = set()
         error_message = None
         execution_details = []
+        anomaly_render_slot = st.empty()
+
+        def render_live_anomaly() -> None:
+            anomaly_render_slot.empty()
+            try:
+                with anomaly_render_slot.container() as live_container:
+                    render_anomaly_report_card(anomaly_live_payload, container=live_container, card_instance_key="live_anomaly_report")
+            except Exception:
+                logger.exception("异动阶段报告渲染失败")
+                with anomaly_render_slot.container():
+                    st.warning("报告数据已返回，但部分图表暂时无法渲染。")
+                    st.json(anomaly_live_payload)
 
         try:
             response = requests.post(
@@ -940,7 +1037,7 @@ if user_query:
                     "model_tier": selected_model_tier,
                 },
                 stream=True,
-                timeout=120,
+                timeout=(10, 600),
             )
             response.encoding = "utf-8"
 
@@ -962,6 +1059,12 @@ if user_query:
                         try:
                             data = json.loads(data_str)
 
+                            event_id = data.get("event_id")
+                            if event_id:
+                                if event_id in anomaly_seen_event_ids:
+                                    continue
+                                anomaly_seen_event_ids.add(event_id)
+
                             if "error" in data:
                                 status_container.update(label="❌ 执行异常中断", state="error", expanded=True)
                                 error_message = f"❌ 错误: {data['error']}"
@@ -980,6 +1083,32 @@ if user_query:
                                     state="running",
                                     expanded=False,
                                 )
+                                continue
+
+                            if data.get("type") == "anomaly_progress":
+                                status_container.update(
+                                    label=f"正在执行：{data.get('stage') or '异动分析'}",
+                                    state="running", expanded=False,
+                                )
+                                continue
+
+                            if data.get("type") == "anomaly_kpi":
+                                anomaly_live_payload["request_id"] = data.get("request_id")
+                                anomaly_live_payload["report"]["request_id"] = data.get("request_id")
+                                anomaly_live_payload["report"]["overall"] = data.get("overall") or {}
+                                continue
+
+                            if data.get("type") == "anomaly_chart":
+                                anomaly_live_payload["report"]["charts"].extend(data.get("charts") or [])
+                                anomaly_live_payload["report"]["completion_status"] = data.get("completion_status") or "partial"
+                                continue
+
+                            if data.get("type") == "anomaly_sql_result":
+                                anomaly_live_payload["report"]["sql_evidence"].extend(data.get("sql_evidence") or [])
+                                continue
+
+                            if data.get("type") == "anomaly_diagnosis":
+                                anomaly_live_payload["report"]["diagnosis"] = data.get("diagnosis") or {}
                                 continue
 
                             if data.get("type") == "node_result":
@@ -1005,14 +1134,19 @@ if user_query:
                                 continue
 
                             if data.get("type") == "anomaly_result":
-                                status_container.update(label="✅ 异动分析完成", state="complete", expanded=False)
+                                final_status = data.get("status") or (data.get("report") or {}).get("status")
+                                if final_status == "failed":
+                                    status_container.update(label="❌ 异动分析失败（已保留证据）", state="error", expanded=False)
+                                elif final_status == "rejected":
+                                    status_container.update(label="⛔ 问题前提与实际方向不符，分析已停止", state="complete", expanded=False)
+                                elif final_status == "partial":
+                                    status_container.update(label="⚠️ 异动分析部分完成", state="complete", expanded=False)
+                                else:
+                                    status_container.update(label="✅ 异动分析完成", state="complete", expanded=False)
                                 anomaly_payload = data
                                 full_text_answer = data.get("content") or "异动分析已完成，但暂时没有形成可解释结论。"
-                                render_anomaly_report_card(
-                                    anomaly_payload,
-                                    container=card_container,
-                                    card_instance_key="live_anomaly_report",
-                                )
+                                anomaly_live_payload = anomaly_payload
+                                render_live_anomaly()
                                 continue
 
                             token = data.get("content") or data.get("token") or data.get("answer_chunk")
@@ -1025,7 +1159,15 @@ if user_query:
                             continue
 
                 if status_container and error_message is None:
-                    status_container.update(label="✅ 任务执行完毕", state="complete", expanded=False)
+                    final_status = (anomaly_payload or {}).get("status")
+                    if final_status == "failed":
+                        status_container.update(label="❌ 异动分析失败（已保留证据）", state="error", expanded=False)
+                    elif final_status == "rejected":
+                        status_container.update(label="⛔ 问题前提与实际方向不符，分析已停止", state="complete", expanded=False)
+                    elif final_status == "partial":
+                        status_container.update(label="⚠️ 异动分析部分完成", state="complete", expanded=False)
+                    else:
+                        status_container.update(label="✅ 任务执行完毕", state="complete", expanded=False)
 
                 if report_payload:
                     st.session_state.messages.append({
