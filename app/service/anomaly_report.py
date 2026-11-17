@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import hashlib
+from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
 
 from app.service.anomaly_narrative_service import build_narratives
@@ -87,15 +88,16 @@ def _dimension_chart(path: dict[str, Any], names: dict[str, str] | None = None) 
         return None
     rows = []
     for item in path.get("attributions") or []:
-        rows.append({
+        row = {
             "成员": item.get("group_value"),
             "对比值": item.get("comparison_value"),
             "当前值": item.get("current_value"),
             "变化金额": item.get("change_amount"),
-            "净变化贡献率": item.get("net_contribution_rate"),
             "整体贡献率": item.get("overall_contribution_rate", item.get("net_contribution_rate")),
-            "父级贡献率": item.get("parent_contribution_rate"),
-        })
+        }
+        if path.get("depth", 0) > 0:
+            row["父级贡献率"] = item.get("parent_contribution_rate")
+        rows.append(row)
     if not rows:
         return None
     dimension = path.get("dimension_column") or "维度"
@@ -115,6 +117,26 @@ def _dimension_chart(path: dict[str, Any], names: dict[str, str] | None = None) 
         "parent_scope": path.get("parent_scope") or [],
         "selected_member": path.get("selected_member"),
     }
+
+
+def _dimension_display_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Format table cells only; charts and evidence retain their numeric precision."""
+    formatted = []
+    for row in rows:
+        display = {}
+        for key, value in row.items():
+            if value is None or key == "成员":
+                display[key] = value
+                continue
+            try:
+                number = Decimal(str(value))
+                if not number.is_finite():
+                    raise InvalidOperation
+                display[key] = f"{number * 100:.2f}%" if key.endswith("贡献率") else f"{number:,.2f}"
+            except (InvalidOperation, TypeError, ValueError):
+                display[key] = value
+        formatted.append(display)
+    return formatted
 
 
 def _dimension_summary(paths: list[dict[str, Any]]) -> str | None:
@@ -300,6 +322,7 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
                 "narrative_summary": narratives.get("drilldown_insights", {}).get(path.get("task_id")),
                 "drilldown_reason": path.get("stop_reason") or "真实成员贡献排序后继续下钻",
                 "chart_config": chart, "rows": chart.get("data") or [],
+                "display_rows": _dimension_display_rows(chart.get("data") or []),
                 "reconciliation": path.get("reconciliation"),
                 "sql_evidence": _sql_evidence(path),
             })

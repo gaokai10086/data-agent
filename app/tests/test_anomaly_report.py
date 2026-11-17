@@ -22,6 +22,32 @@ def _state(*observations):
 
 
 class AnomalyReportAdapterTest(unittest.TestCase):
+    def test_dimension_table_hides_duplicate_rates_and_formats_two_decimals(self):
+        paths = [
+            {"task_id": "root", "depth": 0, "dimension_column": "channel", "selected_member": "旗舰店",
+             "reconciliation": {"comparison_matches": True, "current_matches": True, "change_matches": True},
+             "attributions": [{"group_value": "旗舰店", "comparison_value": "100.1234",
+                               "current_value": "60.1234", "change_amount": "-40.0000",
+                               "net_contribution_rate": "0.4", "overall_contribution_rate": "0.4",
+                               "parent_contribution_rate": "0.4"}]},
+            {"task_id": "child", "depth": 1, "dimension_column": "region", "selected_member": "华东",
+             "reconciliation": {"comparison_matches": True, "current_matches": True, "change_matches": True},
+             "attributions": [{"group_value": "华东", "comparison_value": "30.1234",
+                               "current_value": "10.1234", "change_amount": "-20.0000",
+                               "net_contribution_rate": "0.2", "overall_contribution_rate": "0.2",
+                               "parent_contribution_rate": "0.5"}]},
+        ]
+        report = build_anomaly_report(_state({"step": 1, "action_name": "dimension_attribution",
+                                               "status": "completed", "attribution_result": {"paths": paths}}))
+        root, child = report["drilldown_sections"]
+        self.assertEqual(root["display_rows"][0]["对比值"], "100.12")
+        self.assertEqual(root["display_rows"][0]["整体贡献率"], "40.00%")
+        self.assertNotIn("净变化贡献率", root["rows"][0])
+        self.assertNotIn("父级贡献率", root["display_rows"][0])
+        self.assertEqual(child["display_rows"][0]["整体贡献率"], "20.00%")
+        self.assertEqual(child["display_rows"][0]["父级贡献率"], "50.00%")
+        self.assertEqual(child["rows"][0]["变化金额"], "-20.0000")
+
     def test_dimension_label_comes_from_inspection_metric_context(self):
         state = _state(
             {
@@ -46,8 +72,10 @@ class AnomalyReportAdapterTest(unittest.TestCase):
         report = build_anomaly_report(state)
         self.assertEqual(report["drilldown_sections"][0]["dimension_name"], "销售渠道")
         self.assertEqual(report["charts"][0]["title"], "销售渠道成员销售额变化")
-        self.assertIn("销售渠道=线下旗舰店", report["overview_insight"])
+        self.assertIn("销售渠道“线下旗舰店”", report["overview_insight"])
         self.assertNotIn("channel_type=", report["overview_insight"])
+        self.assertIn("\n\n", report["overview_insight"])
+        self.assertNotIn("父级贡献", report["overview_insight"])
 
     def test_emits_kpi_chart_diagnosis_and_final_snapshot(self):
         state = _state(

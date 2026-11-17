@@ -5,7 +5,6 @@
 ================================================================================
 """
 import atexit
-
 import signal
 import subprocess
 import sys

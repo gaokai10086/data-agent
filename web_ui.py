@@ -368,9 +368,10 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
         kpis[3].metric("变化率", f"{_safe_float(rate) * 100:.2f}%" if rate is not None else "-")
 
         if report.get("overview_insight"):
-            title = "AI 异动分析总结" if report.get("narrative_source") == "llm" else "异动数据摘要"
-            st.markdown(f"#### {title}")
-            st.info(report["overview_insight"])
+            title = "AI 异动分析总结" if report.get("narrative_source") == "llm" else "异动分析摘要"
+            with st.container(border=True):
+                st.markdown(f"#### ✨ {title}")
+                st.markdown(report["overview_insight"])
 
         decomposition = report.get("decomposition_section")
         if decomposition:
@@ -414,7 +415,7 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
                         st.info("暂无本层图表。")
                 with section_tabs[1]:
                     if section.get("rows"):
-                        st.dataframe(section["rows"], hide_index=True, use_container_width=True)
+                        st.dataframe(section.get("display_rows") or section["rows"], hide_index=True, use_container_width=True)
                     else:
                         st.info("暂无本层数据明细。")
                 with section_tabs[2]:

@@ -62,6 +62,20 @@ class NarrativeLLMTest(unittest.TestCase):
             result = asyncio.run(enrich_report(self.report, SimpleNamespace(context={})))
         self.assertEqual(result["narrative_source"], "fallback")
 
+    def test_period_percent_and_wan_conversion_are_accepted(self):
+        report = dict(self.report)
+        report["overall"] = {
+            "metric": "销售额", "comparison_period": "2026-07", "target_period": "2026-08",
+            "change_amount": "-658333", "change_rate": "-0.6647",
+        }
+
+        async def fake_llm(_):
+            return '{"overview":{"text":"2026年8月销售额较2026年7月下降约65.83万元，降幅66.47%，主要异常集中于已验证渠道。","evidence_ids":["overall","path:t1"]},"decomposition":null,"drilldowns":[{"task_id":"t1","text":"该成员下降了50，后续范围沿此成员收窄。","evidence_ids":["path:t1"]}],"diagnosis":null}'
+
+        with patch("app.service.anomaly_narrative_llm.get_context_llm", return_value=RunnableLambda(fake_llm)):
+            result = asyncio.run(enrich_report(report, SimpleNamespace(context={})))
+        self.assertEqual(result["narrative_source"], "llm")
+
 
 if __name__ == "__main__":
     unittest.main()

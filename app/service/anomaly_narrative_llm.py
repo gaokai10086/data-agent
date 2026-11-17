@@ -109,7 +109,21 @@ def _validate(output: NarrativeOutput, context: NarrativeContext) -> None:
                     approved.add(abs((number * 100).quantize(Decimal("0.01"))))
         return approved
 
-    number_pattern = re.compile(r"(?<![\w])[-+]?\d[\d,]*(?:\.\d+)?%?")
+    def approved_percentages(value: Any, key: str = "") -> set[Decimal]:
+        if isinstance(value, dict):
+            return set().union(*(approved_percentages(item, child_key) for child_key, item in value.items()
+                                 if child_key not in {"sql", "sql_evidence", "sql_by_period"}))
+        if isinstance(value, list):
+            return set().union(*(approved_percentages(item, key) for item in value))
+        if "rate" not in key and "贡献率" not in key and "变化率" not in key:
+            return set()
+        try:
+            number = Decimal(str(value))
+            return {number * 100, abs(number * 100)} if number.is_finite() else set()
+        except (InvalidOperation, TypeError, ValueError):
+            return set()
+
+    number_pattern = re.compile(r"(?<![0-9A-Za-z_.])[-+]?\d[\d,]*(?:\.\d+)?(?:%|％|万(?:元)?|亿(?:元)?)?")
     for insight in insights:
         if not insight.text.strip() or not insight.evidence_ids or not set(insight.evidence_ids) <= allowed:
             raise ValueError("invalid evidence references")
@@ -118,15 +132,32 @@ def _validate(output: NarrativeOutput, context: NarrativeContext) -> None:
         cited_facts = [fact.payload for fact in [context.overall, context.decomposition, *context.drilldowns, context.diagnosis]
                        if fact and fact.evidence_id in insight.evidence_ids]
         valid_numbers = approved_numbers(cited_facts)
+        valid_percentages = approved_percentages(cited_facts)
         text_without_periods = insight.text
         for fact in cited_facts:
             for period_key in ("target_period", "comparison_period"):
                 period = fact.get(period_key)
                 if isinstance(period, str):
                     text_without_periods = text_without_periods.replace(period, "")
+                    match = re.fullmatch(r"(\d{4})-(\d{1,2})", period)
+                    if match:
+                        year, month = match.groups()
+                        for rendered in (f"{year}年{int(month)}月", f"{year}年{int(month):02d}月"):
+                            text_without_periods = text_without_periods.replace(rendered, "")
         for match in number_pattern.finditer(text_without_periods):
-            token = match.group().rstrip("%").replace(",", "")
-            if Decimal(token) not in valid_numbers:
+            token = match.group().replace(",", "")
+            is_percent = token.endswith(("%", "％"))
+            unit = Decimal("100000000") if "亿" in token else Decimal("10000") if "万" in token else Decimal("1")
+            number = Decimal(re.sub(r"[%％万元亿]", "", token))
+            if is_percent:
+                # Percentage rendering may round a stored ratio to two decimal places.
+                valid = any(abs(number - candidate) <= Decimal("0.005") for candidate in valid_percentages)
+            elif unit > 1:
+                # A rounded 万/亿 display represents an interval around the source amount.
+                valid = any(abs(number * unit - candidate) <= unit * Decimal("0.005") for candidate in valid_numbers)
+            else:
+                valid = number in valid_numbers
+            if not valid:
                 raise ValueError("model generated an unsupported number")
     if context.overall and "overall" not in output.overview.evidence_ids:
         raise ValueError("overview missing overall evidence")
