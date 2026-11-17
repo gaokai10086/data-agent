@@ -368,7 +368,8 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
         kpis[3].metric("变化率", f"{_safe_float(rate) * 100:.2f}%" if rate is not None else "-")
 
         if report.get("overview_insight"):
-            st.markdown("#### AI 异动分析总结")
+            title = "AI 异动分析总结" if report.get("narrative_source") == "llm" else "异动数据摘要"
+            st.markdown(f"#### {title}")
             st.info(report["overview_insight"])
 
         decomposition = report.get("decomposition_section")
@@ -401,7 +402,7 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
         if sections:
             st.markdown("#### 逐层维度归因解读")
             for section in sections:
-                label = str(section.get("dimension_column") or "维度").rsplit(".", 1)[-1]
+                label = section.get("dimension_name") or str(section.get("dimension_column") or "维度").rsplit(".", 1)[-1]
                 st.markdown(f"**第 {section.get('depth', 0)} 层 · {label}**")
                 if section.get("narrative_summary"):
                     st.write(section["narrative_summary"])
@@ -455,6 +456,8 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
         diagnosis = report.get("diagnosis") or {}
         if diagnosis:
             st.markdown("#### 业务诊断")
+            if report.get("diagnosis_insight"):
+                st.write(report["diagnosis_insight"])
             st.caption(f"状态：{diagnosis.get('status') or '-'} · 完成度：{diagnosis.get('completion_status') or '-'} · 停止原因：{diagnosis.get('stop_reason') or '-'}")
             for finding in diagnosis.get("findings") or []:
                 st.markdown(f"- **{finding.get('category', 'finding')}**：{finding.get('statement', '')}")

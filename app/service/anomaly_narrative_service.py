@@ -12,7 +12,7 @@ def _amount(value: Any) -> float | None:
         return None
 
 
-def build_narratives(overall, decomposition, paths, diagnosis) -> dict[str, Any]:
+def build_narratives(overall, decomposition, paths, diagnosis, dimension_names: dict[str, str] | None = None) -> dict[str, Any]:
     """生成可被 LLM 替换的事实摘要；当前使用安全 fallback，避免数字幻觉。"""
     result: dict[str, Any] = {"source": "fallback", "drilldown_insights": {}}
     if overall:
@@ -76,7 +76,7 @@ def build_narratives(overall, decomposition, paths, diagnosis) -> dict[str, Any]
             parent_text = f"父级贡献 {parent_rate * 100:.2f}%" if parent_rate is not None else "父级贡献不可计算"
             change_rate_text = f"环比变化率 {change_rate * 100:.2f}%" if change_rate is not None else "环比变化率不可计算"
             selected_chain.append(
-                f"{str(path.get('dimension_column') or '维度').rsplit('.', 1)[-1]}={selected}"
+                f"{(dimension_names or {}).get(path.get('dimension_column')) or str(path.get('dimension_column') or '维度').rsplit('.', 1)[-1]}={selected}"
                 f"（{amount_text}，{change_rate_text}，{overall_text}，{parent_text}）"
             )
     if selected_chain:

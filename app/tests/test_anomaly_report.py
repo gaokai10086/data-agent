@@ -22,6 +22,33 @@ def _state(*observations):
 
 
 class AnomalyReportAdapterTest(unittest.TestCase):
+    def test_dimension_label_comes_from_inspection_metric_context(self):
+        state = _state(
+            {
+                "step": 1, "action_name": "change_inspection", "status": "ready",
+                "inspection_outcome": {"metric_context": {"dimensions": [
+                    {"column": "dim_store.channel_type", "name": "销售渠道"},
+                ]}},
+                "evidence": {"metric": "销售额", "comparison_value": 100, "current_value": 50,
+                             "change_amount": -50, "change_rate": -0.5},
+            },
+            {
+                "step": 2, "action_name": "dimension_attribution", "status": "completed",
+                "attribution_result": {"paths": [{
+                    "task_id": "task-1", "dimension_column": "dim_store.channel_type",
+                    "selected_member": "线下旗舰店", "depth": 0,
+                    "reconciliation": {"comparison_matches": True, "current_matches": True, "change_matches": True},
+                    "attributions": [{"group_value": "线下旗舰店", "comparison_value": 100,
+                                      "current_value": 50, "change_amount": -50}],
+                }]},
+            },
+        )
+        report = build_anomaly_report(state)
+        self.assertEqual(report["drilldown_sections"][0]["dimension_name"], "销售渠道")
+        self.assertEqual(report["charts"][0]["title"], "销售渠道成员销售额变化")
+        self.assertIn("销售渠道=线下旗舰店", report["overview_insight"])
+        self.assertNotIn("channel_type=", report["overview_insight"])
+
     def test_emits_kpi_chart_diagnosis_and_final_snapshot(self):
         state = _state(
             {

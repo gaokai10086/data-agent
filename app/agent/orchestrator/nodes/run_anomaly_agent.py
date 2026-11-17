@@ -14,6 +14,7 @@ from app.agent.data_agent.context import DataAgentContext
 from app.agent.orchestrator.state import OrchestratorState
 from app.core.logging import logger
 from app.service.anomaly_report import events_for_new_observations, final_anomaly_event
+from app.service.anomaly_narrative_llm import enrich_report
 
 
 TECHNICAL_FAILURE_MESSAGE = "异动分析暂时无法完成，请稍后重试。"
@@ -105,5 +106,7 @@ async def run_anomaly_agent(
             "skill_name": selected_skill_name,
         })
     if result.get("observations"):
-        runtime.stream_writer(final_anomaly_event(result))
+        event = final_anomaly_event(result)
+        event["report"] = await enrich_report(event["report"], runtime)
+        runtime.stream_writer(event)
     return {"agent_result": result}

@@ -72,7 +72,17 @@ def _reconciliation_passed(value: dict[str, Any] | None, *, dimension: bool = Fa
     return all(value.get(key) is True for key in keys)
 
 
-def _dimension_chart(path: dict[str, Any]) -> dict[str, Any] | None:
+def _dimension_names(state: dict[str, Any]) -> dict[str, str]:
+    """Use the published MetricContext carried by ChangeInspection, not guessed translations."""
+    for observation in state.get("observations") or []:
+        context = (observation.get("inspection_outcome") or {}).get("metric_context") or {}
+        dimensions = context.get("dimensions") or []
+        if dimensions:
+            return {item["column"]: item["name"] for item in dimensions if item.get("column") and item.get("name")}
+    return {}
+
+
+def _dimension_chart(path: dict[str, Any], names: dict[str, str] | None = None) -> dict[str, Any] | None:
     if not _reconciliation_passed(path.get("reconciliation"), dimension=True):
         return None
     rows = []
@@ -89,7 +99,7 @@ def _dimension_chart(path: dict[str, Any]) -> dict[str, Any] | None:
     if not rows:
         return None
     dimension = path.get("dimension_column") or "维度"
-    dimension_label = str(dimension).rsplit(".", 1)[-1]
+    dimension_label = (names or {}).get(dimension) or str(dimension).rsplit(".", 1)[-1]
     return {
         "chart_type": "bar",
         "title": f"{dimension_label}成员销售额变化",
@@ -99,6 +109,7 @@ def _dimension_chart(path: dict[str, Any]) -> dict[str, Any] | None:
         "metric_semantics": {"变化金额": {"display_type": "amount", "value_scale": "absolute", "axis": "left"}},
         "presentation": {"orientation": "horizontal", "sort": "asc"},
         "dimension_column": dimension,
+        "dimension_name": dimension_label,
         "reconciliation": path.get("reconciliation"),
         "depth": path.get("depth", 0),
         "parent_scope": path.get("parent_scope") or [],
@@ -178,7 +189,8 @@ def _observation_events(observation: dict[str, Any], state: dict[str, Any]) -> l
             events.append(_base_event("anomaly_kpi", "change_inspection", state, "overall", overall=overall, completion_status="complete"))
     if action == "dimension_attribution" and status in {"completed", "partial"}:
         result = observation.get("attribution_result") or {}
-        charts = [chart for chart in (_dimension_chart(path) for path in result.get("paths") or []) if chart]
+        names = _dimension_names(state)
+        charts = [chart for chart in (_dimension_chart(path, names) for path in result.get("paths") or []) if chart]
         if charts:
             events.append(_base_event("anomaly_chart", "dimension_attribution", state, f"{action}:{observation.get('step')}", charts=charts, completion_status=observation.get("completion_status"), status=status))
         events.append(_base_event("anomaly_sql_result", "dimension_attribution", state, f"sql:{observation.get('step')}", sql_evidence=_sql_evidence(result)))
@@ -206,6 +218,7 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
     sql_evidence: list[dict[str, Any]] = []
     diagnosis: dict[str, Any] | None = None
     dimension_paths: list[dict[str, Any]] = []
+    dimension_names = _dimension_names(state)
     decomposition_result: dict[str, Any] | None = None
     statuses = []
     stage_status = {"change_inspection": "pending", "metric_decomposition": "pending", "dimension_attribution": "pending", "business_diagnosis": "pending"}
@@ -218,7 +231,7 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
         if action == "dimension_attribution":
             result = item.get("attribution_result") or {}
             dimension_paths.extend(result.get("paths") or [])
-            charts.extend(chart for chart in (_dimension_chart(path) for path in result.get("paths") or []) if chart)
+            charts.extend(chart for chart in (_dimension_chart(path, dimension_names) for path in result.get("paths") or []) if chart)
             sql_evidence.extend(_sql_evidence(result))
         elif action == "metric_decomposition":
             result = item.get("decomposition_result") or {}
@@ -261,7 +274,7 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
         status, completion = "partial", "partial"
         rejection_reason = None
         summary = _dimension_summary(dimension_paths)
-    narratives = build_narratives(overall, decomposition_result, dimension_paths, diagnosis)
+    narratives = build_narratives(overall, decomposition_result, dimension_paths, diagnosis, dimension_names)
     decomposition_section = None
     if decomposition_result:
         decomposition_section = {
@@ -276,11 +289,12 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
         }
     drilldown_sections = []
     for path in dimension_paths:
-        chart = _dimension_chart(path)
+        chart = _dimension_chart(path, dimension_names)
         if chart:
             drilldown_sections.append({
                 "task_id": path.get("task_id"), "depth": path.get("depth", 0),
                 "dimension_column": path.get("dimension_column"),
+                "dimension_name": dimension_names.get(path.get("dimension_column")) or str(path.get("dimension_column") or "维度").rsplit(".", 1)[-1],
                 "parent_scope": path.get("parent_scope") or [],
                 "selected_member": path.get("selected_member"),
                 "narrative_summary": narratives.get("drilldown_insights", {}).get(path.get("task_id")),
