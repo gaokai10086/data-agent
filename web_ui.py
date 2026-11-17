@@ -360,8 +360,6 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
             st.error(labels["rejected"])
         elif status == "failed":
             st.error("异动分析失败，已保留已完成的证据。")
-        else:
-            st.warning("异动分析部分完成，以下结果仅包含已验证证据。")
         kpis = st.columns(4)
         kpis[0].metric("当前周期", _format_value(overall.get("current_value")))
         kpis[1].metric("对比周期", _format_value(overall.get("comparison_value")))
@@ -369,28 +367,60 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
         rate = overall.get("change_rate")
         kpis[3].metric("变化率", f"{_safe_float(rate) * 100:.2f}%" if rate is not None else "-")
 
-        if report.get("summary"):
-            st.info(report["summary"])
+        if report.get("overview_insight"):
+            st.markdown("#### AI 异动分析总结")
+            st.info(report["overview_insight"])
+
+        decomposition = report.get("decomposition_section")
+        if decomposition:
+            st.markdown("#### 指标拆解")
+            if decomposition.get("summary"):
+                st.write(decomposition["summary"])
+            decomposition_tabs = st.tabs(["📈 可视化", "📋 数据明细", "🔍 查询详情"])
+            with decomposition_tabs[0]:
+                if decomposition.get("chart_config"):
+                    render_chart(decomposition["chart_config"], chart_key=f"{card_instance_key or 'anomaly'}_decomposition")
+                else:
+                    st.info("暂无已对账通过的指标拆解图表。")
+            with decomposition_tabs[1]:
+                components = decomposition.get("components") or []
+                if components:
+                    st.dataframe(components, hide_index=True, use_container_width=True)
+                else:
+                    st.info("本次未返回指标拆解明细。")
+            with decomposition_tabs[2]:
+                if decomposition.get("sql_evidence"):
+                    for item in decomposition["sql_evidence"]:
+                        st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
+                        st.code(item.get("sql") or "", language="sql")
+                else:
+                    st.info("暂无指标拆解 SQL。")
 
         charts = [] if status == "rejected" else (report.get("charts") or [])
-        drilldown = report.get("drilldown_path") or []
-        if drilldown:
-            st.markdown("#### 主分析路径")
-            path_lines = []
-            for node in sorted(drilldown, key=lambda item: item.get("depth", 0)):
-                dimension = str(node.get("dimension_column") or "维度").rsplit(".", 1)[-1]
-                member = node.get("selected_member") or "未选择成员"
-                scope = node.get("parent_scope") or []
-                prefix = "　" * int(node.get("depth", 0))
-                parent_text = ""
-                if scope:
-                    parent_text = "（范围：" + "、".join(
-                        f"{str(item.get('dimension_column') or '').rsplit('.', 1)[-1]}={item.get('member_value')}"
-                        for item in scope
-                    ) + "）"
-                path_lines.append(f"{prefix}└── **{dimension} = {member}** {parent_text}")
-            st.markdown("\n".join(path_lines))
-        if charts:
+        sections = report.get("drilldown_sections") or []
+        if sections:
+            st.markdown("#### 逐层维度归因解读")
+            for section in sections:
+                label = str(section.get("dimension_column") or "维度").rsplit(".", 1)[-1]
+                st.markdown(f"**第 {section.get('depth', 0)} 层 · {label}**")
+                if section.get("narrative_summary"):
+                    st.write(section["narrative_summary"])
+                section_tabs = st.tabs(["📈 可视化", "📋 数据明细", "🔍 查询详情"])
+                with section_tabs[0]:
+                    if section.get("chart_config"):
+                        render_chart(section["chart_config"], chart_key=f"{card_instance_key or 'anomaly'}_dimension_{section.get('task_id')}")
+                    else:
+                        st.info("暂无本层图表。")
+                with section_tabs[1]:
+                    if section.get("rows"):
+                        st.dataframe(section["rows"], hide_index=True, use_container_width=True)
+                    else:
+                        st.info("暂无本层数据明细。")
+                with section_tabs[2]:
+                    for item in section.get("sql_evidence") or []:
+                        st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
+                        st.code(item.get("sql") or "", language="sql")
+        if charts and not sections and not decomposition:
             st.markdown("#### 真实对账图表")
             tabs = st.tabs([
                 f"第{chart.get('depth', 0)}层 · {chart.get('title') or '图表'}"
@@ -431,15 +461,6 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
             for hypothesis in diagnosis.get("hypotheses") or []:
                 st.markdown(f"- **假设 · {hypothesis.get('status', 'unverified')}**：{hypothesis.get('statement', '')}")
 
-        sql_items = report.get("sql_evidence") or []
-        if sql_items:
-            with st.expander("查看真实 SQL 证据", expanded=False):
-                for index, item in enumerate(sql_items):
-                    st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
-                    st.code(item.get("sql") or "", language="sql")
-
-        with st.expander("查看结构化结果与 Observation", expanded=False):
-            st.json({"request_id": report.get("request_id"), "stop_reason": report.get("stop_reason"), "observations": report.get("observations") or []})
 
 
 def render_bi_report_card(report_data: dict, container=None, card_instance_key: str | None = None):
@@ -1029,7 +1050,7 @@ if user_query:
         full_text_answer = ""
         report_payload = None
         anomaly_payload = None
-        anomaly_live_payload = {"type": "anomaly_result", "report": {"schema_version": "1.0", "status": "partial", "completion_status": "partial", "charts": [], "sql_evidence": []}}
+        anomaly_live_payload = {"type": "anomaly_result", "report": {"schema_version": "1.0", "status": "partial", "completion_status": "partial", "charts": [], "sql_evidence": [], "stage_status": {"change_inspection": "pending", "metric_decomposition": "pending", "dimension_attribution": "pending", "business_diagnosis": "pending"}}}
         anomaly_seen_event_ids: set[str] = set()
         error_message = None
         execution_details = []
@@ -1106,6 +1127,9 @@ if user_query:
                                 continue
 
                             if data.get("type") == "anomaly_progress":
+                                stage = data.get("stage") or ""
+                                if stage in anomaly_live_payload["report"]["stage_status"]:
+                                    anomaly_live_payload["report"]["stage_status"][stage] = "running"
                                 status_container.update(
                                     label=f"正在执行：{data.get('stage') or '异动分析'}",
                                     state="running", expanded=False,
@@ -1113,12 +1137,16 @@ if user_query:
                                 continue
 
                             if data.get("type") == "anomaly_kpi":
+                                anomaly_live_payload["report"]["stage_status"]["change_inspection"] = "completed"
                                 anomaly_live_payload["request_id"] = data.get("request_id")
                                 anomaly_live_payload["report"]["request_id"] = data.get("request_id")
                                 anomaly_live_payload["report"]["overall"] = data.get("overall") or {}
                                 continue
 
                             if data.get("type") == "anomaly_chart":
+                                stage = data.get("stage") or ""
+                                if stage in anomaly_live_payload["report"]["stage_status"]:
+                                    anomaly_live_payload["report"]["stage_status"][stage] = "completed" if data.get("status") == "completed" else "partial"
                                 anomaly_live_payload["report"]["charts"].extend(data.get("charts") or [])
                                 anomaly_live_payload["report"]["completion_status"] = data.get("completion_status") or "partial"
                                 continue
@@ -1128,6 +1156,7 @@ if user_query:
                                 continue
 
                             if data.get("type") == "anomaly_diagnosis":
+                                anomaly_live_payload["report"]["stage_status"]["business_diagnosis"] = "completed" if data.get("status") == "completed" else "partial"
                                 anomaly_live_payload["report"]["diagnosis"] = data.get("diagnosis") or {}
                                 continue
 
@@ -1154,6 +1183,9 @@ if user_query:
                                 continue
 
                             if data.get("type") == "anomaly_result":
+                                final_report = data.get("report") or {}
+                                if final_report.get("stage_status"):
+                                    anomaly_live_payload["report"]["stage_status"] = final_report["stage_status"]
                                 final_status = data.get("status") or (data.get("report") or {}).get("status")
                                 if final_status == "failed":
                                     status_container.update(label="❌ 异动分析失败（已保留证据）", state="error", expanded=False)

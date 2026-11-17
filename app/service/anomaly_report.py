@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Iterable
 
+from app.service.anomaly_narrative_service import build_narratives
+
 
 def _jsonable(value: Any) -> Any:
     if hasattr(value, "model_dump"):
@@ -102,27 +104,6 @@ def _dimension_chart(path: dict[str, Any]) -> dict[str, Any] | None:
         "parent_scope": path.get("parent_scope") or [],
         "selected_member": path.get("selected_member"),
     }
-
-
-def _drilldown_path(paths: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """把已对账路径转换为前端可读的父子链，保留各层真实证据。"""
-    nodes = []
-    for path in sorted(paths, key=lambda item: item.get("depth", 0)):
-        selected = path.get("selected_member")
-        if selected is None:
-            members = path.get("attributions") or []
-            negatives = [m for m in members if (m.get("change_amount") or 0) < 0]
-            if negatives:
-                selected = min(negatives, key=lambda m: m.get("change_amount") or 0).get("group_value")
-        nodes.append({
-            "depth": path.get("depth", 0),
-            "dimension_column": path.get("dimension_column"),
-            "selected_member": selected,
-            "parent_scope": path.get("parent_scope") or [],
-            "reconciliation": path.get("reconciliation") or {},
-            "stop_reason": path.get("stop_reason"),
-        })
-    return nodes
 
 
 def _dimension_summary(paths: list[dict[str, Any]]) -> str | None:
@@ -225,10 +206,15 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
     sql_evidence: list[dict[str, Any]] = []
     diagnosis: dict[str, Any] | None = None
     dimension_paths: list[dict[str, Any]] = []
+    decomposition_result: dict[str, Any] | None = None
     statuses = []
+    stage_status = {"change_inspection": "pending", "metric_decomposition": "pending", "dimension_attribution": "pending", "business_diagnosis": "pending"}
     for item in observations:
         statuses.append(item.get("status"))
         action = item.get("action_name")
+        if action in stage_status:
+            item_status = item.get("status")
+            stage_status[action] = "completed" if item_status == "completed" or (action == "change_inspection" and item_status == "ready") else ("failed" if item_status in {"failed", "blocked"} else "partial")
         if action == "dimension_attribution":
             result = item.get("attribution_result") or {}
             dimension_paths.extend(result.get("paths") or [])
@@ -236,6 +222,7 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
             sql_evidence.extend(_sql_evidence(result))
         elif action == "metric_decomposition":
             result = item.get("decomposition_result") or {}
+            decomposition_result = result
             chart = _decomposition_chart(result)
             if chart:
                 charts.append(chart)
@@ -274,6 +261,34 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
         status, completion = "partial", "partial"
         rejection_reason = None
         summary = _dimension_summary(dimension_paths)
+    narratives = build_narratives(overall, decomposition_result, dimension_paths, diagnosis)
+    decomposition_section = None
+    if decomposition_result:
+        decomposition_section = {
+            "status": decomposition_result.get("status"),
+            "completion_status": decomposition_result.get("completion_status"),
+            "formula": decomposition_result.get("formula"),
+            "components": decomposition_result.get("components") or [],
+            "reconciliation": decomposition_result.get("reconciliation"),
+            "summary": narratives.get("decomposition_insight"),
+            "chart_config": _decomposition_chart(decomposition_result),
+            "sql_evidence": _sql_evidence(decomposition_result),
+        }
+    drilldown_sections = []
+    for path in dimension_paths:
+        chart = _dimension_chart(path)
+        if chart:
+            drilldown_sections.append({
+                "task_id": path.get("task_id"), "depth": path.get("depth", 0),
+                "dimension_column": path.get("dimension_column"),
+                "parent_scope": path.get("parent_scope") or [],
+                "selected_member": path.get("selected_member"),
+                "narrative_summary": narratives.get("drilldown_insights", {}).get(path.get("task_id")),
+                "drilldown_reason": path.get("stop_reason") or "真实成员贡献排序后继续下钻",
+                "chart_config": chart, "rows": chart.get("data") or [],
+                "reconciliation": path.get("reconciliation"),
+                "sql_evidence": _sql_evidence(path),
+            })
     return {
         "schema_version": "1.0",
         "request_id": _request_id(state),
@@ -284,10 +299,15 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
         "summary": summary,
         "overall": overall,
         "charts": charts,
-        "drilldown_path": _drilldown_path(dimension_paths),
+        "overview_insight": narratives.get("overview_insight"),
+        "narrative_source": narratives.get("source", "fallback"),
+        "decomposition_section": decomposition_section,
+        "drilldown_sections": drilldown_sections,
+        "diagnosis_section": diagnosis,
         "diagnosis": diagnosis,
         "sql_evidence": sql_evidence,
         "observations": observations,
+        "stage_status": stage_status,
     }
 
 
