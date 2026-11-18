@@ -81,6 +81,7 @@ def build_narratives(overall, decomposition, paths, diagnosis, dimension_names: 
         )
     else:
         result["decomposition_insight"] = "本次未进行指标拆解，暂无订单量与客单价因素结论。"
+    multi_mode = any(len(path.get("selected_members") or []) > 1 for path in paths or [])
     selected_chain = []
     root_members = []
     for path in sorted(paths or [], key=lambda item: item.get("depth", 0)):
@@ -107,13 +108,23 @@ def build_narratives(overall, decomposition, paths, diagnosis, dimension_names: 
         scope_text = "、".join(f"{(dimension_names or {}).get(item.get('dimension_column')) or str(item.get('dimension_column') or '维度').rsplit('.', 1)[-1]}“{item.get('member_value')}”" for item in scope)
         lead = f"在{scope_text}范围内，" if scope_text else "从本层分组看，"
         context_text = _decline_context(members, selected)
-        if selected_item is not None:
+        if multi_mode and path.get("selected_members") is not None:
+            chosen = [item for name in path.get("selected_members") or [] for item in members if item.get("group_value") == name]
+            chosen_text = "、".join(f"“{item.get('group_value')}”（下降约 {_wan(abs(_amount(item.get('change_amount')) or 0))}）" for item in chosen)
+            coverage = _amount(path.get("actual_decline_coverage"))
+            uncovered = _amount(path.get("uncovered_decline_amount"))
+            result["drilldown_insights"][path.get("task_id")] = (
+                f"{lead}本层下降成员中选择{chosen_text or '无'}；"
+                f"累计下降覆盖率 {coverage * 100:.2f}%" if coverage is not None else
+                f"{lead}本层没有可计算的下降覆盖率。"
+            ) + (f"，仍有下降金额约 {_wan(uncovered)} 未被选择。" if uncovered is not None and uncovered > 0 else "。")
+        elif selected_item is not None:
             result["drilldown_insights"][path.get("task_id")] = (
                 f"{lead}“{selected}”是重点下降成员，{'，'.join(rate_text)}。"
                 + (f"{context_text}。" if context_text else "")
             )
         reconciled = path.get("reconciliation") or {}
-        if selected is not None and all(reconciled.get(key) is True for key in ("comparison_matches", "current_matches", "change_matches")):
+        if not multi_mode and selected is not None and all(reconciled.get(key) is True for key in ("comparison_matches", "current_matches", "change_matches")):
             if not selected_chain:
                 root_members = members
             selected_item = next((m for m in (path.get("attributions") or []) if m.get("group_value") == selected), {})
@@ -125,6 +136,24 @@ def build_narratives(overall, decomposition, paths, diagnosis, dimension_names: 
                 ((dimension_names or {}).get(path.get('dimension_column')) or str(path.get('dimension_column') or '维度').rsplit('.', 1)[-1],
                  selected, amount, overall_rate)
             )
+    if multi_mode:
+        roots = [path for path in paths or [] if path.get("depth", 0) == 0 and
+                 all((path.get("reconciliation") or {}).get(key) is True for key in ("comparison_matches", "current_matches", "change_matches"))]
+        if roots:
+            root = roots[0]
+            members = {item.get("group_value"): item for item in root.get("attributions") or []}
+            selected = [members[name] for name in root.get("selected_members") or [] if name in members]
+            detail = "、".join(f"“{item.get('group_value')}”下降约 {_wan(abs(_amount(item.get('change_amount')) or 0))}" for item in selected)
+            coverage = _amount(root.get("actual_decline_coverage"))
+            uncovered = _amount(root.get("uncovered_decline_amount"))
+            result["overview_insight"] += (f"\n\n从已对账的{(dimension_names or {}).get(root.get('dimension_column'), '维度')}结果看，"
+                                           f"重点下降成员包括{detail}。"
+                                           + (f"这些成员覆盖本层下降总额的 {coverage * 100:.2f}%。" if coverage is not None else "")
+                                           + (f"本层未选中的下降金额约 {_wan(uncovered)}。" if uncovered is not None and uncovered > 0 else ""))
+            branches = {path.get("parent_scope")[0].get("member_value") for path in paths or []
+                        if path.get("parent_scope") and path.get("depth", 0) > 0}
+            if branches:
+                result["overview_insight"] += f"已分别沿{len(branches)}个渠道范围继续下钻；各层金额不能重复相加。"
     if selected_chain:
         root = selected_chain[0]
         terminal = selected_chain[-1]

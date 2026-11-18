@@ -1,5 +1,6 @@
 """SalesAmountAnomalySkill 策略契约测试。"""
 import unittest
+from decimal import Decimal
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.actions import ACTION_REGISTRY
 from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import (
@@ -20,10 +21,12 @@ class SalesAmountSkillStrategyTest(unittest.TestCase):
         self.assertIn("DimensionAttributionAgent", instructions)
         self.assertTrue(self.skill.strategy.change_inspection_required)
         self.assertEqual(self.skill.strategy.dimension_source, "metric_context.dimensions")
-        self.assertEqual(self.skill.strategy.max_analysis_rounds, 8)
+        self.assertEqual(self.skill.strategy.max_analysis_rounds, 14)
         self.assertEqual(self.skill.strategy.max_dimensions, 6)
-        self.assertEqual(self.skill.strategy.max_query_budget, 16)
+        self.assertEqual(self.skill.strategy.max_query_budget, 24)
         self.assertEqual(self.skill.strategy.max_depth, 3)
+        self.assertEqual(self.skill.strategy.max_attribution_tasks, 12)
+        self.assertEqual(self.skill.strategy.coverage_threshold, Decimal("0.80"))
 
     def test_allowed_capabilities_are_subset_of_real_capabilities(self):
         resolved = resolve_skill_capabilities(self.skill)

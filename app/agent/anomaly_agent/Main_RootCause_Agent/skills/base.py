@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import Decimal
 import inspect
 from pathlib import Path
 from typing import Literal
@@ -32,6 +33,10 @@ class SkillStrategy:
     max_dimensions: int = 6
     max_query_budget: int = 16
     max_depth: int = 3
+    coverage_threshold: Decimal = Decimal("0.80")
+    max_children_per_parent: int = 3
+    max_attribution_tasks: int = 12
+    max_concurrent_branches: int = 1
     # 固定业务下钻路径；为空时才允许动态维度选择。
     dimension_path: tuple[str, ...] = ()
     tool_contracts: tuple[AttributionToolContract, ...] = ()

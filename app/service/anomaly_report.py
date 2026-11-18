@@ -116,6 +116,9 @@ def _dimension_chart(path: dict[str, Any], names: dict[str, str] | None = None) 
         "depth": path.get("depth", 0),
         "parent_scope": path.get("parent_scope") or [],
         "selected_member": path.get("selected_member"),
+        "selected_members": path.get("selected_members") or [],
+        "actual_decline_coverage": path.get("actual_decline_coverage"),
+        "uncovered_decline_amount": path.get("uncovered_decline_amount"),
     }
 
 
@@ -143,6 +146,10 @@ def _dimension_summary(paths: list[dict[str, Any]]) -> str | None:
     """生成仅基于真实归因金额的展示摘要，并明确其统计性质。"""
     candidates = []
     for path in paths:
+        if path.get("depth", 0) != 0:
+            continue
+        if not _reconciliation_passed(path.get("reconciliation"), dimension=True):
+            continue
         for item in path.get("attributions") or []:
             amount = item.get("change_amount")
             if amount is None:
@@ -318,7 +325,19 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
                 "dimension_column": path.get("dimension_column"),
                 "dimension_name": dimension_names.get(path.get("dimension_column")) or str(path.get("dimension_column") or "维度").rsplit(".", 1)[-1],
                 "parent_scope": path.get("parent_scope") or [],
+                "parent_task_id": path.get("parent_task_id"),
+                "parent_scope_label": "、".join(
+                    f"{dimension_names.get(item.get('dimension_column')) or str(item.get('dimension_column') or '维度').rsplit('.', 1)[-1]}={item.get('member_value')}"
+                    for item in path.get("parent_scope") or []
+                ),
                 "selected_member": path.get("selected_member"),
+                "selected_members": path.get("selected_members") or [],
+                "target_decline_coverage": path.get("target_decline_coverage"),
+                "actual_decline_coverage": path.get("actual_decline_coverage"),
+                "total_decline_amount": path.get("total_decline_amount"),
+                "uncovered_decline_amount": path.get("uncovered_decline_amount"),
+                "branch_status": path.get("branch_status"),
+                "branch_stop_reason": path.get("branch_stop_reason"),
                 "narrative_summary": narratives.get("drilldown_insights", {}).get(path.get("task_id")),
                 "drilldown_reason": path.get("stop_reason") or "真实成员贡献排序后继续下钻",
                 "chart_config": chart, "rows": chart.get("data") or [],

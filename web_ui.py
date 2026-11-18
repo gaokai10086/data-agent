@@ -19,6 +19,7 @@ import logging
 import re
 import requests
 import streamlit as st
+from streamlit_echarts import st_echarts
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -27,6 +28,7 @@ from app.web.meta_governance_view import render_meta_governance_page
 from app.web.metric_management_view import render_metric_management_page
 from app.web.sql_example_management_view import render_sql_example_management_page
 from app.web.chatbi.chart_renderer import render_chart
+from app.web.anomaly_branch_view import branch_children, decline_chart_options
 from app.core.llm import LLMFactory
 from app.config.app_config import DEFAULT_LLM_MODEL, DEFAULT_LLM_PROVIDER
 
@@ -345,6 +347,46 @@ def render_anomaly_report_card(payload: dict, container=None, card_instance_key:
             })
 
 
+def _render_anomaly_dimension_panel(section: dict, card_instance_key: str | None) -> None:
+    """展示当前选中分支的一层真实对账数据。"""
+    label = section.get("dimension_name") or str(section.get("dimension_column") or "维度").rsplit(".", 1)[-1]
+    scope = section.get("parent_scope_label")
+    st.markdown(f"**第 {section.get('depth', 0)} 层 · {label}**")
+    if scope:
+        st.caption(f"当前范围：{scope}")
+    if section.get("narrative_summary"):
+        st.write(section["narrative_summary"])
+    coverage = section.get("actual_decline_coverage")
+    if coverage is not None:
+        st.caption(f"本范围下降覆盖率 {_safe_float(coverage) * 100:.2f}% · "
+                   f"未选中下降金额 {_format_value(section.get('uncovered_decline_amount'))}")
+    tabs = st.tabs(["📈 可视化", "📋 数据明细", "🔍 查询详情"])
+    with tabs[0]:
+        if section.get("rows"):
+            if section.get("actual_decline_coverage") is None and section.get("chart_config"):
+                render_chart(section["chart_config"],
+                             chart_key=f"{card_instance_key or 'anomaly'}_legacy_dimension_{section.get('task_id')}")
+            else:
+                st.caption("🔵 本层选中成员　⚪ 未选中下降　🟢 增长抵消；柱长表示变化金额绝对值")
+                options = decline_chart_options(section)
+                st_echarts(options=options, height=f"{max(280, len(options['yAxis']['data']) * 48 + 110)}px",
+                           key=f"{card_instance_key or 'anomaly'}_branch_chart_{section.get('task_id')}")
+        else:
+            st.info("暂无本层图表。")
+    with tabs[1]:
+        if section.get("rows"):
+            st.dataframe(section.get("display_rows") or section["rows"], hide_index=True, use_container_width=True)
+        else:
+            st.info("暂无本层数据明细。")
+    with tabs[2]:
+        if section.get("sql_evidence"):
+            for item in section["sql_evidence"]:
+                st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
+                st.code(item.get("sql") or "", language="sql")
+        else:
+            st.info("暂无本层 SQL 证据。")
+
+
 def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str | None = None) -> None:
     """渲染 RootCause 的统一 anomaly_result 快照和阶段事件。"""
     report = payload.get("report") or payload
@@ -402,26 +444,33 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
         sections = report.get("drilldown_sections") or []
         if sections:
             st.markdown("#### 逐层维度归因解读")
-            for section in sections:
-                label = section.get("dimension_name") or str(section.get("dimension_column") or "维度").rsplit(".", 1)[-1]
-                st.markdown(f"**第 {section.get('depth', 0)} 层 · {label}**")
-                if section.get("narrative_summary"):
-                    st.write(section["narrative_summary"])
-                section_tabs = st.tabs(["📈 可视化", "📋 数据明细", "🔍 查询详情"])
-                with section_tabs[0]:
-                    if section.get("chart_config"):
-                        render_chart(section["chart_config"], chart_key=f"{card_instance_key or 'anomaly'}_dimension_{section.get('task_id')}")
-                    else:
-                        st.info("暂无本层图表。")
-                with section_tabs[1]:
-                    if section.get("rows"):
-                        st.dataframe(section.get("display_rows") or section["rows"], hide_index=True, use_container_width=True)
-                    else:
-                        st.info("暂无本层数据明细。")
-                with section_tabs[2]:
-                    for item in section.get("sql_evidence") or []:
-                        st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
-                        st.code(item.get("sql") or "", language="sql")
+            branch_index = branch_children(sections)
+            roots = [item for item in sections if item.get("depth", 0) == 0]
+            active_sections = []
+            if len(roots) == 1 and branch_index:
+                current = roots[0]
+                active_sections.append(current)
+                while len(active_sections) < 4:
+                    choices = [name for name in current.get("selected_members") or []
+                               if (current.get("task_id"), name) in branch_index]
+                    if not choices:
+                        break
+                    name = st.selectbox(
+                        f"在{current.get('dimension_name') or '当前维度'}中查看下钻分支",
+                        choices,
+                        key=f"{card_instance_key or 'anomaly'}_branch_{current.get('task_id')}",
+                    )
+                    current = branch_index[(current["task_id"], name)]
+                    active_sections.append(current)
+            displayed = active_sections or sections
+            for offset in range(0, len(displayed), 2):
+                pair = displayed[offset:offset + 2]
+                columns = st.columns(2) if len(pair) == 2 else [st.container()]
+                for column, section in zip(columns, pair):
+                    with column:
+                        _render_anomaly_dimension_panel(section, card_instance_key)
+            if active_sections and len(displayed) < len(sections):
+                st.caption(f"当前查看 1 条下钻分支；其他 {len(sections) - len(displayed)} 个已对账任务可通过上方分支选择查看。")
         if charts and not sections and not decomposition:
             st.markdown("#### 真实对账图表")
             tabs = st.tabs([
@@ -452,8 +501,8 @@ def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str
                                 except (TypeError, ValueError):
                                     pass
                         display_rows.append(display_row)
-                    st.dataframe(display_rows, hide_index=True, use_container_width=True)
-
+                    if display_rows:
+                        st.dataframe(display_rows, hide_index=True, use_container_width=True)
         diagnosis = report.get("diagnosis") or {}
         if diagnosis:
             st.markdown("#### 业务诊断")

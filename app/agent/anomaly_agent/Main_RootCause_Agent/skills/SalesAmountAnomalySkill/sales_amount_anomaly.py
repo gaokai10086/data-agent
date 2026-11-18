@@ -60,9 +60,9 @@ class SalesAmountAnomalySkill(BaseSkill):
                 preserve_filters=True,
                 ambiguity_action="reject",
                 allow_dynamic_dimension_selection=True,
-                max_analysis_rounds=8,
+                max_analysis_rounds=14,
                 max_dimensions=6,
-                max_query_budget=16,
+                max_query_budget=24,
                 max_depth=3,
                 dimension_path=(
                     "dim_store.channel_type", "dim_store.region",

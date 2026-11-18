@@ -61,9 +61,12 @@ def context_from_report(report: dict[str, Any]) -> NarrativeContext:
         }) if decomposition.get("reconciliation", {}).get("matches") is True else None,
         drilldowns=[NarrativeFact(evidence_id=f"path:{s['task_id']}", kind="drilldown", payload={
             "task_id": s["task_id"], "depth": s.get("depth"), "dimension_name": s.get("dimension_name"),
-            "selected_member": s.get("selected_member"), "parent_scope": s.get("parent_scope"),
+            "selected_member": s.get("selected_member"), "selected_members": s.get("selected_members"),
+            "parent_task_id": s.get("parent_task_id"), "parent_scope": s.get("parent_scope"),
+            "actual_decline_coverage": s.get("actual_decline_coverage"),
+            "uncovered_decline_amount": s.get("uncovered_decline_amount"),
             "rows": s.get("rows"), "reconciliation": s.get("reconciliation"),
-        }) for s in sections if s.get("task_id") and s.get("selected_member") and all(
+        }) for s in sections if s.get("task_id") and (s.get("selected_member") or s.get("selected_members")) and all(
             (s.get("reconciliation") or {}).get(k) is True for k in ("comparison_matches", "current_matches", "change_matches")
         )],
         diagnosis=NarrativeFact(evidence_id="diagnosis", kind="diagnosis", payload={
@@ -124,6 +127,29 @@ def _validate(output: NarrativeOutput, context: NarrativeContext) -> None:
             return set()
 
     number_pattern = re.compile(r"(?<![0-9A-Za-z_.])[-+]?\d[\d,]*(?:\.\d+)?(?:%|％|万(?:元)?|亿(?:元)?)?")
+    path_facts = {fact.payload["task_id"]: fact for fact in context.drilldowns}
+    known_members = {
+        str(row["成员"])
+        for fact in context.drilldowns for row in fact.payload.get("rows") or []
+        if row.get("成员") is not None
+    }
+    known_members.update(
+        str(scope["member_value"])
+        for fact in context.drilldowns for scope in fact.payload.get("parent_scope") or []
+        if scope.get("member_value") is not None
+    )
+
+    def valid_number(token: str, facts: Any) -> bool:
+        token = token.replace(",", "")
+        is_percent = token.endswith(("%", "％"))
+        unit = Decimal("100000000") if "亿" in token else Decimal("10000") if "万" in token else Decimal("1")
+        number = Decimal(re.sub(r"[%％万元亿]", "", token))
+        if is_percent:
+            return any(abs(number - candidate) <= Decimal("0.005") for candidate in approved_percentages(facts))
+        if unit > 1:
+            return any(abs(number * unit - candidate) <= unit * Decimal("0.005") for candidate in approved_numbers(facts))
+        return number in approved_numbers(facts)
+
     for insight in insights:
         if not insight.text.strip() or not insight.evidence_ids or not set(insight.evidence_ids) <= allowed:
             raise ValueError("invalid evidence references")
@@ -131,8 +157,14 @@ def _validate(output: NarrativeOutput, context: NarrativeContext) -> None:
             raise ValueError("model generated SQL")
         cited_facts = [fact.payload for fact in [context.overall, context.decomposition, *context.drilldowns, context.diagnosis]
                        if fact and fact.evidence_id in insight.evidence_ids]
-        valid_numbers = approved_numbers(cited_facts)
-        valid_percentages = approved_percentages(cited_facts)
+        cited_members = {
+            str(row["成员"]) for fact in context.drilldowns if fact.evidence_id in insight.evidence_ids
+            for row in fact.payload.get("rows") or [] if row.get("成员") is not None
+        }
+        cited_members.update(
+            str(scope["member_value"]) for fact in context.drilldowns if fact.evidence_id in insight.evidence_ids
+            for scope in fact.payload.get("parent_scope") or [] if scope.get("member_value") is not None
+        )
         text_without_periods = insight.text
         for fact in cited_facts:
             for period_key in ("target_period", "comparison_period"):
@@ -145,24 +177,54 @@ def _validate(output: NarrativeOutput, context: NarrativeContext) -> None:
                         for rendered in (f"{year}年{int(month)}月", f"{year}年{int(month):02d}月"):
                             text_without_periods = text_without_periods.replace(rendered, "")
         for match in number_pattern.finditer(text_without_periods):
-            token = match.group().replace(",", "")
-            is_percent = token.endswith(("%", "％"))
-            unit = Decimal("100000000") if "亿" in token else Decimal("10000") if "万" in token else Decimal("1")
-            number = Decimal(re.sub(r"[%％万元亿]", "", token))
-            if is_percent:
-                # Percentage rendering may round a stored ratio to two decimal places.
-                valid = any(abs(number - candidate) <= Decimal("0.005") for candidate in valid_percentages)
-            elif unit > 1:
-                # A rounded 万/亿 display represents an interval around the source amount.
-                valid = any(abs(number * unit - candidate) <= unit * Decimal("0.005") for candidate in valid_numbers)
-            else:
-                valid = number in valid_numbers
-            if not valid:
+            if not valid_number(match.group(), cited_facts):
                 raise ValueError("model generated an unsupported number")
+        # Validate explicit member references against the cited path, then bind
+        # numbers in a single-member clause to that member's actual row.
+        own_path = path_facts.get(insight.task_id) if isinstance(insight, DrilldownInsight) else None
+        for clause in re.split(r"[。；，\n]", text_without_periods):
+            quoted = re.findall(r"[“\"]([^”\"]+)[”\"]", clause)
+            for name in quoted:
+                if (re.search(r"(?:成员|渠道|门店|城市|地区|大区|区域|范围).{0,8}[“\"]" + re.escape(name), clause)
+                        or re.search(r"[“\"]" + re.escape(name) + r"[”\"]\s*(?:下降|减少|增长|上升|贡献)", clause)):
+                    if name not in cited_members:
+                        raise ValueError("model referenced an unknown member")
+            # Also catch explicit unquoted member assignments and store names.
+            unquoted = re.findall(r"(?:成员|渠道|城市|地区|大区|区域)\s*(?:为|是|=|：|:)\s*([^\s，。；、]+)", clause)
+            unquoted += re.findall(r"([^\s，。；、“”]{1,20}(?:门店|旗舰店|商城))(?=\s*(?:下降|减少|增长|上升|贡献))", clause)
+            for candidate in unquoted:
+                if candidate not in cited_members and candidate not in {"该门店", "此门店", "该旗舰店"}:
+                    raise ValueError("model referenced an unknown member")
+            mentioned = [name for name in known_members if name and name in clause]
+            tokens = [match.group() for match in number_pattern.finditer(clause)]
+            if not mentioned and tokens and re.search(r"该成员|此成员|该门店|该渠道", clause):
+                if own_path and own_path.payload.get("selected_member"):
+                    mentioned = [str(own_path.payload["selected_member"])]
+                else:
+                    raise ValueError("ambiguous member reference")
+            if not mentioned or not tokens:
+                continue
+            if len(mentioned) != 1:
+                raise ValueError("ambiguous member amount binding")
+            name = mentioned[0]
+            own_rows = (own_path.payload.get("rows") or []) if own_path else []
+            owner_is_own_path = any(row.get("成员") == name for row in own_rows)
+            matching = [row for fact in context.drilldowns
+                        if fact.evidence_id in insight.evidence_ids and (not owner_is_own_path or fact is own_path)
+                        for row in fact.payload.get("rows") or [] if row.get("成员") == name]
+            if re.search(r"减少|下降|增长|上升", clause) and not re.search(r"由.*(?:变为|降至)|从.*(?:变为|降至)", clause):
+                change_facts = [{key: row[key] for key in ("变化金额", "change_amount", "变化率", "change_rate") if key in row}
+                                for row in matching]
+                binding_facts = change_facts
+            else:
+                binding_facts = matching
+            if not matching or not all(valid_number(token, binding_facts) for token in tokens):
+                raise ValueError("member amount does not match cited evidence")
     if context.overall and "overall" not in output.overview.evidence_ids:
         raise ValueError("overview missing overall evidence")
-    if context.drilldowns and f"path:{context.drilldowns[-1].payload['task_id']}" not in output.overview.evidence_ids:
-        raise ValueError("overview missing verified terminal scope")
+    if context.drilldowns and not any(f"path:{fact.payload['task_id']}" in output.overview.evidence_ids
+                                      for fact in context.drilldowns):
+        raise ValueError("overview missing verified path evidence")
     if output.decomposition and "decomposition" not in output.decomposition.evidence_ids:
         raise ValueError("decomposition insight missing evidence")
     if output.diagnosis and "diagnosis" not in output.diagnosis.evidence_ids:

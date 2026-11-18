@@ -22,6 +22,17 @@ def _state(*observations):
 
 
 class AnomalyReportAdapterTest(unittest.TestCase):
+    def test_summary_only_uses_reconciled_paths(self):
+        def path(ok):
+            return {"task_id": "t", "dimension_column": "channel", "depth": 0,
+                    "reconciliation": {"comparison_matches": ok, "current_matches": ok, "change_matches": ok},
+                    "attributions": [{"group_value": "A", "change_amount": -10}]}
+        for paths, expected in (([path(True)], True), ([path(False)], False), ([], False)):
+            with self.subTest(paths=paths):
+                report = build_anomaly_report(_state({"step": 1, "action_name": "dimension_attribution",
+                                                       "status": "partial", "attribution_result": {"paths": paths}}))
+                self.assertEqual("已验证" in (report.get("summary") or ""), expected)
+
     def test_dimension_table_hides_duplicate_rates_and_formats_two_decimals(self):
         paths = [
             {"task_id": "root", "depth": 0, "dimension_column": "channel", "selected_member": "旗舰店",

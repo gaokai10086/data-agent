@@ -60,25 +60,30 @@ class AttributionSQLSemanticsTest(unittest.TestCase):
     def rows(self, sql):
         return [dict(row) for row in self.db.execute(sql)]
 
-    def test_both_periods_match_fact_first_baseline_with_zero_members(self):
+    def test_null_sum_is_rejected_while_nonnull_group_keeps_value(self):
         for period in ("2026-07", "2026-08"):
             with self.subTest(period=period):
-                actual = self.tool._normalize_rows(self.rows(self.grouped_sql(period)), period)
-                baseline = self.tool._normalize_rows(self.rows(self.baseline_sql(period)), period)
-                self.assertEqual(actual["无订单"], Decimal("0"))
-                self.assertEqual(actual.get("线下"), baseline.get("线下"))
-                self.assertEqual(actual.get("线上"), baseline.get("线上"))
-                self.assertEqual(sum(actual.values()), sum(baseline.values()))
-        july = self.tool._normalize_rows(self.rows(self.grouped_sql("2026-07")), "2026-07")
-        self.assertEqual(july["线下"], Decimal("0"))  # SUM over NULL pay_amount
+                with self.assertRaisesRegex(ValueError, "NULL"):
+                    self.tool._normalize_rows(self.rows(self.grouped_sql(period)), period)
+                baseline = self.tool._normalize_rows(
+                    [row for row in self.rows(self.baseline_sql(period)) if row["value"] is not None], period
+                )
+                self.assertIn("线上", baseline)
+        self.assertEqual(self.tool._normalize_rows(
+            [{"dimension_value": "线上", "value": 10}], "2026-07"
+        )["线上"], Decimal("10"))
 
     def test_duplicate_dimension_key_is_rejected_by_real_schema_shape(self):
         with self.assertRaises(sqlite3.IntegrityError):
             self.db.execute("INSERT INTO dim_store VALUES ('s1','北京','线上')")
 
     def test_missing_nonzero_group_fails_reconciliation(self):
-        august = self.tool._normalize_rows(self.rows(self.grouped_sql("2026-08")), "2026-08")
-        july = self.tool._normalize_rows(self.rows(self.grouped_sql("2026-07")), "2026-07")
+        august = self.tool._normalize_rows(
+            [row for row in self.rows(self.baseline_sql("2026-08")) if row["value"] is not None], "2026-08"
+        )
+        july = self.tool._normalize_rows(
+            [row for row in self.rows(self.baseline_sql("2026-07")) if row["value"] is not None], "2026-07"
+        )
         august.pop("线下")
         overall = type("Overall", (), {
             "current_value": Decimal("13"), "comparison_value": Decimal("10"),

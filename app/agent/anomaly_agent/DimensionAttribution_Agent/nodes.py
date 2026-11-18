@@ -15,6 +15,7 @@ from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import (
     AttributionObservation,
     AttributionPath,
     AttributionResult,
+    AttributionTask,
     DimensionScope,
 )
 from app.agent.anomaly_agent.DimensionAttribution_Agent.state import DimensionAttributionState
@@ -31,6 +32,31 @@ _STOP_REASONS = {
     "no_candidate_dimensions", "decision_failed", "illegal_decision", "duplicate_task",
     "ambiguous_dimension", "duplicate_dimension", "execution_failed", "no_tools_available",
 }
+
+
+def select_decline_members(members, threshold: Decimal, max_children: int):
+    """Select a stable prefix of actual negative members; positive changes only offset net change."""
+    if not Decimal("0") < threshold <= Decimal("1") or max_children < 1:
+        raise ValueError("下降覆盖率阈值或分支上限无效")
+    declines = sorted(
+        (member for member in members if member.change_amount is not None and member.change_amount < 0),
+        key=lambda member: (-abs(member.change_amount), str(member.group_value or "")),
+    )
+    total = sum((abs(member.change_amount) for member in declines), Decimal("0"))
+    eligible = [member for member in declines if member.group_value is not None]
+    selected = []
+    covered = Decimal("0")
+    for member in eligible:
+        if len(selected) >= max_children or covered / total >= threshold:
+            break
+        selected.append(member)
+        covered += abs(member.change_amount)
+    actual = covered / total if total else Decimal("0")
+    reason = ("no_decline_members" if not declines else
+              "null_member_unselectable" if not eligible else
+              "child_limit_reached" if actual < threshold and len(selected) >= max_children else
+              "unreachable_coverage" if actual < threshold else "coverage_reached")
+    return selected, total, actual, total - covered, reason
 
 
 def _explicit_dimensions(input_data):
@@ -79,6 +105,24 @@ def _candidate_dimensions(state: DimensionAttributionState):
     return candidates, None
 
 
+def _next_branch_dimension(input_data, scope, current_dimension):
+    """Choose the next Meta dimension for a verified branch, independently of siblings."""
+    fixed_path = tuple(input_data.skill_strategy.dimension_path or ())
+    used = {item.dimension_column for item in scope} | {current_dimension}
+    fixed_names = {item.dimension for item in input_data.request.filters if item.dimension}
+    fixed_columns = {item.column for item in input_data.metric_context.dimensions
+                     if item.name in fixed_names or any(alias in fixed_names for alias in item.aliases)}
+    if fixed_path:
+        try:
+            next_column = fixed_path[fixed_path.index(current_dimension) + 1]
+        except (ValueError, IndexError):
+            return None
+        return next((item for item in input_data.metric_context.dimensions
+                     if item.column == next_column and item.column not in fixed_columns and item.column not in used), None)
+    return next((item for item in input_data.metric_context.dimensions
+                 if item.column not in used and item.column not in fixed_columns), None)
+
+
 def _observed_member_values(state: DimensionAttributionState, dimension_column: str):
     values = set()
     for observation in state.get("observations", []):
@@ -87,25 +131,6 @@ def _observed_member_values(state: DimensionAttributionState, dimension_column: 
         for item in observation.evidence.get("members", []):
             values.add(item.get("group_value"))
     return values
-
-def _derived_scope(state):
-    """从最后一条已对账路径推导下一层范围。"""
-    paths = state.get("paths", [])
-    if not paths:
-        return []
-    path = paths[-1]
-    if not all((path.reconciliation.comparison_matches, path.reconciliation.current_matches, path.reconciliation.change_matches)):
-        return None
-    members = list(path.attributions)
-    if not members or not path.informative:
-        return None
-    overall = path.reconciliation.overall_change_amount
-    same_direction = [m for m in members if m.change_amount * overall < 0]
-    member = sorted(same_direction or members, key=lambda m: abs(m.change_amount), reverse=True)[0]
-    if member.group_value is None:
-        return None
-    return list(path.parent_scope) + [DimensionScope(dimension_column=path.dimension_column, member_value=member.group_value)]
-
 
 def _scoped_overall(state: DimensionAttributionState, parent_scope):
     """用父级真实 Observation 的成员值作为下钻层对账基准。"""
@@ -193,12 +218,32 @@ async def main_reason(state: DimensionAttributionState, runtime=None) -> dict:
         return finish("ChangeInspection 尚未 ready", "verification_not_ready")
     if state.get("query_count", 0) + 2 > strategy.max_query_budget:
         return finish("达到查询预算", "budget_exhausted")
-    if len(state.get("analyzed_dimensions", [])) >= strategy.max_dimensions:
+    if len(state.get("analyzed_task_ids", [])) >= strategy.max_attribution_tasks:
+        return finish("达到最大维度归因任务数", "budget_exhausted")
+    if not state.get("paths") and len(state.get("analyzed_dimensions", [])) >= strategy.max_dimensions:
         return finish("达到最大分析维度数量", "budget_exhausted")
-    if state.get("current_depth", 0) > strategy.max_depth:
+    if not state.get("paths") and state.get("current_depth", 0) > strategy.max_depth:
         return finish("达到最大下钻深度", "max_depth_reached")
-    if any(item.status == "failed" for item in observations):
+    if not state.get("paths") and any(item.status == "failed" for item in observations):
         return finish("上一轮工具执行失败", "execution_failed")
+
+    if state.get("paths"):
+        pending = list(state.get("pending_tasks", []))
+        if not pending:
+            return finish("所有已验证分支已处理", "completed")
+        task = pending[0]
+        if task.depth > strategy.max_depth:
+            return finish("达到最大下钻深度", "max_depth_reached")
+        if task.task_id in state.get("analyzed_task_ids", []):
+            return finish("相同维度、范围和周期已经分析过", "duplicate_task")
+        decision = AttributionDecision(
+            action="execute_tool", tool_name="dimension_period_comparison",
+            dimension_column=task.dimension_column, parent_scope=task.parent_scope,
+            depth=task.depth, task_id=task.task_id, parent_task_id=task.parent_task_id,
+            reason="按已验证下降成员队列逐分支分析",
+        )
+        return {**base, "decisions": decisions + [decision], "decision": decision,
+                "pending_tasks": pending[1:]}
 
     candidates, candidate_error = _candidate_dimensions(state)
     if candidate_error:
@@ -208,14 +253,6 @@ async def main_reason(state: DimensionAttributionState, runtime=None) -> dict:
         return finish("当前没有已注册的维度归因工具", "no_tools_available")
     if not candidates:
         return finish("没有新的合法维度", "no_candidate_dimensions")
-    derived_scope = _derived_scope(state)
-    if state.get("paths") and derived_scope is None:
-        # 仅在已对账但无区分性成员时切换候选根维度；对账失败的路径不会进入 paths。
-        last_path = state["paths"][-1]
-        if last_path.informative:
-            return finish("当前分支没有可验证的下钻成员", "no_candidate_dimensions")
-        derived_scope = []
-
     try:
         if runtime is None or not getattr(runtime, "context", None):
             decision = _fallback_decision(state, candidates)
@@ -239,10 +276,9 @@ async def main_reason(state: DimensionAttributionState, runtime=None) -> dict:
             stop_reason = "completed"
         return {**base, "decisions": decisions + [decision], "decision": decision, "stop_reason": stop_reason}
 
-    # 父级范围和深度由真实路径唯一推导；LLM 仅负责选择下一维度。
-    # 首轮/旧调用契约允许测试或上游提供已验证 scope；一旦已有路径则只能使用程序推导值。
-    expected_scope = derived_scope if state.get("paths") else list(state.get("current_scope", state.get("parent_scope", [])))
-    if not expected_scope and not state.get("paths"):
+    # 首轮保留旧调用契约；子任务的父级范围全部由真实成员队列构造。
+    expected_scope = list(state.get("current_scope", state.get("parent_scope", [])))
+    if not expected_scope:
         expected_scope = list(decision.parent_scope)
     decision = decision.model_copy(update={"parent_scope": expected_scope, "depth": len(expected_scope)})
 
@@ -297,6 +333,7 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
         observation = AttributionObservation(
             observation_id=uuid.uuid4().hex, tool_name=tool.name, status="ok",
             dimension_column=payload["dimension"].column, task_id=payload["task_id"],
+            parent_task_id=decision.parent_task_id,
             depth=payload["depth"], parent_scope=payload["parent_scope"],
             query_count=payload["query_count"],
             evidence={
@@ -307,14 +344,52 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
                 "null_member_present": payload["null_member_present"],
             },
         )
+        selected, total_decline, coverage, uncovered, coverage_reason = select_decline_members(
+            payload["members"], state["input"].skill_strategy.coverage_threshold,
+            state["input"].skill_strategy.max_children_per_parent,
+        )
+        selected_names = [item.group_value for item in selected if item.group_value is not None]
+        pending = list(state.get("pending_tasks", []))
+        abandoned = list(state.get("abandoned_paths", []))
+        strategy = state["input"].skill_strategy
+        next_dimension = _next_branch_dimension(state["input"], decision.parent_scope, payload["dimension"].column)
+        if payload["informative"] and decision.depth < strategy.max_depth and next_dimension:
+            for member in selected:
+                if member.group_value is None:
+                    abandoned.append({"parent_task_id": payload["task_id"], "member": None, "reason": "null_member_scope"})
+                    continue
+                child_scope = list(decision.parent_scope) + [DimensionScope(
+                    dimension_column=payload["dimension"].column, member_value=member.group_value,
+                )]
+                child_id = DimensionPeriodComparisonTool.build_task_id(
+                    state["input"], next_dimension.column, child_scope, len(child_scope),
+                )
+                if child_id in state.get("analyzed_task_ids", []) or any(item.task_id == child_id for item in pending):
+                    continue
+                if len(state.get("analyzed_task_ids", [])) + 1 + len(pending) >= strategy.max_attribution_tasks:
+                    abandoned.append({"parent_task_id": payload["task_id"], "member": member.group_value, "reason": "task_budget_exhausted"})
+                    continue
+                pending.append(AttributionTask(
+                    task_id=child_id, parent_task_id=payload["task_id"],
+                    dimension_column=next_dimension.column, parent_scope=child_scope, depth=len(child_scope),
+                ))
+        branch_stop = ("max_depth_reached" if decision.depth >= strategy.max_depth else
+                       "no_candidate_dimensions" if next_dimension is None else
+                       "uninformative" if not payload["informative"] else
+                       coverage_reason)
+        branch_status = "children_scheduled" if any(item.parent_task_id == payload["task_id"] for item in pending) else "stopped"
         path = AttributionPath(
             task_id=payload["task_id"], depth=payload["depth"],
+            parent_task_id=decision.parent_task_id,
             dimension_column=payload["dimension"].column, parent_scope=payload["parent_scope"],
             attributions=payload["members"], reconciliation=payload["reconciliation"],
             sql_by_period=payload["sql_by_period"],
             informative=payload["informative"], null_member_present=payload["null_member_present"],
-            selected_member=(sorted(payload["members"], key=lambda m: abs(m.change_amount), reverse=True)[0].group_value
-                             if payload["members"] else None),
+            selected_member=selected_names[0] if selected_names else None,
+            selected_members=selected_names, target_decline_coverage=strategy.coverage_threshold,
+            actual_decline_coverage=coverage, total_decline_amount=total_decline,
+            uncovered_decline_amount=uncovered, branch_status=branch_status,
+            branch_stop_reason=branch_stop,
         )
         sql_by_period = dict(state.get("sql_by_period", {}))
         for period, sql in payload["sql_by_period"].items():
@@ -330,12 +405,13 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
             "attributions": payload["members"], "reconciliation": payload["reconciliation"],
             "sql_by_period": sql_by_period,
             "paths": state.get("paths", []) + [path],
+            "pending_tasks": pending,
+            "abandoned_paths": abandoned,
             "current_depth": payload["depth"],
             "parent_scope": payload["parent_scope"],
             "current_scope": payload["parent_scope"] + [
                 DimensionScope(dimension_column=payload["dimension"].column, member_value=(
-                    sorted(payload["members"], key=lambda m: abs(m.change_amount), reverse=True)[0].group_value
-                    if payload["members"] else None
+                    selected_names[0] if selected_names else None
                 ))
             ],
         }
@@ -343,23 +419,33 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
         observation = AttributionObservation(
             observation_id=uuid.uuid4().hex, tool_name=tool.name, status="failed",
             dimension_column=decision.dimension_column, task_id=decision.task_id,
+            parent_task_id=decision.parent_task_id,
             depth=decision.depth, parent_scope=decision.parent_scope, error=str(exc),
         )
+        pending = list(state.get("pending_tasks", []))
         return {
             "observations": state.get("observations", []) + [observation],
             "query_count": state.get("query_count", 0) + getattr(exc, "actual_sql_count", 0),
-            "stop_reason": "execution_failed",
+            "analyzed_task_ids": state.get("analyzed_task_ids", []) + [decision.task_id],
+            "abandoned_paths": state.get("abandoned_paths", []) + [{
+                "task_id": decision.task_id, "parent_task_id": decision.parent_task_id,
+                "parent_scope": [item.model_dump(mode="json") for item in decision.parent_scope],
+                "reason": "execution_failed", "error": str(exc),
+            }],
+            "stop_reason": "execution_failed" if not pending else None,
         }
 
 
 def finalize_attribution(state: DimensionAttributionState) -> dict:
-    stop_reason = state.get("stop_reason") or "completed"
+    stop_reason = state.get("stop_reason") or (
+        "budget_exhausted" if state.get("pending_tasks") else "completed"
+    )
     failed = stop_reason in {"execution_failed", "decision_failed"}
     has_paths = bool(state.get("paths", []))
-    status = "failed" if failed else ("completed" if has_paths or stop_reason == "completed" else "unavailable")
+    status = "failed" if failed and not has_paths else ("completed" if has_paths or stop_reason == "completed" else "unavailable")
     completion_status = (
         "none" if not has_paths else
-        "complete" if stop_reason in {"completed", "no_candidate_dimensions"} else
+        "complete" if stop_reason in {"completed", "no_candidate_dimensions"} and not state.get("abandoned_paths") else
         "partial"
     )
     reason = "execution_failed" if failed and stop_reason == "execution_failed" else (
@@ -369,10 +455,12 @@ def finalize_attribution(state: DimensionAttributionState) -> dict:
         request_id=state["request_id"], status=status, completion_status=completion_status, reason=reason,
         stop_reason=stop_reason, analyzed_dimensions=state.get("analyzed_dimensions", []),
         decisions=state.get("decisions", []), observations=state.get("observations", []),
-        summary="维度归因完成，已返回真实查询证据。" if has_paths else "未生成可用的维度归因证据。",
+        summary=(f"维度归因已完成 {len(state.get('paths', []))} 个真实对账任务；"
+                 "各分支金额仅在同一父级范围内比较。") if has_paths else "未生成可用的维度归因证据。",
         total_query_count=state.get("query_count", 0), attributions=state.get("attributions", []),
         reconciliation=state.get("reconciliation"), paths=state.get("paths", []),
-        current_path=state.get("current_scope", []),
+        current_path=state.get("current_scope", []) if len(state.get("paths", [])) == 1 else [],
         abandoned_paths=state.get("abandoned_paths", []),
+        pending_tasks=state.get("pending_tasks", []),
     )
     return {"result": result, "decisions": result.decisions}

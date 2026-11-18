@@ -6,6 +6,7 @@ from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import (
     AttributionDecision,
     AttributionObservation,
     AttributionResult,
+    AttributionTask,
     DimensionAttributionInput,
 )
 
@@ -37,3 +38,4 @@ class DimensionAttributionState(TypedDict, total=False):
     selected_member: object
     selected_path_task_id: str | None
     abandoned_paths: list[dict]
+    pending_tasks: list[AttributionTask]

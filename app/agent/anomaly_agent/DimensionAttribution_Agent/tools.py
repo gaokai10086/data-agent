@@ -30,8 +30,10 @@ class DimensionPeriodComparisonTool:
 
     @staticmethod
     def _decimal(value: Any) -> Decimal:
+        if value is None or isinstance(value, bool):
+            raise ValueError("分组聚合值为 NULL 或非数值，不能当作真实 0")
         try:
-            result = Decimal(str(value or 0))
+            result = Decimal(str(value))
         except (InvalidOperation, TypeError, ValueError) as exc:
             raise ValueError(f"分组值不是有效数值：{value!r}") from exc
         if not result.is_finite():
@@ -118,11 +120,15 @@ class DimensionPeriodComparisonTool:
         """纯确定性计算与对账逻辑，供工具和单元测试复用。"""
         if overall is None or overall.current_value is None or overall.comparison_value is None or overall.change_amount is None:
             raise ValueError("缺少总体变化证据，不能执行维度对账")
+        if not current or not comparison:
+            raise ValueError("至少一个周期的分组结果为空，不能当作真实 0")
         tolerance = Decimal("0.01")
         members: list[DimensionMemberAttribution] = []
         for group in sorted(set(current) | set(comparison), key=lambda item: "" if item is None else item):
-            comparison_value = comparison.get(group, Decimal("0"))
-            current_value = current.get(group, Decimal("0"))
+            if group not in current or group not in comparison:
+                raise ValueError(f"成员 {group!r} 在一个周期的分组结果中缺失，缺少允许补零的业务口径")
+            comparison_value = comparison[group]
+            current_value = current[group]
             change_amount = current_value - comparison_value
             change_rate = None if comparison_value == 0 else change_amount / comparison_value
             overall_base = root_overall or overall

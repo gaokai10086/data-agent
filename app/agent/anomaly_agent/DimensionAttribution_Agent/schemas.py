@@ -24,6 +24,7 @@ class AttributionDecision(BaseModel):
     parent_scope: list["DimensionScope"] = Field(default_factory=list)
     depth: int = Field(default=0, ge=0)
     task_id: str | None = None
+    parent_task_id: str | None = None
     stop_reason: Literal[
         "completed", "budget_exhausted", "insufficient_evidence",
         "max_depth_reached", "no_candidate_dimensions", "decision_failed",
@@ -51,6 +52,16 @@ class DimensionScope(BaseModel):
     member_value: str | None = None
 
 
+class AttributionTask(BaseModel):
+    """A queued, evidence-derived branch query."""
+
+    task_id: str
+    parent_task_id: str | None = None
+    dimension_column: str
+    parent_scope: list[DimensionScope] = Field(default_factory=list)
+    depth: int = 0
+
+
 class AttributionObservation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -59,6 +70,7 @@ class AttributionObservation(BaseModel):
     status: Literal["ok", "unavailable", "failed"]
     dimension_column: str | None = None
     task_id: str | None = None
+    parent_task_id: str | None = None
     depth: int = 0
     parent_scope: list[DimensionScope] = Field(default_factory=list)
     query_count: int = 0
@@ -95,6 +107,7 @@ class AttributionPath(BaseModel):
     """一轮真实维度查询及其对账证据。"""
 
     task_id: str
+    parent_task_id: str | None = None
     depth: int
     dimension_column: str
     parent_scope: list[DimensionScope] = Field(default_factory=list)
@@ -104,6 +117,13 @@ class AttributionPath(BaseModel):
     informative: bool = True
     null_member_present: bool = False
     selected_member: str | None = None
+    selected_members: list[str] = Field(default_factory=list)
+    target_decline_coverage: Decimal | None = None
+    actual_decline_coverage: Decimal | None = None
+    total_decline_amount: Decimal = Decimal("0")
+    uncovered_decline_amount: Decimal = Decimal("0")
+    branch_status: str = "completed"
+    branch_stop_reason: str | None = None
     stop_reason: str | None = None
 
 
@@ -168,6 +188,7 @@ class AttributionResult(BaseModel):
     paths: list[AttributionPath] = Field(default_factory=list)
     current_path: list[DimensionScope] = Field(default_factory=list)
     abandoned_paths: list[dict[str, Any]] = Field(default_factory=list)
+    pending_tasks: list[AttributionTask] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_unavailable_contract(self):

@@ -27,15 +27,27 @@ class AttributionToolCalculationTest(unittest.TestCase):
         self.assertEqual(members[0].net_contribution_rate, Decimal("1"))
         self.assertTrue(reconciliation.change_matches)
 
-    def test_member_only_in_one_period_uses_zero(self):
-        members, reconciliation = DimensionPeriodComparisonTool.compute_attributions(
-            {"A": Decimal("10"), "B": Decimal("5")},
-            {"A": Decimal("10")},
-            self.overall(current="15", comparison="10", change="5"),
+    def test_member_only_in_one_period_is_not_assumed_zero(self):
+        with self.assertRaisesRegex(ValueError, "缺失"):
+            DimensionPeriodComparisonTool.compute_attributions(
+                {"A": Decimal("10"), "B": Decimal("5")},
+                {"A": Decimal("10")},
+                self.overall(current="15", comparison="10", change="5"),
+            )
+
+    def test_null_aggregate_is_not_assumed_zero(self):
+        with self.assertRaisesRegex(ValueError, "NULL"):
+            DimensionPeriodComparisonTool._normalize_rows([{"dimension_value": "A", "value": None}], "2026-07")
+
+    def test_real_zero_is_preserved(self):
+        self.assertEqual(
+            DimensionPeriodComparisonTool._normalize_rows([{"dimension_value": "A", "value": 0}], "2026-07"),
+            {"A": Decimal("0")},
         )
-        self.assertEqual(members[1].comparison_value, Decimal("0"))
-        self.assertIsNone(members[1].change_rate)
-        self.assertTrue(reconciliation.current_matches)
+
+    def test_empty_grouping_is_not_assumed_zero(self):
+        with self.assertRaisesRegex(ValueError, "为空"):
+            DimensionPeriodComparisonTool.compute_attributions({}, {}, self.overall("0", "0", "0"))
 
     def test_zero_overall_change_rate_is_none(self):
         members, reconciliation = DimensionPeriodComparisonTool.compute_attributions(
