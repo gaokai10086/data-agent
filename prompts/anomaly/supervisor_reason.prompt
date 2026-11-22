@@ -23,4 +23,4 @@
 Observation 摘要：
 {observations}
 
-返回 JSON：{{"action": "call_tool" 或 "finish" 或 "stop", "tool_name": "change_inspection"、"dimension_attribution"、"metric_decomposition" 或 null, "reason": "简短原因"}}
+返回 JSON：{{"action": "call_tool" 或 "finish" 或 "stop", "tool_name": "change_inspection"、"dimension_attribution"、"metric_decomposition"、"scoped_metric_decomposition" 或 null, "tool_arguments": {{}} 或已验证的范围参数, "reason": "简短原因"}}。范围工具参数必须来自已有证据，不能发明成员或 evidence_id。

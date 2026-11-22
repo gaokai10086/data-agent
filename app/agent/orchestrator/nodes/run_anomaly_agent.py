@@ -9,12 +9,11 @@ from __future__ import annotations
 from langgraph.runtime import Runtime
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.graph import main_root_cause_agent
+from app.agent.anomaly_agent.Main_RootCause_Agent.analysis_result import materialize_report_input
 from app.agent.anomaly_agent.schemas import PreparationResult
 from app.agent.data_agent.context import DataAgentContext
 from app.agent.orchestrator.state import OrchestratorState
 from app.core.logging import logger
-from app.service.anomaly_report import events_for_new_observations, final_anomaly_event
-from app.service.anomaly_narrative_llm import enrich_report
 
 
 TECHNICAL_FAILURE_MESSAGE = "异动分析暂时无法完成，请稍后重试。"
@@ -64,7 +63,6 @@ async def run_anomaly_agent(
     # 意图识别与路由已在 Orchestrator 完成，不再作为输入传给 Main_RootCause_Agent。
     try:
         result: dict[str, object] = {}
-        emitted_steps: set[int] = set()
         async for mode, chunk in main_root_cause_agent.astream(
             {"raw_question": state.get("rewritten_query") or state.get("query", "")},
             context=runtime.context,
@@ -75,8 +73,6 @@ async def run_anomaly_agent(
                 runtime.stream_writer(chunk)
             elif mode == "values" and isinstance(chunk, dict):
                 result = chunk
-                for event in events_for_new_observations(result, emitted_steps):
-                    runtime.stream_writer(event)
     except Exception as exc:
         logger.exception("异动分析子图执行失败: {}", exc)
         return _technical_failure(runtime, "anomaly_execution_error")
@@ -105,8 +101,17 @@ async def run_anomaly_agent(
             "agent": "anomaly",
             "skill_name": selected_skill_name,
         })
-    if result.get("observations"):
-        event = final_anomaly_event(result)
-        event["report"] = await enrich_report(event["report"], runtime)
-        runtime.stream_writer(event)
+    if result.get("analysis_result"):
+        analysis = result["analysis_result"]
+        completion = analysis.get("completion_status") or "none"
+        status = "rejected" if analysis.get("stop_reason") == "rejected" else (
+            "completed" if completion == "complete" else "partial"
+        )
+        runtime.stream_writer({
+            "type": "anomaly_result", "agent": "anomaly", "status": status,
+            "completion_status": completion, "request_id": analysis.get("request_id"),
+            "content": "异动分析结构化结果已生成。",
+            "analysis_result": analysis,
+            "report_input": materialize_report_input(result),
+        })
     return {"agent_result": result}

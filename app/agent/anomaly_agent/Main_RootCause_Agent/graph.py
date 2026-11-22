@@ -14,6 +14,7 @@ from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.receive_question import 
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.select_skill import select_skill
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.select_task_schema import select_task_schema
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.supervisor_reason import supervisor_reason
+from app.agent.anomaly_agent.Main_RootCause_Agent.analysis_result import finalize_analysis
 from app.agent.anomaly_agent.Main_RootCause_Agent.state import RootCauseState
 from app.agent.data_agent.context import DataAgentContext
 
@@ -21,13 +22,13 @@ from app.agent.data_agent.context import DataAgentContext
 def route_skill(state: RootCauseState) -> str:
     """只有 matched 进入 load_skill，其余业务状态直接结束。"""
     skill_result = state.get("skill_result") or {}
-    return "load_skill" if skill_result.get("status") == "matched" else END
+    return "load_skill" if skill_result.get("status") == "matched" else "finalize_analysis"
 
 
 def route_task_schema(state: RootCauseState) -> str:
     """只有 Schema 选择成功才进入结构化解析，否则受控结束。"""
     schema_result = state.get("schema_result") or {}
-    return "parse_task_request" if schema_result.get("status") == "matched" else END
+    return "parse_task_request" if schema_result.get("status") == "matched" else "finalize_analysis"
 
 
 def route_to_supervisor(state: RootCauseState) -> str:
@@ -40,14 +41,14 @@ def route_to_supervisor(state: RootCauseState) -> str:
         }
     ):
         return "supervisor_reason"
-    return END
+    return "finalize_analysis"
 
 
 def route_after_reason(state: RootCauseState) -> str:
     decision = state.get("supervisor_decision") or {}
     if decision.get("action") == "call_tool" and decision.get("tool_name"):
         return "action_executor"
-    return END
+    return "finalize_analysis"
 
 
 def route_after_action(state: RootCauseState) -> str:
@@ -57,7 +58,7 @@ def route_after_action(state: RootCauseState) -> str:
         latest.get("status") in {"rejected", "blocked"}
         or len(observations) >= MAX_ACTION_EXECUTIONS
     ):
-        return END
+        return "finalize_analysis"
     return "supervisor_reason"
 
 
@@ -73,35 +74,37 @@ def build_root_cause_graph(*, checkpointer=None):
     builder.add_node("parse_task_request", parse_task_request)
     builder.add_node("supervisor_reason", supervisor_reason)
     builder.add_node("action_executor", action_executor)
+    builder.add_node("finalize_analysis", finalize_analysis)
     builder.add_edge(START, "receive_question")
     builder.add_edge("receive_question", "extract_metrics")
     builder.add_edge("extract_metrics", "select_skill")
     builder.add_conditional_edges(
         "select_skill",
         route_skill,
-        {"load_skill": "load_skill", END: END},
+        {"load_skill": "load_skill", "finalize_analysis": "finalize_analysis"},
     )
     builder.add_edge("load_skill", "select_task_schema")
     builder.add_conditional_edges(
         "select_task_schema",
         route_task_schema,
-        {"parse_task_request": "parse_task_request", END: END},
+        {"parse_task_request": "parse_task_request", "finalize_analysis": "finalize_analysis"},
     )
     builder.add_conditional_edges(
         "parse_task_request",
         route_to_supervisor,
-        {"supervisor_reason": "supervisor_reason", END: END},
+        {"supervisor_reason": "supervisor_reason", "finalize_analysis": "finalize_analysis"},
     )
     builder.add_conditional_edges(
         "supervisor_reason",
         route_after_reason,
-        {"action_executor": "action_executor", END: END},
+        {"action_executor": "action_executor", "finalize_analysis": "finalize_analysis"},
     )
     builder.add_conditional_edges(
         "action_executor",
         route_after_action,
-        {"supervisor_reason": "supervisor_reason", END: END},
+        {"supervisor_reason": "supervisor_reason", "finalize_analysis": "finalize_analysis"},
     )
+    builder.add_edge("finalize_analysis", END)
     return builder.compile(checkpointer=checkpointer)
 
 

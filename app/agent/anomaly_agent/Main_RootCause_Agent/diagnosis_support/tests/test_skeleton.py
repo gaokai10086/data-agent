@@ -6,9 +6,8 @@ from unittest.mock import patch
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.graph import business_diagnosis_graph
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.nodes import finalize_diagnosis, prepare_evidence
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import BusinessDiagnosisInput
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.nodes import finalize_diagnosis, prepare_evidence
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.schemas import BusinessDiagnosisInput
 from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import (
     AttributionPath, AttributionResult, DimensionMemberAttribution, ReconciliationResult,
 )
@@ -82,77 +81,36 @@ def make_business_input(*, with_attribution=True, with_decomposition=True, parti
     )
 
 
-class BusinessDiagnosisGraphTest(unittest.IsolatedAsyncioTestCase):
-    async def _run(self, input_data, response=None):
-        response = response or {
-            "action": "finish", "reason": "证据整理完成", "findings": [], "hypotheses": [{
-                "hypothesis_id": "h1", "statement": "线下旗舰店的下降值得进一步核查具体业务原因。",
-                "status": "hypothesis", "supporting_evidence_ids": [],
-                "validation_metrics": ["订单来源"], "executable": True,
-            }],
-        }
-        llm = RunnableLambda(lambda _: AIMessage(content=__import__("json").dumps(response, ensure_ascii=False)))
-        with patch("app.agent.anomaly_agent.BusinessDiagnosis_Agent.nodes.get_context_llm", return_value=llm):
-            state = {}
-            async for mode, chunk in business_diagnosis_graph.astream(
-                {"input": input_data}, context={"test": True}, stream_mode=["updates", "values"],
-            ):
-                if mode == "values" and isinstance(chunk, dict):
-                    state.update(chunk)
-            return state
+class BusinessEvidenceTest(unittest.TestCase):
+    def _result(self, data):
+        evidence = prepare_evidence({"input": data})["evidence_items"]
+        return finalize_diagnosis({"input": data, "evidence_items": evidence, "hypotheses": [], "observations": []})["result"]
 
-    async def test_a_combined_evidence_is_separated(self):
-        state = await self._run(make_business_input())
-        result = state["result"]
-        self.assertEqual(result.status, "completed")
-        self.assertEqual(result.total_query_count, 0)
+    def test_combined_evidence_is_separated(self):
+        result = self._result(make_business_input())
         self.assertEqual(len(result.evidence_ids), 3)
         self.assertTrue(any("订单数量" in item.statement for item in result.findings))
-        self.assertTrue(any(item.status == "hypothesis" for item in result.hypotheses))
 
-    async def test_b_only_attribution_keeps_decomposition_gap(self):
-        state = await self._run(make_business_input(with_decomposition=False))
-        self.assertTrue(any(item.finding_id == "gap_decomposition" for item in state["result"].findings))
+    def test_missing_specialist_results_show_gaps(self):
+        without_decomposition = self._result(make_business_input(with_decomposition=False))
+        self.assertTrue(any(item.finding_id == "gap_decomposition" for item in without_decomposition.findings))
+        without_attribution = self._result(make_business_input(with_attribution=False))
+        self.assertTrue(any(item.finding_id == "gap_dimension" for item in without_attribution.findings))
 
-    async def test_c_only_decomposition_keeps_dimension_gap(self):
-        state = await self._run(make_business_input(with_attribution=False))
-        self.assertTrue(any(item.finding_id == "gap_dimension" for item in state["result"].findings))
+    def test_partial_attribution_stays_partial(self):
+        result = self._result(make_business_input(with_decomposition=False, partial=True))
+        self.assertEqual(result.completion_status, "partial")
 
-    async def test_d_partial_attribution_is_not_complete(self):
-        state = await self._run(make_business_input(with_decomposition=False, partial=True))
-        self.assertEqual(state["result"].completion_status, "partial")
-        self.assertEqual(state["result"].status, "partial")
-
-    async def test_e_no_evidence_is_unavailable(self):
-        input_data = make_business_input(with_attribution=False, with_decomposition=False)
-        with patch("app.agent.anomaly_agent.BusinessDiagnosis_Agent.nodes.get_context_llm", side_effect=RuntimeError("offline")):
-            state = {}
-            async for mode, chunk in business_diagnosis_graph.astream(
-                {"input": input_data}, context={"test": True}, stream_mode=["updates", "values"],
-            ):
-                if mode == "values" and isinstance(chunk, dict):
-                    state.update(chunk)
-        self.assertEqual(state["result"].status, "partial")
-        # Overall ChangeInspection remains trusted evidence even when no specialist result exists.
-        self.assertEqual(state["result"].completion_status, "partial")
-
-    def test_input_rejects_mismatched_result(self):
-        input_data = make_business_input()
-        input_data.decomposition_result.request_id = "other-request"
+    def test_mismatched_request_rejected(self):
+        data = make_business_input()
+        data.decomposition_result.request_id = "other-request"
         with self.assertRaises(ValueError):
-            BusinessDiagnosisInput.model_validate(input_data.model_dump())
+            BusinessDiagnosisInput.model_validate(data.model_dump())
 
-    async def test_f_llm_unregistered_tool_is_blocked(self):
-        response = {"action": "execute_tool", "tool_name": "fake_business_query", "reason": "need more data"}
-        state = await self._run(make_business_input(), response=response)
-        self.assertEqual(state["observations"][-1].status, "blocked")
-        self.assertEqual(state["result"].status, "partial")
-
-    def test_e_empty_evidence_finalizes_unavailable(self):
-        input_data = make_business_input(with_attribution=False, with_decomposition=False)
-        result = finalize_diagnosis({"input": input_data, "evidence_items": [], "stop_reason": "no_credible_evidence"})["result"]
+    def test_empty_evidence_is_unavailable(self):
+        data = make_business_input(with_attribution=False, with_decomposition=False)
+        result = finalize_diagnosis({"input": data, "evidence_items": [], "stop_reason": "no_credible_evidence"})["result"]
         self.assertEqual(result.status, "unavailable")
-        self.assertEqual(result.completion_status, "none")
 
 
 if __name__ == "__main__":

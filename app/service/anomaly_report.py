@@ -245,12 +245,14 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
     overall = _overall_payload(inspection or {})
     charts: list[dict[str, Any]] = []
     sql_evidence: list[dict[str, Any]] = []
-    diagnosis: dict[str, Any] | None = None
+    diagnosis: dict[str, Any] | None = state.get("diagnosis_result") or None
     dimension_paths: list[dict[str, Any]] = []
     dimension_names = _dimension_names(state)
     decomposition_result: dict[str, Any] | None = None
     statuses = []
     stage_status = {"change_inspection": "pending", "metric_decomposition": "pending", "dimension_attribution": "pending", "business_diagnosis": "pending"}
+    if diagnosis:
+        stage_status["business_diagnosis"] = diagnosis.get("status") or "partial"
     for item in observations:
         statuses.append(item.get("status"))
         action = item.get("action_name")
@@ -270,8 +272,10 @@ def build_anomaly_report(state: dict[str, Any]) -> dict[str, Any]:
                 charts.append(chart)
             sql_evidence.extend(_sql_evidence(result))
         elif action == "business_diagnosis":
-            diagnosis = item.get("business_diagnosis_result") or {}
+            diagnosis = item.get("business_diagnosis_result") or diagnosis or {}
             sql_evidence.extend(_sql_evidence(diagnosis))
+        elif action == "scoped_metric_decomposition":
+            sql_evidence.extend(_sql_evidence(item.get("scoped_evidence") or {}))
     if inspection and inspection.get("status") == "rejected":
         status, completion = "rejected", "complete"
         charts = []

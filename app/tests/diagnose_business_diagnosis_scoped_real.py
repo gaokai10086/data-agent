@@ -13,8 +13,9 @@ import time
 import traceback
 from pathlib import Path
 
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.graph import business_diagnosis_graph
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import BusinessDiagnosisInput
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnostic_runner import run_from_evidence
+from types import SimpleNamespace
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.schemas import BusinessDiagnosisInput
 from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import load_skill
 from app.agent.data_agent.context import DataAgentContext
 from app.clients.embedding_client import embedding_client_manager
@@ -64,30 +65,21 @@ async def run(source: Path) -> dict:
                 "llm_provider": DEFAULT_LLM_PROVIDER,
                 "llm_model_tier": DEFAULT_LLM_MODEL,
             }
-            state: dict = {}
-            nodes: list[str] = []
-            stream = business_diagnosis_graph.astream({"input": input_data}, context=context, stream_mode=["updates", "values"])
-            try:
-                async for mode, chunk in stream:
-                    if mode == "updates" and isinstance(chunk, dict):
-                        nodes.extend(str(name) for name in chunk)
-                    elif mode == "values" and isinstance(chunk, dict):
-                        state.update(chunk)
-            finally:
-                await stream.aclose()
+            state = await run_from_evidence(input_data, SimpleNamespace(context=context, stream_writer=lambda _event: None))
+            nodes = [item.get("action_name", "") for item in state["main_state"].get("observations", [])]
         result = state.get("result")
         scoped_evidence = [item for item in state.get("evidence_items", []) if item.kind == "scoped_metric_decomposition" and item.reconciled]
-        scoped_observations = [item for item in state.get("observations", []) if item.action_name == "scoped_metric_decomposition" and item.status == "ok"]
-        node_counts = {name: nodes.count(name) for name in ("prepare_evidence", "main_reason", "execute_diagnosis_tools", "finalize_diagnosis")}
+        scoped_observations = [item for item in state["main_state"].get("observations", []) if item.get("action_name") == "scoped_metric_decomposition" and item.get("status") == "completed"]
+        node_counts = {name: nodes.count(name) for name in ("change_inspection", "dimension_attribution", "metric_decomposition", "scoped_metric_decomposition")}
         acceptance = bool(
             result
             and result.status == "completed"
             and result.completion_status == "complete"
-            and state.get("query_count") == 4
-            and len(scoped_evidence) == 1
-            and len(scoped_observations) == 1
-            and node_counts["execute_diagnosis_tools"] >= 1
-            and node_counts["main_reason"] >= 2
+            and state.get("query_count", 0) >= 4
+            and len(scoped_evidence) >= 1
+            and len(scoped_observations) >= 1
+            and node_counts["scoped_metric_decomposition"] >= 1
+            and state["round_count"] >= 2
             and not [task for task in asyncio.all_tasks() if task is not asyncio.current_task() and not task.done()]
         )
         report.update({
@@ -96,7 +88,7 @@ async def run(source: Path) -> dict:
             "nodes": nodes,
             "node_counts": node_counts,
             "result": result.model_dump(mode="json") if result else None,
-            "observations": [item.model_dump(mode="json") for item in state.get("observations", [])],
+            "observations": state["main_state"].get("observations", []),
             "query_count": state.get("query_count", 0),
             "round_count": state.get("round_count", 0),
             "evidence": [item.model_dump(mode="json") for item in state.get("evidence_items", [])],

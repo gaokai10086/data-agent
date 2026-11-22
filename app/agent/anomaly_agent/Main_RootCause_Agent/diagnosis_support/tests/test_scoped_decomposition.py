@@ -4,9 +4,9 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.tests.test_skeleton import make_business_input
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import evidence_id
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.tools import (
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.tests.test_skeleton import make_business_input
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.schemas import evidence_id
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.tools import (
     ScopedMetricDecompositionError, ScopedMetricDecompositionTool,
 )
 from app.agent.anomaly_agent.schemas import FilterCondition, MetricDimension
@@ -43,6 +43,26 @@ def make_scoped_input():
 
 
 class ScopedDecompositionToolTest(unittest.TestCase):
+    def test_sql_contract_rejects_missing_period_filter_scope_or_status(self):
+        data = make_scoped_input()
+        path = data.attribution_result.paths[0]
+        parent_id = evidence_id("dimension_attribution", path.model_dump(mode="json"))
+        scope, _ = ScopedMetricDecompositionTool._candidate_scope(data, {
+            "dimension_column": "dim_store.channel_type", "member_value": "线下旗舰店", "parent_evidence_id": parent_id,
+        })
+        valid = ("SELECT SUM(pay_amount) FROM fact_order WHERE order_status='已完成' "
+                 "AND pay_time >= '2026-08-01' AND pay_time < '2026-09-01' "
+                 "AND city='北京' AND channel_type='线下旗舰店'")
+        cases = {
+            "period": valid.replace("2026-09-01", "2026-10-01"),
+            "fixed_filter": valid.replace("北京", "上海"),
+            "scope": valid.replace("线下旗舰店", "线上商城"),
+            "status": valid.replace("order_status", "order_state"),
+        }
+        for label, sql in cases.items():
+            with self.subTest(label=label), self.assertRaises(ScopedMetricDecompositionError):
+                ScopedMetricDecompositionTool._validate_sql(sql, "2026-08", data.analysis_request, scope)
+
     def test_real_path_member_and_four_sql_reconcile(self):
         data = make_scoped_input()
         path = data.attribution_result.paths[0]
@@ -52,7 +72,7 @@ class ScopedDecompositionToolTest(unittest.TestCase):
             context={"meta_mysql_repository": SimpleNamespace(get_metric_by_key=self._metric)},
             stream_writer=lambda _event: None,
         )
-        with patch("app.agent.anomaly_agent.BusinessDiagnosis_Agent.tools.DataQueryTool", return_value=fake):
+        with patch("app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.tools.DataQueryTool", return_value=fake):
             payload = asyncio.run(ScopedMetricDecompositionTool().run(
                 data, runtime,
                 tool_arguments={

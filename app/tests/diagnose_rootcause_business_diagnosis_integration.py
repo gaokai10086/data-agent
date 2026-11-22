@@ -1,4 +1,4 @@
-"""RootCause -> 专业 Agent -> BusinessDiagnosisAgent 真实集成验收。
+"""RootCause 内部业务诊断与范围工具的真实集成验收。
 
 本脚本只在可访问 MySQL、Qdrant、Elasticsearch、Embedding 和 DeepSeek 的
 正常终端执行；当前 Codex 沙箱内不要将网络失败报告为业务失败。
@@ -14,6 +14,7 @@ import traceback
 from pathlib import Path
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.graph import main_root_cause_agent
+from app.agent.anomaly_agent.Main_RootCause_Agent.analysis_result import materialize_report_input
 from app.clients.embedding_client import embedding_client_manager
 from app.clients.es_client import es_client_manager
 from app.clients.mysql_client import dw_client_manager, meta_client_manager
@@ -27,6 +28,7 @@ from app.repositories.qdrant.metric_repository_qdrant import MetricQdrantReposit
 
 ROOT = Path(__file__).resolve().parents[2]
 QUESTIONS = {
+    "D": "为什么2026年8月销售额比7月下降了？",
     "A": "为什么 2026 年 8 月北京销售额相比 7 月下降？请分析渠道贡献、订单量与客单价，并进一步诊断主要影响渠道的下降因素。",
     "B": "为什么 2026 年 8 月北京销售额相比 7 月下降？请进一步诊断主要影响因素。",
     "C": "为什么 2026 年 8 月北京销售额相比 7 月上涨？请进一步诊断原因。",
@@ -74,19 +76,21 @@ async def run(scenario: str) -> dict:
 
         observations = state.get("observations") or []
         inspection = next((item for item in observations if item.get("action_name") == "change_inspection"), None)
-        business = next((item for item in observations if item.get("action_name") == "business_diagnosis"), None)
-        if scenario == "C":
+        business = state.get("diagnosis_result") or {}
+        scoped = [item for item in observations if item.get("action_name") == "scoped_metric_decomposition"]
+        if scenario == "D":
+            acceptance = bool(inspection and inspection.get("status") == "ready" and state.get("analysis_result"))
+        elif scenario == "C":
             acceptance = bool(
                 inspection and inspection.get("status") == "rejected"
                 and inspection.get("reason") == "direction_mismatch"
-                and business is None
+                and not scoped and not business
             )
         else:
-            result = (business or {}).get("business_diagnosis_result") or {}
             acceptance = bool(
                 inspection and inspection.get("status") == "ready"
-                and business and result.get("status") in {"completed", "partial"}
-                and result.get("evidence_ids")
+                and business.get("status") in {"completed", "partial"}
+                and business.get("evidence_ids")
             )
         report.update(
             status="passed" if acceptance else "failed",
@@ -95,6 +99,9 @@ async def run(scenario: str) -> dict:
             observations=observations,
             inspection=inspection,
             business_diagnosis=business,
+            scoped_actions=scoped,
+            analysis_result=state.get("analysis_result"),
+            report_input=materialize_report_input(state) if state.get("analysis_result") else None,
             final_stop_reason=state.get("stop_reason"),
             pending_tasks=[
                 task.get_name() for task in asyncio.all_tasks()

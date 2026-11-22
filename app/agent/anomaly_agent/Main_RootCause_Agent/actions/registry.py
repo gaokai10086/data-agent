@@ -18,8 +18,7 @@ from app.agent.anomaly_agent.MetricDecomposition_Agent.schemas import (
     DecompositionResult,
     MetricDecompositionInput,
 )
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.graph import business_diagnosis_graph
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import BusinessDiagnosisInput, DiagnosisResult
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.tools import ScopedMetricDecompositionTool
 
 
 @dataclass(frozen=True)
@@ -31,12 +30,6 @@ class AttributionExecution:
 @dataclass(frozen=True)
 class DecompositionExecution:
     result: DecompositionResult
-    nodes: list[str]
-
-
-@dataclass(frozen=True)
-class BusinessDiagnosisExecution:
-    result: DiagnosisResult
     nodes: list[str]
 
 
@@ -79,33 +72,13 @@ async def run_metric_decomposition(input_data: MetricDecompositionInput, runtime
     return DecompositionExecution(result=state["result"], nodes=nodes)
 
 
-async def run_business_diagnosis(input_data: BusinessDiagnosisInput, runtime: Any):
-    """执行业务诊断子 Graph，并返回结构化结果与节点证据。"""
-    state: dict[str, Any] = {}
-    nodes: list[str] = []
-    stream = business_diagnosis_graph.astream(
-        {"input": input_data}, context=runtime.context, stream_mode=["custom", "updates", "values"],
-    )
-    try:
-        async for mode, chunk in stream:
-            if mode == "custom" and hasattr(runtime, "stream_writer"):
-                runtime.stream_writer(chunk)
-            if mode == "updates" and isinstance(chunk, dict):
-                nodes.extend(str(name) for name in chunk)
-            if mode == "values" and isinstance(chunk, dict):
-                state.update(chunk)
-    finally:
-        await stream.aclose()
-    return BusinessDiagnosisExecution(result=state["result"], nodes=nodes)
-
-
 ActionExecutor = Callable[
     [AnalysisRequest, Any],
     Awaitable[InspectionOutcome],
 ]
 
-# 最多允许执行 4 次 Action：变化检验 + 两个专业分析 + 业务诊断。
-MAX_ACTION_EXECUTIONS = 4
+# 变化检验、两个专业分析及最多若干个成员范围补查；SQL 仍受 Skill 总预算约束。
+MAX_ACTION_EXECUTIONS = 10
 
 
 @dataclass(frozen=True)
@@ -135,11 +108,11 @@ ACTION_REGISTRY: dict[str, ActionSpec] = {
         task_type="metric_decomposition",
         executor=run_metric_decomposition,
     ),
-    "business_diagnosis": ActionSpec(
-        name="business_diagnosis",
+    "scoped_metric_decomposition": ActionSpec(
+        name="scoped_metric_decomposition",
         capability="business_diagnosis",
         task_type="hypothesis_analysis",
-        executor=run_business_diagnosis,
+        executor=ScopedMetricDecompositionTool().run,
     ),
 }
 

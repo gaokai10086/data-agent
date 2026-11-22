@@ -1,0 +1,1700 @@
+{
+  "question": "为什么2026年8月销售额比7月下降了？",
+  "status": "partial",
+  "analysis_result": {
+    "schema_version": "1.0",
+    "request_id": "6f4e768470d64f8785089fa1eb7c32df",
+    "metric": "销售额",
+    "target_period": "2026-08",
+    "comparison_period": "2026-07",
+    "overall_verification": {
+      "decision": "continue",
+      "reason": "change_confirmed",
+      "expected_direction": "decrease",
+      "actual_direction": "decrease",
+      "summary": "销售额从990406.57变为332073.57，下降658333，幅度约66.47%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+      "warnings": []
+    },
+    "observation_refs": {
+      "change_inspection": [
+        0
+      ],
+      "dimension_attribution": [
+        1
+      ]
+    },
+    "dimension_paths": [
+      {
+        "task_id": "4e250ebb0fbbc0b1d77c652a",
+        "parent_task_id": null,
+        "depth": 0,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "1445a708700e8afe6f3a3e2a",
+        "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+        "depth": 1,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "e52f695fae4ef570ccbc4fc5",
+        "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+        "depth": 1,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "500b88f5dcc08a0e08922863",
+        "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+        "depth": 1,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "8f4d4fffe55a30f8d031cc93",
+        "parent_task_id": "1445a708700e8afe6f3a3e2a",
+        "depth": 2,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "0ffbf00378f2c8e8e4f65ce4",
+        "parent_task_id": "1445a708700e8afe6f3a3e2a",
+        "depth": 2,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "d5358b2ad8a55ccd730d8c2e",
+        "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+        "depth": 2,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "dc336848c34a274c071c7154",
+        "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+        "depth": 2,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "429d4b525a13659d65fba941",
+        "parent_task_id": "500b88f5dcc08a0e08922863",
+        "depth": 2,
+        "observation_index": 1,
+        "reconciled": true
+      },
+      {
+        "task_id": "d76c011894a5b1b7202dca58",
+        "parent_task_id": "500b88f5dcc08a0e08922863",
+        "depth": 2,
+        "observation_index": 1,
+        "reconciled": true
+      }
+    ],
+    "evidence_ids": [],
+    "findings": [],
+    "hypotheses": [],
+    "stage_status": {
+      "change_inspection": "ready",
+      "dimension_attribution": "partial"
+    },
+    "sql_usage": {
+      "total": 24,
+      "by_action": {
+        "change_inspection": 2,
+        "dimension_attribution": 22
+      }
+    },
+    "stop_reason": "dimension_attribution_partial:partial:completed",
+    "completion_status": "partial"
+  },
+  "overall": {
+    "request_id": "6f4e768470d64f8785089fa1eb7c32df",
+    "metric_key": "sales_amount",
+    "schema_version": "1.0",
+    "analysis_type": "overall_comparison",
+    "target_period": "2026-08",
+    "comparison_period": "2026-07",
+    "current_value": "332073.57",
+    "comparison_value": "990406.57",
+    "change_amount": "-658333.00",
+    "change_rate": "-0.6647098473912587231726461588"
+  },
+  "dimension_attribution": [
+    {
+      "request_id": "6f4e768470d64f8785089fa1eb7c32df",
+      "status": "completed",
+      "completion_status": "partial",
+      "reason": "completed",
+      "stop_reason": "completed",
+      "analyzed_dimensions": [
+        "dim_store.channel_type",
+        "dim_store.region",
+        "dim_store.city"
+      ],
+      "decisions": [
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.channel_type",
+          "parent_scope": [],
+          "depth": 0,
+          "task_id": "4e250ebb0fbbc0b1d77c652a",
+          "parent_task_id": null,
+          "stop_reason": null,
+          "reason": "按渠道维度对比2026年8月与7月销售额，以定位销售额下降的渠道来源。"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.region",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            }
+          ],
+          "depth": 1,
+          "task_id": "1445a708700e8afe6f3a3e2a",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.region",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            }
+          ],
+          "depth": 1,
+          "task_id": "e52f695fae4ef570ccbc4fc5",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.region",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            }
+          ],
+          "depth": 1,
+          "task_id": "500b88f5dcc08a0e08922863",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华东"
+            }
+          ],
+          "depth": 2,
+          "task_id": "85ae41435d91492e2687e744",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华北"
+            }
+          ],
+          "depth": 2,
+          "task_id": "8f4d4fffe55a30f8d031cc93",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华南"
+            }
+          ],
+          "depth": 2,
+          "task_id": "0ffbf00378f2c8e8e4f65ce4",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华东"
+            }
+          ],
+          "depth": 2,
+          "task_id": "d5358b2ad8a55ccd730d8c2e",
+          "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华南"
+            }
+          ],
+          "depth": 2,
+          "task_id": "dc336848c34a274c071c7154",
+          "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华中"
+            }
+          ],
+          "depth": 2,
+          "task_id": "429d4b525a13659d65fba941",
+          "parent_task_id": "500b88f5dcc08a0e08922863",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        },
+        {
+          "action": "execute_tool",
+          "tool_name": "dimension_period_comparison",
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华西"
+            }
+          ],
+          "depth": 2,
+          "task_id": "d76c011894a5b1b7202dca58",
+          "parent_task_id": "500b88f5dcc08a0e08922863",
+          "stop_reason": null,
+          "reason": "按已验证下降成员队列逐分支分析"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "aead80792c304491a7e06394f8b058a7",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.channel_type",
+          "task_id": "4e250ebb0fbbc0b1d77c652a",
+          "parent_task_id": null,
+          "depth": 0,
+          "parent_scope": [],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "线上商城",
+                "comparison_value": "251683.88",
+                "current_value": "59110.75",
+                "change_amount": "-192573.13",
+                "change_rate": "-0.7651389115584200307147203865",
+                "net_contribution_rate": "0.2925162949449594658022611657",
+                "overall_contribution_rate": "0.2925162949449594658022611657",
+                "parent_contribution_rate": "0.2925162949449594658022611657",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "线上自营",
+                "comparison_value": "113060.83",
+                "current_value": "58090.88",
+                "change_amount": "-54969.95",
+                "change_rate": "-0.4861980050915953827687272418",
+                "net_contribution_rate": "0.08349870050567114211197068961",
+                "overall_contribution_rate": "0.08349870050567114211197068961",
+                "parent_contribution_rate": "0.08349870050567114211197068961",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "线下加盟店",
+                "comparison_value": "207659.29",
+                "current_value": "42135.06",
+                "change_amount": "-165524.23",
+                "change_rate": "-0.7970952322913171859539729718",
+                "net_contribution_rate": "0.2514293374325759152283115080",
+                "overall_contribution_rate": "0.2514293374325759152283115080",
+                "parent_contribution_rate": "0.2514293374325759152283115080",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "线下旗舰店",
+                "comparison_value": "418002.57",
+                "current_value": "172736.88",
+                "change_amount": "-245265.69",
+                "change_rate": "-0.5867564163540908372883927484",
+                "net_contribution_rate": "0.3725556671167934768574566367",
+                "overall_contribution_rate": "0.3725556671167934768574566367",
+                "parent_contribution_rate": "0.3725556671167934768574566367",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "990406.57",
+              "current_sum": "332073.57",
+              "summed_change_amount": "-658333.00",
+              "overall_comparison_value": "990406.57",
+              "overall_current_value": "332073.57",
+              "overall_change_amount": "-658333.00",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\nGROUP BY ds.channel_type\nORDER BY dimension_value",
+              "2026-07": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nGROUP BY ds.channel_type\nORDER BY ds.channel_type"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "5f8235f42eb5477d8cba29bd02b69ffb",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.region",
+          "task_id": "1445a708700e8afe6f3a3e2a",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "depth": 1,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "华东",
+                "comparison_value": "140511.94",
+                "current_value": "37836.77",
+                "change_amount": "-102675.17",
+                "change_rate": "-0.7307220297435221519253096925",
+                "net_contribution_rate": "0.1559623625125886139689184653",
+                "overall_contribution_rate": "0.1559623625125886139689184653",
+                "parent_contribution_rate": "0.4186283454485623325463908140",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "华北",
+                "comparison_value": "121726.61",
+                "current_value": "34723.06",
+                "change_amount": "-87003.55",
+                "change_rate": "-0.7147455268819200666148510995",
+                "net_contribution_rate": "0.1321573580543585085359536891",
+                "overall_contribution_rate": "0.1321573580543585085359536891",
+                "parent_contribution_rate": "0.3547318420281287610998505335",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "华南",
+                "comparison_value": "42611.18",
+                "current_value": "3097.18",
+                "change_amount": "-39514.00",
+                "change_rate": "-0.9273153195945289475672816383",
+                "net_contribution_rate": "0.06002129621331453838710804411",
+                "overall_contribution_rate": "0.06002129621331453838710804411",
+                "parent_contribution_rate": "0.1611069204176091649834919837",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "华西",
+                "comparison_value": "113152.84",
+                "current_value": "97079.87",
+                "change_amount": "-16072.97",
+                "change_rate": "-0.1420465451861393845704623941",
+                "net_contribution_rate": "0.02441465033653181596547643822",
+                "overall_contribution_rate": "0.02441465033653181596547643822",
+                "parent_contribution_rate": "0.06553289210569974137026666877",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "418002.57",
+              "current_sum": "172736.88",
+              "summed_change_amount": "-245265.69",
+              "overall_comparison_value": "418002.57",
+              "overall_current_value": "172736.88",
+              "overall_change_amount": "-245265.69",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n  ds.region AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-08-01 00:00:00'\n AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\nGROUP BY ds.region",
+              "2026-07": "SELECT\n  ds.region AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\nGROUP BY ds.region\nORDER BY ds.region"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "10451618b2834e6d81be11767bb78482",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.region",
+          "task_id": "e52f695fae4ef570ccbc4fc5",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "depth": 1,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "华东",
+                "comparison_value": "134036.02",
+                "current_value": "8086.71",
+                "change_amount": "-125949.31",
+                "change_rate": "-0.9396676356101889626385504434",
+                "net_contribution_rate": "0.1913155044635465638210449727",
+                "overall_contribution_rate": "0.1913155044635465638210449727",
+                "parent_contribution_rate": "0.6540336650289684755084990310",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "华北",
+                "comparison_value": "56400.00",
+                "current_value": "46000.00",
+                "change_amount": "-10400.00",
+                "change_rate": "-0.1843971631205673758865248227",
+                "net_contribution_rate": "0.01579747635315258387472601252",
+                "overall_contribution_rate": "0.01579747635315258387472601252",
+                "parent_contribution_rate": "0.05400545756305669435813812654",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "华南",
+                "comparison_value": "61247.86",
+                "current_value": "5024.04",
+                "change_amount": "-56223.82",
+                "change_rate": "-0.9179719911846715950565456491",
+                "net_contribution_rate": "0.08540331412826031810649018050",
+                "overall_contribution_rate": "0.08540331412826031810649018050",
+                "parent_contribution_rate": "0.2919608774079748301333628425",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "251683.88",
+              "current_sum": "59110.75",
+              "summed_change_amount": "-192573.13",
+              "overall_comparison_value": "251683.88",
+              "overall_current_value": "59110.75",
+              "overall_change_amount": "-192573.13",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n  s.region AS dimension_value,\n  SUM(o.pay_amount) AS `value`\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON o.store_id = s.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.channel_type = '线上商城'\nGROUP BY s.region\nORDER BY s.region",
+              "2026-07": "WITH region_scope AS (\n    SELECT DISTINCT region\n    FROM dim_store\n    WHERE channel_type = '线上商城'\n),\nmonth_sales AS (\n    SELECT\n        ds.region,\n        SUM(fo.pay_amount) AS value\n    FROM fact_order fo\n    JOIN dim_store ds\n        ON fo.store_id = ds.store_id\n    WHERE fo.order_status = '已完成'\n      AND fo.pay_time >= '2026-07-01 00:00:00'\n      AND fo.pay_time < '2026-08-01 00:00:00'\n      AND ds.channel_type = '线上商城'\n    GROUP BY ds.region\n)\nSELECT\n    rs.region AS dimension_value,\n    ms.value AS `value`\nFROM region_scope rs\nLEFT JOIN month_sales ms\n    ON rs.region = ms.region\nORDER BY rs.region"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "bb6d9f02f2e74ddf9d872fa14c447ddf",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.region",
+          "task_id": "500b88f5dcc08a0e08922863",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "depth": 1,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "华中",
+                "comparison_value": "143160.94",
+                "current_value": "26534.19",
+                "change_amount": "-116626.75",
+                "change_rate": "-0.8146548213500134883160169247",
+                "net_contribution_rate": "0.1771546466605805876357405751",
+                "overall_contribution_rate": "0.1771546466605805876357405751",
+                "parent_contribution_rate": "0.7045901980634496834693023493",
+                "contribution_denominator": "overall_and_parent"
+              },
+              {
+                "group_value": "华西",
+                "comparison_value": "64498.35",
+                "current_value": "15600.87",
+                "change_amount": "-48897.48",
+                "change_rate": "-0.7581198588801108865575631005",
+                "net_contribution_rate": "0.07427469077199532759257093295",
+                "overall_contribution_rate": "0.07427469077199532759257093295",
+                "parent_contribution_rate": "0.2954098019365503165306976507",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "207659.29",
+              "current_sum": "42135.06",
+              "summed_change_amount": "-165524.23",
+              "overall_comparison_value": "207659.29",
+              "overall_current_value": "42135.06",
+              "overall_change_amount": "-165524.23",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "WITH sales AS (\n  SELECT\n    store_id,\n    SUM(pay_amount) AS sales_amount\n  FROM fact_order\n  WHERE order_status = '已完成'\n    AND pay_time >= '2026-08-01 00:00:00'\n    AND pay_time < '2026-09-01 00:00:00'\n  GROUP BY store_id\n)\nSELECT\n  ds.region AS dimension_value,\n  SUM(s.sales_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN sales s\n  ON ds.store_id = s.store_id\nWHERE ds.channel_type = '线下加盟店'\nGROUP BY ds.region",
+              "2026-07": "SELECT d.region AS dimension_value, SUM(o.pay_amount) AS `value`\nFROM dim_store d\nLEFT JOIN fact_order o\n  ON o.store_id = d.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-07-01'\n AND o.pay_time < '2026-08-01'\nWHERE d.channel_type = '线下加盟店'\nGROUP BY d.region"
+            },
+            "informative": true,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "c4c8b02e72ea4c88ba57cc08afe95fdf",
+          "tool_name": "dimension_period_comparison",
+          "status": "failed",
+          "dimension_column": "dim_store.city",
+          "task_id": "85ae41435d91492e2687e744",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "depth": 2,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华东"
+            }
+          ],
+          "query_count": 0,
+          "evidence": {},
+          "error": "成员 '上海' 在一个周期的分组结果中缺失，缺少允许补零的业务口径"
+        },
+        {
+          "observation_id": "a618433b81174aa8885c5985dd38239d",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.city",
+          "task_id": "8f4d4fffe55a30f8d031cc93",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "depth": 2,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华北"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "北京",
+                "comparison_value": "121726.61",
+                "current_value": "34723.06",
+                "change_amount": "-87003.55",
+                "change_rate": "-0.7147455268819200666148510995",
+                "net_contribution_rate": "0.1321573580543585085359536891",
+                "overall_contribution_rate": "0.1321573580543585085359536891",
+                "parent_contribution_rate": "1",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "121726.61",
+              "current_sum": "34723.06",
+              "summed_change_amount": "-87003.55",
+              "overall_comparison_value": "121726.61",
+              "overall_current_value": "34723.06",
+              "overall_change_amount": "-87003.55",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n  s.city AS dimension_value,\n  SUM(o.pay_amount) AS `value`\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON o.store_id = s.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.channel_type = '线下旗舰店'\n  AND s.region = '华北'\nGROUP BY s.city\nORDER BY s.city",
+              "2026-07": "SELECT\n    ds.city AS dimension_value,\n    SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n    ON fo.store_id = ds.store_id\n    AND fo.order_status = '已完成'\n    AND fo.pay_time >= '2026-07-01 00:00:00'\n    AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\n    AND ds.region = '华北'\nGROUP BY ds.city"
+            },
+            "informative": false,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "2e1c15f69ca3464fbadcc1bced5fbd2d",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.city",
+          "task_id": "0ffbf00378f2c8e8e4f65ce4",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "depth": 2,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华南"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "深圳",
+                "comparison_value": "42611.18",
+                "current_value": "3097.18",
+                "change_amount": "-39514.00",
+                "change_rate": "-0.9273153195945289475672816383",
+                "net_contribution_rate": "0.06002129621331453838710804411",
+                "overall_contribution_rate": "0.06002129621331453838710804411",
+                "parent_contribution_rate": "1",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "42611.18",
+              "current_sum": "3097.18",
+              "summed_change_amount": "-39514.00",
+              "overall_comparison_value": "42611.18",
+              "overall_current_value": "3097.18",
+              "overall_change_amount": "-39514.00",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT ds.city AS dimension_value, SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nJOIN dim_store ds ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01'\n  AND fo.pay_time < '2026-09-01'\n  AND ds.channel_type = '线下旗舰店'\n  AND ds.region = '华南'\nGROUP BY ds.city",
+              "2026-07": "SELECT ds.city AS dimension_value, SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON ds.store_id = fo.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\n  AND ds.region = '华南'\nGROUP BY ds.city\nORDER BY ds.city ASC"
+            },
+            "informative": false,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "bacff072f9334da89ad584589b4ecd81",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.city",
+          "task_id": "d5358b2ad8a55ccd730d8c2e",
+          "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+          "depth": 2,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华东"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "上海",
+                "comparison_value": "134036.02",
+                "current_value": "8086.71",
+                "change_amount": "-125949.31",
+                "change_rate": "-0.9396676356101889626385504434",
+                "net_contribution_rate": "0.1913155044635465638210449727",
+                "overall_contribution_rate": "0.1913155044635465638210449727",
+                "parent_contribution_rate": "1",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "134036.02",
+              "current_sum": "8086.71",
+              "summed_change_amount": "-125949.31",
+              "overall_comparison_value": "134036.02",
+              "overall_current_value": "8086.71",
+              "overall_change_amount": "-125949.31",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "WITH filtered_store AS (\n    SELECT store_id, city\n    FROM dim_store\n    WHERE channel_type = '线上商城'\n      AND region = '华东'\n)\nSELECT fs.city AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM filtered_store fs\nLEFT JOIN fact_order fo\n    ON fo.store_id = fs.store_id\n   AND fo.order_status = '已完成'\n   AND fo.pay_time >= '2026-08-01 00:00:00'\n   AND fo.pay_time < '2026-09-01 00:00:00'\nGROUP BY fs.city\nORDER BY fs.city",
+              "2026-07": "SELECT\n    dim_store.city AS dimension_value,\n    SUM(fact_order.pay_amount) AS value\nFROM fact_order\nLEFT JOIN dim_store\n    ON fact_order.store_id = dim_store.store_id\nWHERE fact_order.order_status = '已完成'\n    AND fact_order.pay_time >= '2026-07-01 00:00:00'\n    AND fact_order.pay_time < '2026-08-01 00:00:00'\n    AND dim_store.channel_type = '线上商城'\n    AND dim_store.region = '华东'\nGROUP BY dim_store.city\nORDER BY dim_store.city"
+            },
+            "informative": false,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "3d635e57d5c441488a1cca4fa0f9b552",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.city",
+          "task_id": "dc336848c34a274c071c7154",
+          "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+          "depth": 2,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华南"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "广州",
+                "comparison_value": "61247.86",
+                "current_value": "5024.04",
+                "change_amount": "-56223.82",
+                "change_rate": "-0.9179719911846715950565456491",
+                "net_contribution_rate": "0.08540331412826031810649018050",
+                "overall_contribution_rate": "0.08540331412826031810649018050",
+                "parent_contribution_rate": "1",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "61247.86",
+              "current_sum": "5024.04",
+              "summed_change_amount": "-56223.82",
+              "overall_comparison_value": "61247.86",
+              "overall_current_value": "5024.04",
+              "overall_change_amount": "-56223.82",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT ds.city AS dimension_value,\n       SUM(fo.pay_amount) AS value\nFROM fact_order fo\nJOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\n  AND ds.channel_type = '线上商城'\n  AND ds.region = '华南'\nGROUP BY ds.city",
+              "2026-07": "SELECT\n  ds.city AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.channel_type = '线上商城'\n  AND ds.region = '华南'\nGROUP BY ds.city"
+            },
+            "informative": false,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "5a1a37901e09433ea40442bcbbccd32d",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.city",
+          "task_id": "429d4b525a13659d65fba941",
+          "parent_task_id": "500b88f5dcc08a0e08922863",
+          "depth": 2,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华中"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "武汉",
+                "comparison_value": "143160.94",
+                "current_value": "26534.19",
+                "change_amount": "-116626.75",
+                "change_rate": "-0.8146548213500134883160169247",
+                "net_contribution_rate": "0.1771546466605805876357405751",
+                "overall_contribution_rate": "0.1771546466605805876357405751",
+                "parent_contribution_rate": "1",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "143160.94",
+              "current_sum": "26534.19",
+              "summed_change_amount": "-116626.75",
+              "overall_comparison_value": "143160.94",
+              "overall_current_value": "26534.19",
+              "overall_change_amount": "-116626.75",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT\n    ds.city AS dimension_value,\n    SUM(fo.pay_amount) AS value\nFROM dim_store ds\nLEFT JOIN fact_order fo\n    ON fo.store_id = ds.store_id\n   AND fo.pay_time >= '2026-08-01 00:00:00'\n   AND fo.pay_time < '2026-09-01 00:00:00'\n   AND fo.order_status = '已完成'\nWHERE ds.channel_type = '线下加盟店'\n  AND ds.region = '华中'\nGROUP BY ds.city\nORDER BY ds.city",
+              "2026-07": "WITH city_base AS (\n    SELECT DISTINCT city\n    FROM dim_store\n    WHERE channel_type = '线下加盟店'\n      AND region = '华中'\n),\ncity_sales AS (\n    SELECT\n        ds.city AS city,\n        SUM(fo.pay_amount) AS sales_value\n    FROM fact_order fo\n    JOIN dim_store ds ON fo.store_id = ds.store_id\n    WHERE fo.order_status = '已完成'\n      AND fo.pay_time >= '2026-07-01'\n      AND fo.pay_time < '2026-08-01'\n      AND ds.channel_type = '线下加盟店'\n      AND ds.region = '华中'\n    GROUP BY ds.city\n)\nSELECT\n    cb.city AS dimension_value,\n    cs.sales_value AS `value`\nFROM city_base cb\nLEFT JOIN city_sales cs ON cb.city <=> cs.city\nORDER BY cb.city"
+            },
+            "informative": false,
+            "null_member_present": false
+          },
+          "error": null
+        },
+        {
+          "observation_id": "ee20d880ba3d40c0908b4b4495d32623",
+          "tool_name": "dimension_period_comparison",
+          "status": "ok",
+          "dimension_column": "dim_store.city",
+          "task_id": "d76c011894a5b1b7202dca58",
+          "parent_task_id": "500b88f5dcc08a0e08922863",
+          "depth": 2,
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华西"
+            }
+          ],
+          "query_count": 2,
+          "evidence": {
+            "members": [
+              {
+                "group_value": "西安",
+                "comparison_value": "64498.35",
+                "current_value": "15600.87",
+                "change_amount": "-48897.48",
+                "change_rate": "-0.7581198588801108865575631005",
+                "net_contribution_rate": "0.07427469077199532759257093295",
+                "overall_contribution_rate": "0.07427469077199532759257093295",
+                "parent_contribution_rate": "1",
+                "contribution_denominator": "overall_and_parent"
+              }
+            ],
+            "reconciliation": {
+              "comparison_sum": "64498.35",
+              "current_sum": "15600.87",
+              "summed_change_amount": "-48897.48",
+              "overall_comparison_value": "64498.35",
+              "overall_current_value": "15600.87",
+              "overall_change_amount": "-48897.48",
+              "comparison_matches": true,
+              "current_matches": true,
+              "change_matches": true,
+              "tolerance": "0.01"
+            },
+            "sql_by_period": {
+              "2026-08": "SELECT s.city AS dimension_value, SUM(o.pay_amount) AS `value`\nFROM fact_order o\nLEFT JOIN dim_store s ON o.store_id = s.store_id\nWHERE o.order_status = '已完成'\n  AND o.pay_time >= '2026-08-01 00:00:00'\n  AND o.pay_time < '2026-09-01 00:00:00'\n  AND s.channel_type = '线下加盟店'\n  AND s.region = '华西'\nGROUP BY s.city",
+              "2026-07": "SELECT ds.city AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.channel_type = '线下加盟店'\n  AND ds.region = '华西'\nGROUP BY ds.city\nORDER BY ds.city ASC"
+            },
+            "informative": false,
+            "null_member_present": false
+          },
+          "error": null
+        }
+      ],
+      "summary": "维度归因已完成 10 个真实对账任务；各分支金额仅在同一父级范围内比较。",
+      "total_query_count": 22,
+      "attributions": [
+        {
+          "group_value": "西安",
+          "comparison_value": "64498.35",
+          "current_value": "15600.87",
+          "change_amount": "-48897.48",
+          "change_rate": "-0.7581198588801108865575631005",
+          "net_contribution_rate": "0.07427469077199532759257093295",
+          "overall_contribution_rate": "0.07427469077199532759257093295",
+          "parent_contribution_rate": "1",
+          "contribution_denominator": "overall_and_parent"
+        }
+      ],
+      "reconciliation": {
+        "comparison_sum": "64498.35",
+        "current_sum": "15600.87",
+        "summed_change_amount": "-48897.48",
+        "overall_comparison_value": "64498.35",
+        "overall_current_value": "15600.87",
+        "overall_change_amount": "-48897.48",
+        "comparison_matches": true,
+        "current_matches": true,
+        "change_matches": true,
+        "tolerance": "0.01"
+      },
+      "paths": [
+        {
+          "task_id": "4e250ebb0fbbc0b1d77c652a",
+          "parent_task_id": null,
+          "depth": 0,
+          "dimension_column": "dim_store.channel_type",
+          "parent_scope": [],
+          "attributions": [
+            {
+              "group_value": "线上商城",
+              "comparison_value": "251683.88",
+              "current_value": "59110.75",
+              "change_amount": "-192573.13",
+              "change_rate": "-0.7651389115584200307147203865",
+              "net_contribution_rate": "0.2925162949449594658022611657",
+              "overall_contribution_rate": "0.2925162949449594658022611657",
+              "parent_contribution_rate": "0.2925162949449594658022611657",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "线上自营",
+              "comparison_value": "113060.83",
+              "current_value": "58090.88",
+              "change_amount": "-54969.95",
+              "change_rate": "-0.4861980050915953827687272418",
+              "net_contribution_rate": "0.08349870050567114211197068961",
+              "overall_contribution_rate": "0.08349870050567114211197068961",
+              "parent_contribution_rate": "0.08349870050567114211197068961",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "线下加盟店",
+              "comparison_value": "207659.29",
+              "current_value": "42135.06",
+              "change_amount": "-165524.23",
+              "change_rate": "-0.7970952322913171859539729718",
+              "net_contribution_rate": "0.2514293374325759152283115080",
+              "overall_contribution_rate": "0.2514293374325759152283115080",
+              "parent_contribution_rate": "0.2514293374325759152283115080",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "线下旗舰店",
+              "comparison_value": "418002.57",
+              "current_value": "172736.88",
+              "change_amount": "-245265.69",
+              "change_rate": "-0.5867564163540908372883927484",
+              "net_contribution_rate": "0.3725556671167934768574566367",
+              "overall_contribution_rate": "0.3725556671167934768574566367",
+              "parent_contribution_rate": "0.3725556671167934768574566367",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "990406.57",
+            "current_sum": "332073.57",
+            "summed_change_amount": "-658333.00",
+            "overall_comparison_value": "990406.57",
+            "overall_current_value": "332073.57",
+            "overall_change_amount": "-658333.00",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\nGROUP BY ds.channel_type\nORDER BY dimension_value",
+            "2026-07": "SELECT\n  ds.channel_type AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nGROUP BY ds.channel_type\nORDER BY ds.channel_type"
+          },
+          "informative": true,
+          "null_member_present": false,
+          "selected_member": "线下旗舰店",
+          "selected_members": [
+            "线下旗舰店",
+            "线上商城",
+            "线下加盟店"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "0.9165012994943288578880293104",
+          "total_decline_amount": "658333.00",
+          "uncovered_decline_amount": "54969.95",
+          "branch_status": "children_scheduled",
+          "branch_stop_reason": "coverage_reached",
+          "stop_reason": null
+        },
+        {
+          "task_id": "1445a708700e8afe6f3a3e2a",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "depth": 1,
+          "dimension_column": "dim_store.region",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "华东",
+              "comparison_value": "140511.94",
+              "current_value": "37836.77",
+              "change_amount": "-102675.17",
+              "change_rate": "-0.7307220297435221519253096925",
+              "net_contribution_rate": "0.1559623625125886139689184653",
+              "overall_contribution_rate": "0.1559623625125886139689184653",
+              "parent_contribution_rate": "0.4186283454485623325463908140",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "华北",
+              "comparison_value": "121726.61",
+              "current_value": "34723.06",
+              "change_amount": "-87003.55",
+              "change_rate": "-0.7147455268819200666148510995",
+              "net_contribution_rate": "0.1321573580543585085359536891",
+              "overall_contribution_rate": "0.1321573580543585085359536891",
+              "parent_contribution_rate": "0.3547318420281287610998505335",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "华南",
+              "comparison_value": "42611.18",
+              "current_value": "3097.18",
+              "change_amount": "-39514.00",
+              "change_rate": "-0.9273153195945289475672816383",
+              "net_contribution_rate": "0.06002129621331453838710804411",
+              "overall_contribution_rate": "0.06002129621331453838710804411",
+              "parent_contribution_rate": "0.1611069204176091649834919837",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "华西",
+              "comparison_value": "113152.84",
+              "current_value": "97079.87",
+              "change_amount": "-16072.97",
+              "change_rate": "-0.1420465451861393845704623941",
+              "net_contribution_rate": "0.02441465033653181596547643822",
+              "overall_contribution_rate": "0.02441465033653181596547643822",
+              "parent_contribution_rate": "0.06553289210569974137026666877",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "418002.57",
+            "current_sum": "172736.88",
+            "summed_change_amount": "-245265.69",
+            "overall_comparison_value": "418002.57",
+            "overall_current_value": "172736.88",
+            "overall_change_amount": "-245265.69",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT\n  ds.region AS dimension_value,\n  SUM(fo.pay_amount) AS value\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-08-01 00:00:00'\n AND fo.pay_time < '2026-09-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\nGROUP BY ds.region",
+            "2026-07": "SELECT\n  ds.region AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON fo.store_id = ds.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\nGROUP BY ds.region\nORDER BY ds.region"
+          },
+          "informative": true,
+          "null_member_present": false,
+          "selected_member": "华东",
+          "selected_members": [
+            "华东",
+            "华北",
+            "华南"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "0.9344671078943002586297333312",
+          "total_decline_amount": "245265.69",
+          "uncovered_decline_amount": "16072.97",
+          "branch_status": "children_scheduled",
+          "branch_stop_reason": "coverage_reached",
+          "stop_reason": null
+        },
+        {
+          "task_id": "e52f695fae4ef570ccbc4fc5",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "depth": 1,
+          "dimension_column": "dim_store.region",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "华东",
+              "comparison_value": "134036.02",
+              "current_value": "8086.71",
+              "change_amount": "-125949.31",
+              "change_rate": "-0.9396676356101889626385504434",
+              "net_contribution_rate": "0.1913155044635465638210449727",
+              "overall_contribution_rate": "0.1913155044635465638210449727",
+              "parent_contribution_rate": "0.6540336650289684755084990310",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "华北",
+              "comparison_value": "56400.00",
+              "current_value": "46000.00",
+              "change_amount": "-10400.00",
+              "change_rate": "-0.1843971631205673758865248227",
+              "net_contribution_rate": "0.01579747635315258387472601252",
+              "overall_contribution_rate": "0.01579747635315258387472601252",
+              "parent_contribution_rate": "0.05400545756305669435813812654",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "华南",
+              "comparison_value": "61247.86",
+              "current_value": "5024.04",
+              "change_amount": "-56223.82",
+              "change_rate": "-0.9179719911846715950565456491",
+              "net_contribution_rate": "0.08540331412826031810649018050",
+              "overall_contribution_rate": "0.08540331412826031810649018050",
+              "parent_contribution_rate": "0.2919608774079748301333628425",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "251683.88",
+            "current_sum": "59110.75",
+            "summed_change_amount": "-192573.13",
+            "overall_comparison_value": "251683.88",
+            "overall_current_value": "59110.75",
+            "overall_change_amount": "-192573.13",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT\n  s.region AS dimension_value,\n  SUM(o.pay_amount) AS `value`\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON o.store_id = s.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.channel_type = '线上商城'\nGROUP BY s.region\nORDER BY s.region",
+            "2026-07": "WITH region_scope AS (\n    SELECT DISTINCT region\n    FROM dim_store\n    WHERE channel_type = '线上商城'\n),\nmonth_sales AS (\n    SELECT\n        ds.region,\n        SUM(fo.pay_amount) AS value\n    FROM fact_order fo\n    JOIN dim_store ds\n        ON fo.store_id = ds.store_id\n    WHERE fo.order_status = '已完成'\n      AND fo.pay_time >= '2026-07-01 00:00:00'\n      AND fo.pay_time < '2026-08-01 00:00:00'\n      AND ds.channel_type = '线上商城'\n    GROUP BY ds.region\n)\nSELECT\n    rs.region AS dimension_value,\n    ms.value AS `value`\nFROM region_scope rs\nLEFT JOIN month_sales ms\n    ON rs.region = ms.region\nORDER BY rs.region"
+          },
+          "informative": true,
+          "null_member_present": false,
+          "selected_member": "华东",
+          "selected_members": [
+            "华东",
+            "华南"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "0.9459945424369433056418618735",
+          "total_decline_amount": "192573.13",
+          "uncovered_decline_amount": "10400.00",
+          "branch_status": "children_scheduled",
+          "branch_stop_reason": "coverage_reached",
+          "stop_reason": null
+        },
+        {
+          "task_id": "500b88f5dcc08a0e08922863",
+          "parent_task_id": "4e250ebb0fbbc0b1d77c652a",
+          "depth": 1,
+          "dimension_column": "dim_store.region",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "华中",
+              "comparison_value": "143160.94",
+              "current_value": "26534.19",
+              "change_amount": "-116626.75",
+              "change_rate": "-0.8146548213500134883160169247",
+              "net_contribution_rate": "0.1771546466605805876357405751",
+              "overall_contribution_rate": "0.1771546466605805876357405751",
+              "parent_contribution_rate": "0.7045901980634496834693023493",
+              "contribution_denominator": "overall_and_parent"
+            },
+            {
+              "group_value": "华西",
+              "comparison_value": "64498.35",
+              "current_value": "15600.87",
+              "change_amount": "-48897.48",
+              "change_rate": "-0.7581198588801108865575631005",
+              "net_contribution_rate": "0.07427469077199532759257093295",
+              "overall_contribution_rate": "0.07427469077199532759257093295",
+              "parent_contribution_rate": "0.2954098019365503165306976507",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "207659.29",
+            "current_sum": "42135.06",
+            "summed_change_amount": "-165524.23",
+            "overall_comparison_value": "207659.29",
+            "overall_current_value": "42135.06",
+            "overall_change_amount": "-165524.23",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "WITH sales AS (\n  SELECT\n    store_id,\n    SUM(pay_amount) AS sales_amount\n  FROM fact_order\n  WHERE order_status = '已完成'\n    AND pay_time >= '2026-08-01 00:00:00'\n    AND pay_time < '2026-09-01 00:00:00'\n  GROUP BY store_id\n)\nSELECT\n  ds.region AS dimension_value,\n  SUM(s.sales_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN sales s\n  ON ds.store_id = s.store_id\nWHERE ds.channel_type = '线下加盟店'\nGROUP BY ds.region",
+            "2026-07": "SELECT d.region AS dimension_value, SUM(o.pay_amount) AS `value`\nFROM dim_store d\nLEFT JOIN fact_order o\n  ON o.store_id = d.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-07-01'\n AND o.pay_time < '2026-08-01'\nWHERE d.channel_type = '线下加盟店'\nGROUP BY d.region"
+          },
+          "informative": true,
+          "null_member_present": false,
+          "selected_member": "华中",
+          "selected_members": [
+            "华中",
+            "华西"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "1",
+          "total_decline_amount": "165524.23",
+          "uncovered_decline_amount": "0.00",
+          "branch_status": "children_scheduled",
+          "branch_stop_reason": "coverage_reached",
+          "stop_reason": null
+        },
+        {
+          "task_id": "8f4d4fffe55a30f8d031cc93",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "depth": 2,
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华北"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "北京",
+              "comparison_value": "121726.61",
+              "current_value": "34723.06",
+              "change_amount": "-87003.55",
+              "change_rate": "-0.7147455268819200666148510995",
+              "net_contribution_rate": "0.1321573580543585085359536891",
+              "overall_contribution_rate": "0.1321573580543585085359536891",
+              "parent_contribution_rate": "1",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "121726.61",
+            "current_sum": "34723.06",
+            "summed_change_amount": "-87003.55",
+            "overall_comparison_value": "121726.61",
+            "overall_current_value": "34723.06",
+            "overall_change_amount": "-87003.55",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT\n  s.city AS dimension_value,\n  SUM(o.pay_amount) AS `value`\nFROM dim_store s\nLEFT JOIN fact_order o\n  ON o.store_id = s.store_id\n AND o.order_status = '已完成'\n AND o.pay_time >= '2026-08-01 00:00:00'\n AND o.pay_time < '2026-09-01 00:00:00'\nWHERE s.channel_type = '线下旗舰店'\n  AND s.region = '华北'\nGROUP BY s.city\nORDER BY s.city",
+            "2026-07": "SELECT\n    ds.city AS dimension_value,\n    SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n    ON fo.store_id = ds.store_id\n    AND fo.order_status = '已完成'\n    AND fo.pay_time >= '2026-07-01 00:00:00'\n    AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\n    AND ds.region = '华北'\nGROUP BY ds.city"
+          },
+          "informative": false,
+          "null_member_present": false,
+          "selected_member": "北京",
+          "selected_members": [
+            "北京"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "1",
+          "total_decline_amount": "87003.55",
+          "uncovered_decline_amount": "0.00",
+          "branch_status": "stopped",
+          "branch_stop_reason": "uninformative",
+          "stop_reason": null
+        },
+        {
+          "task_id": "0ffbf00378f2c8e8e4f65ce4",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "depth": 2,
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华南"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "深圳",
+              "comparison_value": "42611.18",
+              "current_value": "3097.18",
+              "change_amount": "-39514.00",
+              "change_rate": "-0.9273153195945289475672816383",
+              "net_contribution_rate": "0.06002129621331453838710804411",
+              "overall_contribution_rate": "0.06002129621331453838710804411",
+              "parent_contribution_rate": "1",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "42611.18",
+            "current_sum": "3097.18",
+            "summed_change_amount": "-39514.00",
+            "overall_comparison_value": "42611.18",
+            "overall_current_value": "3097.18",
+            "overall_change_amount": "-39514.00",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT ds.city AS dimension_value, SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nJOIN dim_store ds ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01'\n  AND fo.pay_time < '2026-09-01'\n  AND ds.channel_type = '线下旗舰店'\n  AND ds.region = '华南'\nGROUP BY ds.city",
+            "2026-07": "SELECT ds.city AS dimension_value, SUM(fo.pay_amount) AS `value`\nFROM dim_store ds\nLEFT JOIN fact_order fo\n  ON ds.store_id = fo.store_id\n AND fo.order_status = '已完成'\n AND fo.pay_time >= '2026-07-01 00:00:00'\n AND fo.pay_time < '2026-08-01 00:00:00'\nWHERE ds.channel_type = '线下旗舰店'\n  AND ds.region = '华南'\nGROUP BY ds.city\nORDER BY ds.city ASC"
+          },
+          "informative": false,
+          "null_member_present": false,
+          "selected_member": "深圳",
+          "selected_members": [
+            "深圳"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "1",
+          "total_decline_amount": "39514.00",
+          "uncovered_decline_amount": "0.00",
+          "branch_status": "stopped",
+          "branch_stop_reason": "uninformative",
+          "stop_reason": null
+        },
+        {
+          "task_id": "d5358b2ad8a55ccd730d8c2e",
+          "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+          "depth": 2,
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华东"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "上海",
+              "comparison_value": "134036.02",
+              "current_value": "8086.71",
+              "change_amount": "-125949.31",
+              "change_rate": "-0.9396676356101889626385504434",
+              "net_contribution_rate": "0.1913155044635465638210449727",
+              "overall_contribution_rate": "0.1913155044635465638210449727",
+              "parent_contribution_rate": "1",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "134036.02",
+            "current_sum": "8086.71",
+            "summed_change_amount": "-125949.31",
+            "overall_comparison_value": "134036.02",
+            "overall_current_value": "8086.71",
+            "overall_change_amount": "-125949.31",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "WITH filtered_store AS (\n    SELECT store_id, city\n    FROM dim_store\n    WHERE channel_type = '线上商城'\n      AND region = '华东'\n)\nSELECT fs.city AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM filtered_store fs\nLEFT JOIN fact_order fo\n    ON fo.store_id = fs.store_id\n   AND fo.order_status = '已完成'\n   AND fo.pay_time >= '2026-08-01 00:00:00'\n   AND fo.pay_time < '2026-09-01 00:00:00'\nGROUP BY fs.city\nORDER BY fs.city",
+            "2026-07": "SELECT\n    dim_store.city AS dimension_value,\n    SUM(fact_order.pay_amount) AS value\nFROM fact_order\nLEFT JOIN dim_store\n    ON fact_order.store_id = dim_store.store_id\nWHERE fact_order.order_status = '已完成'\n    AND fact_order.pay_time >= '2026-07-01 00:00:00'\n    AND fact_order.pay_time < '2026-08-01 00:00:00'\n    AND dim_store.channel_type = '线上商城'\n    AND dim_store.region = '华东'\nGROUP BY dim_store.city\nORDER BY dim_store.city"
+          },
+          "informative": false,
+          "null_member_present": false,
+          "selected_member": "上海",
+          "selected_members": [
+            "上海"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "1",
+          "total_decline_amount": "125949.31",
+          "uncovered_decline_amount": "0.00",
+          "branch_status": "stopped",
+          "branch_stop_reason": "uninformative",
+          "stop_reason": null
+        },
+        {
+          "task_id": "dc336848c34a274c071c7154",
+          "parent_task_id": "e52f695fae4ef570ccbc4fc5",
+          "depth": 2,
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线上商城"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华南"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "广州",
+              "comparison_value": "61247.86",
+              "current_value": "5024.04",
+              "change_amount": "-56223.82",
+              "change_rate": "-0.9179719911846715950565456491",
+              "net_contribution_rate": "0.08540331412826031810649018050",
+              "overall_contribution_rate": "0.08540331412826031810649018050",
+              "parent_contribution_rate": "1",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "61247.86",
+            "current_sum": "5024.04",
+            "summed_change_amount": "-56223.82",
+            "overall_comparison_value": "61247.86",
+            "overall_current_value": "5024.04",
+            "overall_change_amount": "-56223.82",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT ds.city AS dimension_value,\n       SUM(fo.pay_amount) AS value\nFROM fact_order fo\nJOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-08-01 00:00:00'\n  AND fo.pay_time < '2026-09-01 00:00:00'\n  AND ds.channel_type = '线上商城'\n  AND ds.region = '华南'\nGROUP BY ds.city",
+            "2026-07": "SELECT\n  ds.city AS dimension_value,\n  SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.channel_type = '线上商城'\n  AND ds.region = '华南'\nGROUP BY ds.city"
+          },
+          "informative": false,
+          "null_member_present": false,
+          "selected_member": "广州",
+          "selected_members": [
+            "广州"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "1",
+          "total_decline_amount": "56223.82",
+          "uncovered_decline_amount": "0.00",
+          "branch_status": "stopped",
+          "branch_stop_reason": "uninformative",
+          "stop_reason": null
+        },
+        {
+          "task_id": "429d4b525a13659d65fba941",
+          "parent_task_id": "500b88f5dcc08a0e08922863",
+          "depth": 2,
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华中"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "武汉",
+              "comparison_value": "143160.94",
+              "current_value": "26534.19",
+              "change_amount": "-116626.75",
+              "change_rate": "-0.8146548213500134883160169247",
+              "net_contribution_rate": "0.1771546466605805876357405751",
+              "overall_contribution_rate": "0.1771546466605805876357405751",
+              "parent_contribution_rate": "1",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "143160.94",
+            "current_sum": "26534.19",
+            "summed_change_amount": "-116626.75",
+            "overall_comparison_value": "143160.94",
+            "overall_current_value": "26534.19",
+            "overall_change_amount": "-116626.75",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT\n    ds.city AS dimension_value,\n    SUM(fo.pay_amount) AS value\nFROM dim_store ds\nLEFT JOIN fact_order fo\n    ON fo.store_id = ds.store_id\n   AND fo.pay_time >= '2026-08-01 00:00:00'\n   AND fo.pay_time < '2026-09-01 00:00:00'\n   AND fo.order_status = '已完成'\nWHERE ds.channel_type = '线下加盟店'\n  AND ds.region = '华中'\nGROUP BY ds.city\nORDER BY ds.city",
+            "2026-07": "WITH city_base AS (\n    SELECT DISTINCT city\n    FROM dim_store\n    WHERE channel_type = '线下加盟店'\n      AND region = '华中'\n),\ncity_sales AS (\n    SELECT\n        ds.city AS city,\n        SUM(fo.pay_amount) AS sales_value\n    FROM fact_order fo\n    JOIN dim_store ds ON fo.store_id = ds.store_id\n    WHERE fo.order_status = '已完成'\n      AND fo.pay_time >= '2026-07-01'\n      AND fo.pay_time < '2026-08-01'\n      AND ds.channel_type = '线下加盟店'\n      AND ds.region = '华中'\n    GROUP BY ds.city\n)\nSELECT\n    cb.city AS dimension_value,\n    cs.sales_value AS `value`\nFROM city_base cb\nLEFT JOIN city_sales cs ON cb.city <=> cs.city\nORDER BY cb.city"
+          },
+          "informative": false,
+          "null_member_present": false,
+          "selected_member": "武汉",
+          "selected_members": [
+            "武汉"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "1",
+          "total_decline_amount": "116626.75",
+          "uncovered_decline_amount": "0.00",
+          "branch_status": "stopped",
+          "branch_stop_reason": "uninformative",
+          "stop_reason": null
+        },
+        {
+          "task_id": "d76c011894a5b1b7202dca58",
+          "parent_task_id": "500b88f5dcc08a0e08922863",
+          "depth": 2,
+          "dimension_column": "dim_store.city",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下加盟店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华西"
+            }
+          ],
+          "attributions": [
+            {
+              "group_value": "西安",
+              "comparison_value": "64498.35",
+              "current_value": "15600.87",
+              "change_amount": "-48897.48",
+              "change_rate": "-0.7581198588801108865575631005",
+              "net_contribution_rate": "0.07427469077199532759257093295",
+              "overall_contribution_rate": "0.07427469077199532759257093295",
+              "parent_contribution_rate": "1",
+              "contribution_denominator": "overall_and_parent"
+            }
+          ],
+          "reconciliation": {
+            "comparison_sum": "64498.35",
+            "current_sum": "15600.87",
+            "summed_change_amount": "-48897.48",
+            "overall_comparison_value": "64498.35",
+            "overall_current_value": "15600.87",
+            "overall_change_amount": "-48897.48",
+            "comparison_matches": true,
+            "current_matches": true,
+            "change_matches": true,
+            "tolerance": "0.01"
+          },
+          "sql_by_period": {
+            "2026-08": "SELECT s.city AS dimension_value, SUM(o.pay_amount) AS `value`\nFROM fact_order o\nLEFT JOIN dim_store s ON o.store_id = s.store_id\nWHERE o.order_status = '已完成'\n  AND o.pay_time >= '2026-08-01 00:00:00'\n  AND o.pay_time < '2026-09-01 00:00:00'\n  AND s.channel_type = '线下加盟店'\n  AND s.region = '华西'\nGROUP BY s.city",
+            "2026-07": "SELECT ds.city AS dimension_value,\n       SUM(fo.pay_amount) AS `value`\nFROM fact_order fo\nLEFT JOIN dim_store ds\n  ON fo.store_id = ds.store_id\nWHERE fo.order_status = '已完成'\n  AND fo.pay_time >= '2026-07-01 00:00:00'\n  AND fo.pay_time < '2026-08-01 00:00:00'\n  AND ds.channel_type = '线下加盟店'\n  AND ds.region = '华西'\nGROUP BY ds.city\nORDER BY ds.city ASC"
+          },
+          "informative": false,
+          "null_member_present": false,
+          "selected_member": "西安",
+          "selected_members": [
+            "西安"
+          ],
+          "target_decline_coverage": "0.80",
+          "actual_decline_coverage": "1",
+          "total_decline_amount": "48897.48",
+          "uncovered_decline_amount": "0.00",
+          "branch_status": "stopped",
+          "branch_stop_reason": "uninformative",
+          "stop_reason": null
+        }
+      ],
+      "current_path": [],
+      "abandoned_paths": [
+        {
+          "task_id": "85ae41435d91492e2687e744",
+          "parent_task_id": "1445a708700e8afe6f3a3e2a",
+          "parent_scope": [
+            {
+              "dimension_column": "dim_store.channel_type",
+              "member_value": "线下旗舰店"
+            },
+            {
+              "dimension_column": "dim_store.region",
+              "member_value": "华东"
+            }
+          ],
+          "reason": "execution_failed",
+          "error": "成员 '上海' 在一个周期的分组结果中缺失，缺少允许补零的业务口径"
+        }
+      ],
+      "pending_tasks": []
+    }
+  ],
+  "metric_decomposition": [],
+  "scoped_evidence": [],
+  "diagnosis": null
+}

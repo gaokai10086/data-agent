@@ -10,6 +10,8 @@ from langgraph.runtime import Runtime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent.anomaly_agent.Main_RootCause_Agent.actions import ACTION_REGISTRY
+from app.agent.anomaly_agent.Main_RootCause_Agent.budget import sql_usage
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis import ScopedArguments, build_input, evidence_for, finalize, reason as diagnosis_reason
 from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import (
     load_skill,
     resolve_skill_capabilities,
@@ -25,6 +27,7 @@ class SupervisorDecisionModel(BaseModel):
 
     action: str
     tool_name: str | None = None
+    tool_arguments: dict = Field(default_factory=dict)
     reason: str = ""
 
 
@@ -72,13 +75,13 @@ def _specialist_preference(question: str, task_type: str | None) -> list[str]:
         dim_pos = min((question.find(x) for x in ("渠道", "商品", "门店", "地区", "维度") if x in question), default=10**9)
         dec_pos = min((question.find(x) for x in ("订单量", "客单价", "构成因素", "指标拆解") if x in question), default=10**9)
         ordered = ["dimension_attribution", "metric_decomposition"] if dim_pos <= dec_pos else ["metric_decomposition", "dimension_attribution"]
-        return ordered + (["business_diagnosis"] if business else [])
+        return ordered + (["diagnosis"] if business else [])
     if decomposition:
-        return ["metric_decomposition"] + (["business_diagnosis"] if business else [])
+        return ["metric_decomposition"] + (["diagnosis"] if business else [])
     if dimension:
-        return ["dimension_attribution"] + (["business_diagnosis"] if business else [])
+        return ["dimension_attribution"] + (["diagnosis"] if business else [])
     if business:
-        return ["business_diagnosis"]
+        return ["diagnosis"]
     # “为什么下降”保留既有默认策略：先做维度贡献。
     return ["dimension_attribution"]
 
@@ -130,7 +133,7 @@ async def supervisor_reason(
     question = state.get("raw_question", "")
     task_type = (state.get("schema_result") or {}).get("task_type")
     preferences = _specialist_preference(question, task_type)
-    if latest and latest.get("action_name") in {"dimension_attribution", "metric_decomposition", "business_diagnosis"}:
+    if latest and latest.get("action_name") in {"dimension_attribution", "metric_decomposition", "scoped_metric_decomposition"}:
         status = latest.get("status") or "blocked"
         completion = latest.get("completion_status") or "none"
         child_stop = (
@@ -148,7 +151,7 @@ async def supervisor_reason(
             }
         done_actions = {
             item.get("action_name") for item in observations
-            if item.get("action_name") in {"dimension_attribution", "metric_decomposition", "business_diagnosis"}
+            if item.get("action_name") in {"dimension_attribution", "metric_decomposition"}
             and item.get("status") in {"completed", "partial", "unavailable"}
         }
         next_action = next((name for name in preferences if name not in done_actions and name in allowed_actions), None)
@@ -158,6 +161,30 @@ async def supervisor_reason(
                                         "reason": f"保留上一专业 Agent 证据，继续执行 {next_action}"},
                 "step_count": state.get("step_count", 0) + 1,
             }
+        if "diagnosis" in preferences and "scoped_metric_decomposition" in allowed_actions:
+            from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.action_executor import _build_analysis_request
+            try:
+                request = _build_analysis_request((state.get("parsed_result") or {}).get("parsed_request") or {})
+                input_data = build_input(observations, request, skill, question, allow_scoped=state.get("diagnosis_scoped_allowed", True))
+                evidence = evidence_for(state, input_data)
+                budget_limit = min(skill.strategy.max_query_budget, state.get("sql_budget_limit", skill.strategy.max_query_budget))
+                remaining = max(0, budget_limit - int(sql_usage(observations)["total"]))
+                choice, hypotheses = await diagnosis_reason(state, runtime, input_data, evidence, remaining_sql=remaining)
+            except Exception as exc:
+                return {"supervisor_decision": {"action": "stop", "tool_name": None, "reason": f"diagnosis_reason_failed:{type(exc).__name__}"},
+                        "step_count": state.get("step_count", 0) + 1, "stop_reason": "diagnosis_reason_failed"}
+            prior = {item["hypothesis_id"]: item for item in state.get("diagnosis_hypotheses", [])}
+            prior.update({item["hypothesis_id"]: item for item in hypotheses})
+            output = {"diagnosis_hypotheses": list(prior.values()), "step_count": state.get("step_count", 0) + 1}
+            if choice.action == "execute_tool":
+                output["supervisor_decision"] = {"action": "call_tool", "tool_name": "scoped_metric_decomposition",
+                                                  "tool_arguments": choice.tool_arguments, "reason": choice.reason}
+            else:
+                diagnostic_state = {**state, "diagnosis_hypotheses": list(prior.values())}
+                output["diagnosis_result"] = finalize(diagnostic_state, input_data, evidence).model_dump(mode="json")
+                output["supervisor_decision"] = {"action": "finish", "tool_name": None, "reason": choice.reason}
+                output["stop_reason"] = "completed" if not any(item.get("status") in {"partial", "failed", "unavailable"} for item in observations) else "partial_completion"
+            return output
         outcome_reason = f"{latest.get('action_name')}_{status}:{completion}:{child_stop}"
         return {
             "supervisor_decision": {"action": "finish", "tool_name": None, "reason": outcome_reason},
@@ -170,6 +197,8 @@ async def supervisor_reason(
         and latest.get("inspection_outcome")
     ):
         next_action = next((name for name in preferences if name in allowed_actions), None)
+        if next_action is None and "diagnosis" in preferences and "dimension_attribution" in allowed_actions:
+            next_action = "dimension_attribution"
         if next_action:
             return {
                 "supervisor_decision": {
@@ -211,11 +240,14 @@ async def supervisor_reason(
                 tool_name=None,
                 reason=f"LLM 选择了未授权 Action：{decision.tool_name}",
             )
+        elif decision.tool_name == "scoped_metric_decomposition":
+            ScopedArguments.model_validate(decision.tool_arguments)
 
     return {
         "supervisor_decision": {
             "action": decision.action,
             "tool_name": decision.tool_name,
+            "tool_arguments": decision.tool_arguments,
             "reason": decision.reason,
         },
         "step_count": state.get("step_count", 0) + 1,

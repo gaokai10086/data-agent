@@ -1,59 +1,58 @@
-"""RootCause 到 BusinessDiagnosisAgent 的控制流契约测试。"""
-
+"""RootCause owns diagnosis decisions; only a scoped tool is registered."""
+import json
 import unittest
-from unittest.mock import AsyncMock, patch
 
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import DiagnosisResult
-from app.agent.anomaly_agent.Main_RootCause_Agent.actions.registry import (
-    ACTION_REGISTRY, ActionSpec, BusinessDiagnosisExecution,
-)
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.schemas import evidence_id
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.tests.test_skeleton import make_business_input
+from app.agent.anomaly_agent.Main_RootCause_Agent.actions.registry import ACTION_REGISTRY
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.action_executor import action_executor
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.supervisor_reason import _specialist_preference
 from app.agent.anomaly_agent.Main_RootCause_Agent.tests.test_dimension_attribution_action import attribution_state
 from app.tests.test_supervisor_react import runtime
 
 
-class BusinessDiagnosisActionTest(unittest.IsolatedAsyncioTestCase):
-    def test_action_is_registered(self):
-        self.assertIn("business_diagnosis", ACTION_REGISTRY)
-        self.assertEqual(ACTION_REGISTRY["business_diagnosis"].task_type, "hypothesis_analysis")
+def scoped_state(*, ready=True, member="线下旗舰店", parent_id=None):
+    state = attribution_state(ready=ready, task_type="hypothesis_analysis")
+    data = make_business_input()
+    path = data.attribution_result.paths[0]
+    if ready:
+        state["observations"].append({"step": 2, "action_name": "dimension_attribution", "status": "completed",
+                                      "attribution_result": data.attribution_result.model_dump(mode="json"),
+                                      "evidence": {"total_query_count": 2}, "dedupe_key": "dimension"})
+    state["supervisor_decision"] = {"action": "call_tool", "tool_name": "scoped_metric_decomposition", "reason": "verify",
+                                    "tool_arguments": {"dimension_column": path.dimension_column, "member_value": member,
+                                                       "parent_evidence_id": parent_id or evidence_id("dimension_attribution", path.model_dump(mode="json")),
+                                                       "task_id": path.task_id}}
+    return state
 
-    def test_comprehensive_question_orders_business_diagnosis_last(self):
-        self.assertEqual(
-            _specialist_preference("分析渠道贡献、订单量与客单价，并进一步诊断主要影响渠道的下降因素。", None),
-            ["dimension_attribution", "metric_decomposition", "business_diagnosis"],
-        )
 
-    async def test_ready_context_is_forwarded(self):
-        state = attribution_state(task_type="hypothesis_analysis")
-        state["raw_question"] = "进一步诊断主要影响渠道的下降因素"
-        state["supervisor_decision"] = {
-            "action": "call_tool", "tool_name": "business_diagnosis", "reason": "diagnose",
-        }
-        child = DiagnosisResult(
-            request_id="req-1", status="completed", completion_status="complete",
-            findings=[], hypotheses=[], evidence_ids=[], stop_reason="completed", summary="ok",
-        )
-        executor = AsyncMock(return_value=BusinessDiagnosisExecution(
-            result=child, nodes=["prepare_evidence", "main_reason", "finalize_diagnosis"],
-        ))
-        spec = ActionSpec("business_diagnosis", "business_diagnosis", "hypothesis_analysis", executor)
-        with patch.dict(ACTION_REGISTRY, {"business_diagnosis": spec}):
-            result = await action_executor(state, runtime())
-        child_input = executor.await_args.args[0]
-        self.assertEqual(child_input.inspection_outcome.status, "ready")
-        self.assertEqual(child_input.analysis_request.request_id, "req-1")
-        self.assertEqual(result["observations"][-1]["status"], "completed")
-        self.assertIn("business_diagnosis_result", result["observations"][-1])
+class BusinessDiagnosisMigrationTest(unittest.IsolatedAsyncioTestCase):
+    def test_scoped_tool_is_registered_without_child_graph(self):
+        self.assertIn("scoped_metric_decomposition", ACTION_REGISTRY)
+        self.assertNotIn("business_diagnosis", ACTION_REGISTRY)
+        self.assertEqual(_specialist_preference("分析渠道贡献、订单量与客单价，并进一步诊断", None),
+                         ["dimension_attribution", "metric_decomposition", "diagnosis"])
 
-    async def test_missing_ready_observation_is_blocked(self):
-        state = attribution_state(ready=False, task_type="hypothesis_analysis")
-        state["supervisor_decision"] = {
-            "action": "call_tool", "tool_name": "business_diagnosis", "reason": "diagnose",
-        }
-        result = await action_executor(state, runtime())
+    async def test_no_ready_observation_is_blocked(self):
+        result = await action_executor(scoped_state(ready=False), runtime())
         self.assertEqual(result["stop_reason"], "verification_not_ready")
-        self.assertFalse(result["observations"][-1]["tool_called"])
+
+    async def test_fabricated_parent_or_member_is_rejected(self):
+        for state in (scoped_state(parent_id="ev_fabricated"), scoped_state(member="虚构门店")):
+            result = await action_executor(state, runtime())
+            self.assertNotEqual(result["observations"][-1]["status"], "completed")
+
+    async def test_duplicate_and_budget_are_enforced(self):
+        state = scoped_state()
+        args = state["supervisor_decision"]["tool_arguments"]
+        signature = json.dumps(args, sort_keys=True, ensure_ascii=False)
+        state["observations"].append({"step": 3, "action_name": "scoped_metric_decomposition", "status": "completed", "dedupe_key": signature})
+        result = await action_executor(state, runtime())
+        self.assertEqual(result["stop_reason"], "duplicate_action")
+        state = scoped_state()
+        state["observations"][1]["attribution_result"]["total_query_count"] = 23
+        result = await action_executor(state, runtime())
+        self.assertEqual(result["stop_reason"], "sql_budget_exhausted")
 
 
 if __name__ == "__main__":

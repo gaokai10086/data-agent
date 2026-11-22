@@ -27,6 +27,7 @@ class SupervisorDecision(TypedDict, total=False):
     action: Literal["call_tool", "finish", "stop"]
     tool_name: str | None
     reason: str
+    tool_arguments: dict
 
 
 class Observation(TypedDict, total=False):
@@ -46,6 +47,7 @@ class Observation(TypedDict, total=False):
     decomposition_stop_reason: str | None
     business_diagnosis_result: dict | None
     business_diagnosis_stop_reason: str | None
+    scoped_evidence: dict | None
 
 
 class RootCauseState(TypedDict, total=False):
@@ -59,3 +61,10 @@ class RootCauseState(TypedDict, total=False):
     observations: list[Observation]
     step_count: int
     stop_reason: str
+    diagnosis_evidence: list[dict]
+    diagnosis_hypotheses: list[dict]
+    diagnosis_result: dict
+    analysis_result: dict
+    sql_usage: dict
+    sql_budget_limit: int
+    diagnosis_scoped_allowed: bool

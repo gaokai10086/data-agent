@@ -1,0 +1,117 @@
+{
+  "data_kind": "历史北京范围真实证据回放；LLM 决策及 SQL 返回由记录模拟；不是当前原问题的实时运行",
+  "source_question": "为什么 2026 年 8 月北京销售额相比 7 月下降？分析渠道贡献以及订单量和客单价因素。",
+  "analysis_result": {
+    "request_id": "f9035b1bf3d543fbbb7c87d312194e5d",
+    "metric": "销售额",
+    "target_period": "2026-08",
+    "comparison_period": "2026-07",
+    "overall_verification": {
+      "decision": "continue",
+      "reason": "change_confirmed",
+      "expected_direction": "unspecified",
+      "actual_direction": "decrease",
+      "summary": "销售额从233378.95变为120953.99，下降112424.96，幅度约48.17%。变化方向得到支持，可以继续分析变化来源；是否属于历史异常尚未评估。",
+      "warnings": []
+    },
+    "dimension_paths": [
+      {
+        "task_id": "3224214097afde03baf2efc2",
+        "parent_task_id": null,
+        "depth": 0,
+        "observation_index": 1,
+        "reconciled": true
+      }
+    ],
+    "evidence_ids": [
+      "ev_fa0b0dc7b05ad14b",
+      "ev_e52107b1d851c11e",
+      "ev_2e7bff1b984e73b0",
+      "ev_b271c0e16ff4d2bc"
+    ],
+    "findings": [
+      {
+        "finding_id": "fact_overall_change",
+        "category": "verified_fact",
+        "statement": "销售额 从 233378.95 变为 120953.99，变化额为 -112424.96。",
+        "evidence_ids": [
+          "ev_fa0b0dc7b05ad14b"
+        ]
+      },
+      {
+        "finding_id": "finding_ev_e52107b1d851c11e",
+        "category": "statistical_finding",
+        "statement": "维度 dim_store.channel_type 中，成员 线下旗舰店 的统计变化额最大，为 -87003.55；这表示统计贡献，不等同于业务因果。",
+        "evidence_ids": [
+          "ev_e52107b1d851c11e"
+        ]
+      },
+      {
+        "finding_id": "finding_ev_2e7bff1b984e73b0_order_count",
+        "category": "statistical_finding",
+        "statement": "范围 ['order_count', 'avg_order_amount'] 的因素 订单数量 对称分解贡献为 -68472.9705493283927744326077。",
+        "evidence_ids": [
+          "ev_2e7bff1b984e73b0"
+        ]
+      },
+      {
+        "finding_id": "finding_ev_2e7bff1b984e73b0_avg_order_amount",
+        "category": "statistical_finding",
+        "statement": "范围 ['order_count', 'avg_order_amount'] 的因素 平均支付订单金额 对称分解贡献为 -43951.98945067160722556739223。",
+        "evidence_ids": [
+          "ev_2e7bff1b984e73b0"
+        ]
+      },
+      {
+        "finding_id": "finding_ev_b271c0e16ff4d2bc_order_count",
+        "category": "statistical_finding",
+        "statement": "范围 ['dim_store.channel_type=线下旗舰店'] 的因素 订单数量 对称分解贡献为 -65461.7892427536231884057971。",
+        "evidence_ids": [
+          "ev_b271c0e16ff4d2bc"
+        ]
+      },
+      {
+        "finding_id": "finding_ev_b271c0e16ff4d2bc_avg_order_amount",
+        "category": "statistical_finding",
+        "statement": "范围 ['dim_store.channel_type=线下旗舰店'] 的因素 平均支付订单金额 对称分解贡献为 -21541.76075724637681159420288。",
+        "evidence_ids": [
+          "ev_b271c0e16ff4d2bc"
+        ]
+      }
+    ],
+    "hypotheses": [],
+    "stage_status": {
+      "change_inspection": "ready",
+      "dimension_attribution": "completed",
+      "metric_decomposition": "completed",
+      "scoped_metric_decomposition": "completed",
+      "business_diagnosis": "completed"
+    },
+    "sql_usage": {
+      "total": 12,
+      "by_action": {
+        "change_inspection": 2,
+        "dimension_attribution": 2,
+        "metric_decomposition": 4,
+        "scoped_metric_decomposition": 4
+      }
+    },
+    "stop_reason": "completed",
+    "completion_status": "complete"
+  },
+  "overall": {
+    "request_id": "f9035b1bf3d543fbbb7c87d312194e5d",
+    "metric_key": "sales_amount",
+    "schema_version": "1.0",
+    "analysis_type": "overall_comparison",
+    "target_period": "2026-08",
+    "comparison_period": "2026-07",
+    "current_value": "120953.99",
+    "comparison_value": "233378.95",
+    "change_amount": "-112424.96",
+    "change_rate": "-0.4817270794988151245003030479"
+  },
+  "dimension_attribution_path_count": 1,
+  "metric_decomposition_result_count": 1,
+  "scoped_evidence_count": 1
+}

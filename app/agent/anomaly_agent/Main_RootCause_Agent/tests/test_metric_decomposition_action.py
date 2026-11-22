@@ -93,7 +93,7 @@ class MetricDecompositionActionTest(unittest.IsolatedAsyncioTestCase):
             "step": 1, "action_name": "change_inspection", "status": "rejected",
             "reason": "direction_mismatch", "tool_called": True,
         }]
-        self.assertEqual(route_after_action(state), END)
+        self.assertEqual(route_after_action(state), "finalize_analysis")
 
 
 if __name__ == "__main__":

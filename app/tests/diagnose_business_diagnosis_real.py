@@ -14,8 +14,9 @@ import traceback
 from typing import Any, cast
 from pathlib import Path
 
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.graph import business_diagnosis_graph
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import BusinessDiagnosisInput
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnostic_runner import run_from_evidence
+from types import SimpleNamespace
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.schemas import BusinessDiagnosisInput
 from app.agent.anomaly_agent.Main_RootCause_Agent.skills.registry import load_skill
 from app.agent.anomaly_agent.schemas import AnalysisRequest, FilterCondition, InspectionOutcome
 from app.agent.data_agent.context import DataAgentContext
@@ -111,33 +112,21 @@ async def main() -> None:
     }
     try:
         input_data, source = _load_input()
-        state: dict = {}
         nodes: list[str] = []
         # 第一阶段 Graph 只消费 LLM 配置，不访问 Repository；仍按生产约定使用 DataAgentContext 类型。
         context = cast(DataAgentContext, {
             "llm_provider": DEFAULT_LLM_PROVIDER,
             "llm_model_tier": DEFAULT_LLM_MODEL,
         })
-        stream = business_diagnosis_graph.astream(
-            {"input": input_data},
-            context=context,
-            stream_mode=["updates", "values"],
-        )
-        try:
-            async for mode, chunk in stream:
-                if mode == "updates" and isinstance(chunk, dict):
-                    nodes.extend(str(name) for name in chunk)
-                elif mode == "values" and isinstance(chunk, dict):
-                    state.update(chunk)
-        finally:
-            await stream.aclose()
+        state = await run_from_evidence(input_data, SimpleNamespace(context=context, stream_writer=lambda _event: None))
+        nodes = [item.get("action_name", "") for item in state["main_state"].get("observations", [])]
         result = state["result"]
         result_json = result.model_dump_json(indent=2, ensure_ascii=False)
         OUTPUT.write_text(result_json + "\n", encoding="utf-8")
         evidence_ids = set(result.evidence_ids)
         findings_traceable = all(set(item.evidence_ids) <= evidence_ids for item in result.findings)
         hypotheses_unverified = all(item.status in {"hypothesis", "evidence_gap"} and not item.executable for item in result.hypotheses)
-        llm_success = not any(item.status == "failed" for item in state.get("observations", []))
+        llm_success = state["main_state"].get("stop_reason") != "diagnosis_reason_failed"
         report.update({
             "status": "passed" if findings_traceable and hypotheses_unverified and llm_success and result.status == "completed" else "failed",
             "request_id": input_data.analysis_request.request_id,
@@ -148,7 +137,7 @@ async def main() -> None:
             },
             "nodes": nodes,
             "result": result.model_dump(mode="json"),
-            "observations": [item.model_dump(mode="json") for item in state.get("observations", [])],
+            "observations": state["main_state"].get("observations", []),
             "findings_traceable": findings_traceable,
             "hypotheses_unverified": hypotheses_unverified,
             "llm_success": llm_success,

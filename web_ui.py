@@ -19,7 +19,6 @@ import logging
 import re
 import requests
 import streamlit as st
-from streamlit_echarts import st_echarts
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -28,7 +27,6 @@ from app.web.meta_governance_view import render_meta_governance_page
 from app.web.metric_management_view import render_metric_management_page
 from app.web.sql_example_management_view import render_sql_example_management_page
 from app.web.chatbi.chart_renderer import render_chart
-from app.web.anomaly_branch_view import branch_children, decline_chart_options
 from app.core.llm import LLMFactory
 from app.config.app_config import DEFAULT_LLM_MODEL, DEFAULT_LLM_PROVIDER
 
@@ -197,325 +195,6 @@ def render_landing_capabilities() -> None:
 # ==============================================================================
 # 0. 结构化卡片渲染模板 (纯 HTML 绝对居中表格渲染)
 # ==============================================================================
-def _safe_float(value, default=0.0):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _render_anomaly_bar_chart(rows: list[dict], title: str, chart_key: str) -> None:
-    """将异动归因数据适配为共享 ChatBI 图表协议。
-
-    异动分析只负责提供“因素/变化金额”等业务字段，具体的 ECharts
-    配色、排序、响应式尺寸和交互由智能问数共用的 ``render_chart`` 负责。
-    """
-    if not rows:
-        return
-    # Streamlit 自定义组件的 key 使用 ASCII 更稳妥，尤其是在同一组 tabs
-    # 中连续挂载多个 ECharts 实例时，避免中文维度名导致组件复用或丢失。
-    safe_chart_key = "anomaly_" + hashlib.md5(chart_key.encode("utf-8")).hexdigest()[:12]
-    render_chart(
-        {
-            "chart_type": "bar",
-            "title": title,
-            "data": rows,
-            "x_column": "因素",
-            "y_columns": ["变化金额"],
-            "metric_semantics": {"变化金额": {"display_type": "number"}},
-            "presentation": {"orientation": "horizontal", "sort": "asc"},
-        },
-        chart_key=safe_chart_key,
-    )
-
-
-def render_anomaly_report_card(payload: dict, container=None, card_instance_key: str | None = None):
-    """渲染异动分析的 KPI、归因表和多维对比图。"""
-    ctx = container if container is not None else st.container()
-    report = payload.get("report") or {}
-    if report.get("schema_version") == "1.0" or "charts" in report:
-        _render_structured_anomaly_report(payload, ctx, card_instance_key)
-        return
-    analysis = payload.get("analysis") or {}
-    overall = report.get("overall") or analysis.get("overall") or {}
-    attributions = analysis.get("attributions") or []
-    summaries = analysis.get("dimension_summaries") or []
-    request = payload.get("request") or {}
-
-    with ctx:
-        st.markdown("### 🔎 异动归因分析")
-        target_period = request.get("target_period") or {}
-        comparison = request.get("comparison") or {}
-        comparison_period = comparison.get("period") if isinstance(comparison, dict) else {}
-        target_label = (
-            target_period.get("label") if isinstance(target_period, dict) else str(target_period)
-        ) or "目标周期"
-        comparison_label = (
-            comparison_period.get("label") if isinstance(comparison_period, dict) else str(comparison_period)
-        ) or "对比周期"
-        st.caption(
-            f"{request.get('metric') or '销售额'} · "
-            f"{target_label} 对比 {comparison_label}"
-        )
-
-        kpi_columns = st.columns(4)
-        current_value = _safe_float(overall.get("current_value"))
-        comparison_value = _safe_float(overall.get("comparison_value"))
-        change = _safe_float(overall.get("change"))
-        change_rate = overall.get("change_rate")
-        kpi_columns[0].metric("当前周期", _format_value(current_value))
-        kpi_columns[1].metric("对比周期", _format_value(comparison_value))
-        kpi_columns[2].metric("变化金额", _format_value(change), delta=_format_value(change))
-        kpi_columns[3].metric(
-            "变化率",
-            f"{_safe_float(change_rate) * 100:.1f}%" if change_rate is not None else "-",
-        )
-
-        final_answer = report.get("final_answer") or payload.get("content")
-        if final_answer:
-            st.info(final_answer)
-
-        level_one = [item for item in attributions if item.get("level", 1) == 1]
-        if level_one:
-            st.markdown("#### 第一层：大区贡献")
-            rows = [
-                {
-                    "大区": item.get("value"),
-                    "当前值": _safe_float(item.get("current_value")),
-                    "对比值": _safe_float(item.get("comparison_value")),
-                    "变化金额": _safe_float(item.get("change")),
-                    "变化率": f"{_safe_float(item.get('change_rate')) * 100:.1f}%"
-                    if item.get("change_rate") is not None else "-",
-                    "净变化贡献": f"{_safe_float(item.get('contribution_rate')) * 100:.1f}%"
-                    if item.get("contribution_rate") is not None else "-",
-                }
-                for item in level_one
-            ]
-            st.dataframe(rows, hide_index=True, use_container_width=True)
-            _render_anomaly_bar_chart(
-                [{"因素": row["大区"], "变化金额": row["变化金额"]} for row in rows],
-                "各大区销售额变化",
-                f"{card_instance_key or 'anomaly'}_level1_region",
-            )
-
-        level_two = [item for item in attributions if item.get("level") == 2]
-        if level_two:
-            st.markdown("#### 第二层：当前异常范围内的多维诊断")
-            dimensions = list(dict.fromkeys(item.get("dimension") for item in level_two))
-            tabs = st.tabs([f"{dimension}" for dimension in dimensions])
-            for tab, dimension in zip(tabs, dimensions):
-                with tab:
-                    dimension_items = [item for item in level_two if item.get("dimension") == dimension]
-                    dimension_items.sort(key=lambda item: abs(_safe_float(item.get("change"))), reverse=True)
-                    table_rows = [
-                        {
-                            "因素": item.get("value"),
-                            "当前值": _safe_float(item.get("current_value")),
-                            "对比值": _safe_float(item.get("comparison_value")),
-                            "变化金额": _safe_float(item.get("change")),
-                            "局部贡献": f"{_safe_float(item.get('contribution_rate')) * 100:.1f}%"
-                            if item.get("contribution_rate") is not None else "-",
-                        }
-                        for item in dimension_items
-                    ]
-                    st.dataframe(table_rows, hide_index=True, use_container_width=True)
-                    _render_anomaly_bar_chart(
-                        table_rows,
-                        f"{dimension}维度变化",
-                        f"{card_instance_key or 'anomaly'}_level2_{dimension}",
-                    )
-
-            if summaries:
-                summary_rows = [
-                    {
-                        "维度": item.get("dimension"),
-                        "Top1因素": item.get("top_value"),
-                        "Top1影响占比": f"{_safe_float(item.get('top1_influence')) * 100:.1f}%",
-                        "Top3覆盖率": f"{_safe_float(item.get('top3_coverage')) * 100:.1f}%",
-                        "证据是否充分": "是" if item.get("sufficient") else "否",
-                    }
-                    for item in summaries if item.get("level") == 2
-                ]
-                st.markdown("##### 维度解释能力对比")
-                st.dataframe(summary_rows, hide_index=True, use_container_width=True)
-
-        with st.expander("查看结构化分析结果", expanded=False):
-            st.json({
-                "metric": payload.get("metric") or {},
-                "execution": payload.get("execution") or {},
-                "report": report,
-            })
-
-
-def _render_anomaly_dimension_panel(section: dict, card_instance_key: str | None) -> None:
-    """展示当前选中分支的一层真实对账数据。"""
-    label = section.get("dimension_name") or str(section.get("dimension_column") or "维度").rsplit(".", 1)[-1]
-    scope = section.get("parent_scope_label")
-    st.markdown(f"**第 {section.get('depth', 0)} 层 · {label}**")
-    if scope:
-        st.caption(f"当前范围：{scope}")
-    if section.get("narrative_summary"):
-        st.write(section["narrative_summary"])
-    coverage = section.get("actual_decline_coverage")
-    if coverage is not None:
-        st.caption(f"本范围下降覆盖率 {_safe_float(coverage) * 100:.2f}% · "
-                   f"未选中下降金额 {_format_value(section.get('uncovered_decline_amount'))}")
-    tabs = st.tabs(["📈 可视化", "📋 数据明细", "🔍 查询详情"])
-    with tabs[0]:
-        if section.get("rows"):
-            if section.get("actual_decline_coverage") is None and section.get("chart_config"):
-                render_chart(section["chart_config"],
-                             chart_key=f"{card_instance_key or 'anomaly'}_legacy_dimension_{section.get('task_id')}")
-            else:
-                st.caption("🔵 本层选中成员　⚪ 未选中下降　🟢 增长抵消；柱长表示变化金额绝对值")
-                options = decline_chart_options(section)
-                st_echarts(options=options, height=f"{max(280, len(options['yAxis']['data']) * 48 + 110)}px",
-                           key=f"{card_instance_key or 'anomaly'}_branch_chart_{section.get('task_id')}")
-        else:
-            st.info("暂无本层图表。")
-    with tabs[1]:
-        if section.get("rows"):
-            st.dataframe(section.get("display_rows") or section["rows"], hide_index=True, use_container_width=True)
-        else:
-            st.info("暂无本层数据明细。")
-    with tabs[2]:
-        if section.get("sql_evidence"):
-            for item in section["sql_evidence"]:
-                st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
-                st.code(item.get("sql") or "", language="sql")
-        else:
-            st.info("暂无本层 SQL 证据。")
-
-
-def _render_structured_anomaly_report(payload: dict, ctx, card_instance_key: str | None = None) -> None:
-    """渲染 RootCause 的统一 anomaly_result 快照和阶段事件。"""
-    report = payload.get("report") or payload
-    status = report.get("status") or payload.get("status") or "partial"
-    completion = report.get("completion_status") or payload.get("completion_status") or "partial"
-    labels = {"completed": "分析完成", "partial": "部分完成", "failed": "分析失败", "rejected": "问题前提与实际结果不符，分析已停止"}
-    overall = report.get("overall") or {}
-    with ctx:
-        st.markdown("### 🔎 异动分析诊断报告")
-        if status == "completed" and completion == "complete":
-            st.success(labels["completed"])
-        elif status == "rejected":
-            st.error(labels["rejected"])
-        elif status == "failed":
-            st.error("异动分析失败，已保留已完成的证据。")
-        kpis = st.columns(4)
-        kpis[0].metric("当前周期", _format_value(overall.get("current_value")))
-        kpis[1].metric("对比周期", _format_value(overall.get("comparison_value")))
-        kpis[2].metric("变化金额", _format_value(overall.get("change_amount")))
-        rate = overall.get("change_rate")
-        kpis[3].metric("变化率", f"{_safe_float(rate) * 100:.2f}%" if rate is not None else "-")
-
-        if report.get("overview_insight"):
-            title = "AI 异动分析总结" if report.get("narrative_source") == "llm" else "异动分析摘要"
-            with st.container(border=True):
-                st.markdown(f"#### ✨ {title}")
-                st.markdown(report["overview_insight"])
-
-        decomposition = report.get("decomposition_section")
-        if decomposition:
-            st.markdown("#### 指标拆解")
-            if decomposition.get("summary"):
-                st.write(decomposition["summary"])
-            decomposition_tabs = st.tabs(["📈 可视化", "📋 数据明细", "🔍 查询详情"])
-            with decomposition_tabs[0]:
-                if decomposition.get("chart_config"):
-                    render_chart(decomposition["chart_config"], chart_key=f"{card_instance_key or 'anomaly'}_decomposition")
-                else:
-                    st.info("暂无已对账通过的指标拆解图表。")
-            with decomposition_tabs[1]:
-                components = decomposition.get("components") or []
-                if components:
-                    st.dataframe(components, hide_index=True, use_container_width=True)
-                else:
-                    st.info("本次未返回指标拆解明细。")
-            with decomposition_tabs[2]:
-                if decomposition.get("sql_evidence"):
-                    for item in decomposition["sql_evidence"]:
-                        st.caption(f"{item.get('source') or 'SQL'} · {item.get('period') or '周期'}")
-                        st.code(item.get("sql") or "", language="sql")
-                else:
-                    st.info("暂无指标拆解 SQL。")
-
-        charts = [] if status == "rejected" else (report.get("charts") or [])
-        sections = report.get("drilldown_sections") or []
-        if sections:
-            st.markdown("#### 逐层维度归因解读")
-            branch_index = branch_children(sections)
-            roots = [item for item in sections if item.get("depth", 0) == 0]
-            active_sections = []
-            if len(roots) == 1 and branch_index:
-                current = roots[0]
-                active_sections.append(current)
-                while len(active_sections) < 4:
-                    choices = [name for name in current.get("selected_members") or []
-                               if (current.get("task_id"), name) in branch_index]
-                    if not choices:
-                        break
-                    name = st.selectbox(
-                        f"在{current.get('dimension_name') or '当前维度'}中查看下钻分支",
-                        choices,
-                        key=f"{card_instance_key or 'anomaly'}_branch_{current.get('task_id')}",
-                    )
-                    current = branch_index[(current["task_id"], name)]
-                    active_sections.append(current)
-            displayed = active_sections or sections
-            for offset in range(0, len(displayed), 2):
-                pair = displayed[offset:offset + 2]
-                columns = st.columns(2) if len(pair) == 2 else [st.container()]
-                for column, section in zip(columns, pair):
-                    with column:
-                        _render_anomaly_dimension_panel(section, card_instance_key)
-            if active_sections and len(displayed) < len(sections):
-                st.caption(f"当前查看 1 条下钻分支；其他 {len(sections) - len(displayed)} 个已对账任务可通过上方分支选择查看。")
-        if charts and not sections and not decomposition:
-            st.markdown("#### 真实对账图表")
-            tabs = st.tabs([
-                f"第{chart.get('depth', 0)}层 · {chart.get('title') or '图表'}"
-                for chart in charts
-            ])
-            for index, (tab, chart) in enumerate(zip(tabs, charts)):
-                with tab:
-                    try:
-                        render_chart(chart, chart_key=f"{card_instance_key or 'anomaly'}_structured_{index}")
-                    except Exception:
-                        # 单个图表配置异常不能让已经返回的 KPI/诊断报告整体丢失。
-                        logger.exception("异动图表渲染失败 index=%s title=%s", index, chart.get("title"))
-                        st.warning("该图表暂时无法渲染，已保留对应数据表和证据。")
-                    reconciliation = chart.get("reconciliation") or {}
-                    if reconciliation:
-                        dimension_checks = ("comparison_matches", "current_matches", "change_matches")
-                        keys = dimension_checks if any(key in reconciliation for key in dimension_checks) else ("matches",)
-                        ok = bool(keys) and all(reconciliation.get(key) is True for key in keys)
-                        st.caption("对账通过" if ok else "对账未完成")
-                    display_rows = []
-                    for row in chart.get("data") or []:
-                        display_row = dict(row)
-                        for key, value in list(display_row.items()):
-                            if "贡献率" in str(key) and value is not None:
-                                try:
-                                    display_row[key] = f"{float(value) * 100:.2f}%"
-                                except (TypeError, ValueError):
-                                    pass
-                        display_rows.append(display_row)
-                    if display_rows:
-                        st.dataframe(display_rows, hide_index=True, use_container_width=True)
-        diagnosis = report.get("diagnosis") or {}
-        if diagnosis:
-            st.markdown("#### 业务诊断")
-            if report.get("diagnosis_insight"):
-                st.write(report["diagnosis_insight"])
-            st.caption(f"状态：{diagnosis.get('status') or '-'} · 完成度：{diagnosis.get('completion_status') or '-'} · 停止原因：{diagnosis.get('stop_reason') or '-'}")
-            for finding in diagnosis.get("findings") or []:
-                st.markdown(f"- **{finding.get('category', 'finding')}**：{finding.get('statement', '')}")
-            for hypothesis in diagnosis.get("hypotheses") or []:
-                st.markdown(f"- **假设 · {hypothesis.get('status', 'unverified')}**：{hypothesis.get('statement', '')}")
-
-
-
 def render_bi_report_card(report_data: dict, container=None, card_instance_key: str | None = None):
     """
     统一渲染结构化 BI 问数报告卡片
@@ -988,10 +667,7 @@ for message_index, msg in enumerate(st.session_state.messages):
                 card_instance_key=f"history_{message_index}",
             )
         elif msg.get("type") == "anomaly_report":
-            render_anomaly_report_card(
-                msg.get("report_data", {}),
-                card_instance_key=f"history_anomaly_{message_index}",
-            )
+            st.markdown(msg.get("content") or "异动分析已结束。主 Agent 结构化输出请通过测试脚本查看。")
         else:
             st.markdown(msg.get("content", ""))
 
@@ -1103,22 +779,9 @@ if user_query:
         full_text_answer = ""
         report_payload = None
         anomaly_payload = None
-        anomaly_live_payload = {"type": "anomaly_result", "report": {"schema_version": "1.0", "status": "partial", "completion_status": "partial", "charts": [], "sql_evidence": [], "stage_status": {"change_inspection": "pending", "metric_decomposition": "pending", "dimension_attribution": "pending", "business_diagnosis": "pending"}}}
         anomaly_seen_event_ids: set[str] = set()
         error_message = None
         execution_details = []
-        anomaly_render_slot = st.empty()
-
-        def render_live_anomaly() -> None:
-            anomaly_render_slot.empty()
-            try:
-                with anomaly_render_slot.container() as live_container:
-                    render_anomaly_report_card(anomaly_live_payload, container=live_container, card_instance_key="live_anomaly_report")
-            except Exception:
-                logger.exception("异动阶段报告渲染失败")
-                with anomaly_render_slot.container():
-                    st.warning("报告数据已返回，但部分图表暂时无法渲染。")
-                    st.json(anomaly_live_payload)
 
         try:
             response = requests.post(
@@ -1180,37 +843,13 @@ if user_query:
                                 continue
 
                             if data.get("type") == "anomaly_progress":
-                                stage = data.get("stage") or ""
-                                if stage in anomaly_live_payload["report"]["stage_status"]:
-                                    anomaly_live_payload["report"]["stage_status"][stage] = "running"
                                 status_container.update(
                                     label=f"正在执行：{data.get('stage') or '异动分析'}",
                                     state="running", expanded=False,
                                 )
                                 continue
 
-                            if data.get("type") == "anomaly_kpi":
-                                anomaly_live_payload["report"]["stage_status"]["change_inspection"] = "completed"
-                                anomaly_live_payload["request_id"] = data.get("request_id")
-                                anomaly_live_payload["report"]["request_id"] = data.get("request_id")
-                                anomaly_live_payload["report"]["overall"] = data.get("overall") or {}
-                                continue
-
-                            if data.get("type") == "anomaly_chart":
-                                stage = data.get("stage") or ""
-                                if stage in anomaly_live_payload["report"]["stage_status"]:
-                                    anomaly_live_payload["report"]["stage_status"][stage] = "completed" if data.get("status") == "completed" else "partial"
-                                anomaly_live_payload["report"]["charts"].extend(data.get("charts") or [])
-                                anomaly_live_payload["report"]["completion_status"] = data.get("completion_status") or "partial"
-                                continue
-
-                            if data.get("type") == "anomaly_sql_result":
-                                anomaly_live_payload["report"]["sql_evidence"].extend(data.get("sql_evidence") or [])
-                                continue
-
-                            if data.get("type") == "anomaly_diagnosis":
-                                anomaly_live_payload["report"]["stage_status"]["business_diagnosis"] = "completed" if data.get("status") == "completed" else "partial"
-                                anomaly_live_payload["report"]["diagnosis"] = data.get("diagnosis") or {}
+                            if data.get("type") in {"anomaly_kpi", "anomaly_chart", "anomaly_sql_result", "anomaly_diagnosis"}:
                                 continue
 
                             if data.get("type") == "node_result":
@@ -1236,9 +875,6 @@ if user_query:
                                 continue
 
                             if data.get("type") == "anomaly_result":
-                                final_report = data.get("report") or {}
-                                if final_report.get("stage_status"):
-                                    anomaly_live_payload["report"]["stage_status"] = final_report["stage_status"]
                                 final_status = data.get("status") or (data.get("report") or {}).get("status")
                                 if final_status == "failed":
                                     status_container.update(label="❌ 异动分析失败（已保留证据）", state="error", expanded=False)
@@ -1249,9 +885,8 @@ if user_query:
                                 else:
                                     status_container.update(label="✅ 异动分析完成", state="complete", expanded=False)
                                 anomaly_payload = data
-                                full_text_answer = data.get("content") or "异动分析已完成，但暂时没有形成可解释结论。"
-                                anomaly_live_payload = anomaly_payload
-                                render_live_anomaly()
+                                full_text_answer = "异动分析已结束。主 Agent 结构化输出请通过测试脚本查看。"
+                                text_placeholder.markdown(full_text_answer)
                                 continue
 
                             token = data.get("content") or data.get("token") or data.get("answer_chunk")
@@ -1285,7 +920,7 @@ if user_query:
                     st.session_state.messages.append({
                         "role": "assistant",
                         "type": "anomaly_report",
-                        "report_data": anomaly_payload,
+                        "content": full_text_answer,
                         "execution_details": execution_details,
                     })
                 elif full_text_answer:

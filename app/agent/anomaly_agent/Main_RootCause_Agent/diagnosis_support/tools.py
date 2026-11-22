@@ -104,7 +104,7 @@ class ScopedMetricDecompositionTool:
         attribution = input_data.attribution_result
         if attribution is None:
             raise ScopedMetricDecompositionError("缺少真实维度归因证据")
-        from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import evidence_id as make_evidence_id
+        from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.schemas import evidence_id as make_evidence_id
         for path in attribution.paths:
             path_evidence_id = make_evidence_id("dimension_attribution", path.model_dump(mode="json"))
             if path_evidence_id != evidence_id or path.dimension_column != dimension:

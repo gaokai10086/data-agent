@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+from dataclasses import replace
 from typing import Any
 
 from langgraph.runtime import Runtime
@@ -17,10 +19,12 @@ from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import Dimension
 from app.agent.anomaly_agent.DimensionAttribution_Agent.tools import ATTRIBUTION_TOOL_REGISTRY
 from app.agent.anomaly_agent.Main_RootCause_Agent.actions.registry import (
     AttributionExecution,
-    BusinessDiagnosisExecution,
     DecompositionExecution,
 )
-from app.agent.anomaly_agent.BusinessDiagnosis_Agent.schemas import BusinessDiagnosisInput
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.schemas import DiagnosisEvidence, evidence_id
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.tools import ScopedMetricDecompositionError
+from app.agent.anomaly_agent.Main_RootCause_Agent.budget import sql_usage
+from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis import ScopedArguments, build_input, evidence_for
 from app.agent.anomaly_agent.MetricDecomposition_Agent.schemas import MetricDecompositionInput
 from app.agent.anomaly_agent.Main_RootCause_Agent.parsing.task_request_conversion import (
     comparison_type_for_periods,
@@ -41,6 +45,16 @@ from app.agent.data_agent.context import DataAgentContext
 
 
 ACTION_TIMEOUT_SECONDS = 60
+
+
+def _jsonable(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return _jsonable(value.model_dump(mode="json"))
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(item) for item in value]
+    return value
 
 
 def _attribution_timeout() -> float:
@@ -186,20 +200,20 @@ async def action_executor(
     compatible = (
         action_name == "change_inspection"
         and selected_task_type in {
-            "period_comparison", "dimension_attribution", "metric_decomposition",
+            "period_comparison", "dimension_attribution", "metric_decomposition", "hypothesis_analysis",
         }
     ) or (
         action_name == "dimension_attribution"
         and selected_task_type in {
-            "period_comparison", "dimension_attribution", "metric_decomposition",
+            "period_comparison", "dimension_attribution", "metric_decomposition", "hypothesis_analysis",
         }
     ) or (
         action_name == "metric_decomposition"
         and selected_task_type in {
-            "period_comparison", "dimension_attribution", "metric_decomposition",
+            "period_comparison", "dimension_attribution", "metric_decomposition", "hypothesis_analysis",
         }
     ) or (
-        action_name == "business_diagnosis"
+        action_name == "scoped_metric_decomposition"
         and selected_task_type in {
             "period_comparison", "dimension_attribution", "metric_decomposition", "hypothesis_analysis",
         }
@@ -235,8 +249,16 @@ async def action_executor(
         }
 
     signature = _action_signature(action_name, request)
+    scoped_args = None
+    if action_name == "scoped_metric_decomposition":
+        try:
+            scoped_args = ScopedArguments.model_validate(decision.get("tool_arguments") or {})
+            signature = json.dumps(scoped_args.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
+        except Exception as exc:
+            obs = _blocked_observation(step=step, action_name=action_name, reason=f"范围参数无效：{exc}", dedupe_key=signature)
+            return {"observations": observations + [obs], "stop_reason": "invalid_parameters"}
     ready_outcome = None
-    if action_name in {"dimension_attribution", "metric_decomposition", "business_diagnosis"}:
+    if action_name in {"dimension_attribution", "metric_decomposition", "scoped_metric_decomposition"}:
         inspection_signature = _action_signature("change_inspection", request)
         ready_observation = next((
             item for item in reversed(observations)
@@ -306,6 +328,13 @@ async def action_executor(
             "stop_reason": "retry_exhausted",
         }
 
+    used = int(sql_usage(observations)["total"])
+    remaining = min(skill.strategy.max_query_budget, state.get("sql_budget_limit", skill.strategy.max_query_budget)) - used
+    required = 4 if action_name in {"metric_decomposition", "scoped_metric_decomposition"} else 2
+    if remaining < required:
+        obs = _blocked_observation(step=step, action_name=action_name, reason="累计 SQL 预算不足", dedupe_key=signature)
+        return {"observations": observations + [obs], "stop_reason": "sql_budget_exhausted", "sql_usage": sql_usage(observations)}
+
     try:
         if action_name == "dimension_attribution":
             assert ready_outcome is not None
@@ -314,7 +343,7 @@ async def action_executor(
                 inspection_outcome=ready_outcome,
                 metric_context=ready_outcome.metric_context,
                 skill_name=skill.name, skill_version=skill.version,
-                skill_strategy=skill.strategy,
+                skill_strategy=replace(skill.strategy, max_query_budget=remaining),
                 available_tool_names=tuple(ATTRIBUTION_TOOL_REGISTRY),
             )
             execution: AttributionExecution = await asyncio.wait_for(
@@ -347,7 +376,7 @@ async def action_executor(
                 metric_context=ready_outcome.metric_context,
                 skill_name=skill.name,
                 skill_version=skill.version,
-                skill_strategy=skill.strategy,
+                skill_strategy=replace(skill.strategy, max_query_budget=remaining),
             )
             execution: DecompositionExecution = await asyncio.wait_for(
                 action.executor(child_input, runtime), timeout=_decomposition_timeout(),
@@ -380,50 +409,39 @@ async def action_executor(
                 "inspection_outcome": None,
                 "decomposition_result": result.model_dump(mode="json"),
             }
-        elif action_name == "business_diagnosis":
+        elif action_name == "scoped_metric_decomposition":
             assert ready_outcome is not None
-            attribution_result = None
-            decomposition_result = None
-            for prior in observations:
-                if prior.get("action_name") == "dimension_attribution" and prior.get("attribution_result"):
-                    from app.agent.anomaly_agent.DimensionAttribution_Agent.schemas import AttributionResult
-                    attribution_result = AttributionResult.model_validate(prior["attribution_result"])
-                if prior.get("action_name") == "metric_decomposition" and prior.get("decomposition_result"):
-                    from app.agent.anomaly_agent.MetricDecomposition_Agent.schemas import DecompositionResult
-                    decomposition_result = DecompositionResult.model_validate(prior["decomposition_result"])
-            child_input = BusinessDiagnosisInput(
-                raw_question=state["raw_question"], analysis_request=request,
-                inspection_outcome=ready_outcome, attribution_result=attribution_result,
-                decomposition_result=decomposition_result,
-                metric_context=ready_outcome.metric_context,
-                skill_strategy=skill.strategy,
-                available_tool_names=("scoped_metric_decomposition",),
-            )
-            execution: BusinessDiagnosisExecution = await asyncio.wait_for(
-                action.executor(child_input, runtime), timeout=_business_diagnosis_timeout(),
-            )
-            result = execution.result
-            observation = {
-                "step": step, "action_name": action_name,
-                "status": (
-                    "failed" if result.status == "failed" else
-                    "completed" if result.completion_status == "complete" else
-                    "partial" if result.completion_status == "partial" else "unavailable"
-                ),
-                "reason": result.summary,
-                "completion_status": result.completion_status,
-                "business_diagnosis_stop_reason": result.stop_reason,
-                "evidence": {
-                    "findings": [item.model_dump(mode="json") for item in result.findings],
-                    "hypotheses": [item.model_dump(mode="json") for item in result.hypotheses],
-                    "evidence_ids": result.evidence_ids, "nodes": execution.nodes,
-                    "total_query_count": result.total_query_count,
-                },
-                "error": None if result.status != "failed" else result.summary,
-                "tool_called": True, "dedupe_key": signature,
-                "inspection_outcome": None,
-                "business_diagnosis_result": result.model_dump(mode="json"),
-            }
+            assert scoped_args is not None
+            input_data = build_input(observations, request, skill, state["raw_question"])
+            available = evidence_for(state, input_data)
+            parent = next((item for item in available if item.evidence_id == scoped_args.parent_evidence_id and item.kind == "dimension_attribution" and item.reconciled), None)
+            if parent is None or parent.payload.get("task_id") != scoped_args.task_id:
+                raise ValueError("父级证据不存在、未对账或 task_id 不匹配")
+            try:
+                payload = await asyncio.wait_for(action.executor(input_data, runtime,
+                    tool_arguments={key: value for key, value in scoped_args.model_dump().items() if key != "task_id"},
+                    query_budget_remaining=remaining), timeout=_business_diagnosis_timeout())
+                payload_json = _jsonable(payload)
+                ident_payload = {key: value for key, value in payload_json.items() if key not in {"components", "reconciliation"}}
+                rec = payload["reconciliation"]
+                if not rec.matches:
+                    raise ScopedMetricDecompositionError("范围拆解未通过对账", payload["query_count"])
+                evidence_item = DiagnosisEvidence(
+                    evidence_id=evidence_id("scoped_metric_decomposition", ident_payload),
+                    kind="scoped_metric_decomposition", source="MainRootCause.scoped_metric_decomposition",
+                    request_id=request.request_id, metric_key=input_data.metric_context.metric_key,
+                    target_period=request.target_period, comparison_period=request.comparison_period,
+                    status="verified", reconciled=True,
+                    scope=[f"{scoped_args.dimension_column}={scoped_args.member_value}"], payload=payload_json,
+                )
+                observation = {"step": step, "action_name": action_name, "status": "completed", "completion_status": "complete",
+                               "reason": "范围指标拆解完成并对账", "evidence": {"total_query_count": payload["query_count"], "evidence_id": evidence_item.evidence_id},
+                               "scoped_evidence": evidence_item.model_dump(mode="json"), "tool_called": True,
+                               "dedupe_key": signature, "inspection_outcome": None, "error": None}
+            except ScopedMetricDecompositionError as exc:
+                observation = {"step": step, "action_name": action_name, "status": "partial", "completion_status": "partial",
+                               "reason": "scoped_query_failed", "evidence": {"total_query_count": exc.query_count},
+                               "tool_called": True, "dedupe_key": signature, "inspection_outcome": None, "error": str(exc)}
         else:
             outcome = await asyncio.wait_for(
                 action.executor(request, runtime), timeout=ACTION_TIMEOUT_SECONDS,
@@ -462,19 +480,18 @@ async def action_executor(
             "inspection_outcome": None,
         }
 
+    if action_name == "scoped_metric_decomposition" and scoped_args is not None:
+        observation["tool_arguments"] = scoped_args.model_dump(mode="json")
     new_observations = observations + [observation]
     stop_reason: str | None = None
     if observation["status"] == "rejected":
         stop_reason = "rejected"
     if len(new_observations) >= MAX_ACTION_EXECUTIONS:
-        if action_name == "business_diagnosis" and observation["status"] == "completed":
-            stop_reason = stop_reason or "completed"
-        elif action_name == "business_diagnosis" and observation["status"] == "partial":
-            stop_reason = stop_reason or "partial_completion"
-        else:
-            stop_reason = stop_reason or "budget_exhausted"
+        stop_reason = stop_reason or "budget_exhausted"
 
-    output: dict[str, object] = {"observations": new_observations}
+    output: dict[str, object] = {"observations": new_observations, "sql_usage": sql_usage(new_observations)}
+    if observation.get("scoped_evidence"):
+        output["diagnosis_evidence"] = list(state.get("diagnosis_evidence", [])) + [observation["scoped_evidence"]]
     if stop_reason is not None:
         output["stop_reason"] = stop_reason
     return output
