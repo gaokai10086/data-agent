@@ -7,6 +7,7 @@ from app.agent.anomaly_agent.Main_RootCause_Agent.diagnosis_support.tests.test_s
 from app.agent.anomaly_agent.Main_RootCause_Agent.actions.registry import ACTION_REGISTRY
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.action_executor import action_executor
 from app.agent.anomaly_agent.Main_RootCause_Agent.nodes.supervisor_reason import _specialist_preference
+from app.agent.anomaly_agent.Main_RootCause_Agent.analysis_result import build_analysis_result
 from app.agent.anomaly_agent.Main_RootCause_Agent.tests.test_dimension_attribution_action import attribution_state
 from app.tests.test_supervisor_react import runtime
 
@@ -32,6 +33,15 @@ class BusinessDiagnosisMigrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("business_diagnosis", ACTION_REGISTRY)
         self.assertEqual(_specialist_preference("分析渠道贡献、订单量与客单价，并进一步诊断", None),
                          ["dimension_attribution", "metric_decomposition", "diagnosis"])
+        self.assertEqual(_specialist_preference("为什么2026年8月销售额比7月下降了？", None),
+                         ["dimension_attribution", "metric_decomposition"])
+
+    def test_analysis_result_marks_unexecuted_stages_explicitly(self):
+        result = build_analysis_result({"observations": [{"action_name": "change_inspection", "status": "ready"}]})
+        self.assertEqual(result.stage_status["change_inspection"], "ready")
+        self.assertEqual(result.stage_status["metric_decomposition"], "skipped")
+        self.assertEqual(result.stage_status["business_diagnosis"], "skipped")
+        self.assertEqual(result.stage_reasons["metric_decomposition"], "not_scheduled")
 
     async def test_no_ready_observation_is_blocked(self):
         result = await action_executor(scoped_state(ready=False), runtime())
@@ -50,6 +60,7 @@ class BusinessDiagnosisMigrationTest(unittest.IsolatedAsyncioTestCase):
         result = await action_executor(state, runtime())
         self.assertEqual(result["stop_reason"], "duplicate_action")
         state = scoped_state()
+        state["sql_budget_limit"] = 24
         state["observations"][1]["attribution_result"]["total_query_count"] = 23
         result = await action_executor(state, runtime())
         self.assertEqual(result["stop_reason"], "sql_budget_exhausted")

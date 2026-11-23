@@ -71,6 +71,11 @@ def _specialist_preference(question: str, task_type: str | None) -> list[str]:
     decomposition = _wants_decomposition(question, task_type)
     dimension = _wants_dimension(question, task_type)
     business = _wants_business_diagnosis(question, task_type)
+    generic_why = "为什么" in question and not any(
+        marker in question for marker in ("渠道", "商品", "门店", "地区", "维度", "订单量", "客单价", "指标拆解", "构成因素")
+    )
+    if generic_why and dimension and not decomposition:
+        return ["dimension_attribution", "metric_decomposition"]
     if decomposition and dimension:
         dim_pos = min((question.find(x) for x in ("渠道", "商品", "门店", "地区", "维度") if x in question), default=10**9)
         dec_pos = min((question.find(x) for x in ("订单量", "客单价", "构成因素", "指标拆解") if x in question), default=10**9)
@@ -82,8 +87,8 @@ def _specialist_preference(question: str, task_type: str | None) -> list[str]:
         return ["dimension_attribution"] + (["diagnosis"] if business else [])
     if business:
         return ["diagnosis"]
-    # “为什么下降”保留既有默认策略：先做维度贡献。
-    return ["dimension_attribution"]
+    # 通用“为什么下降”同时需要定位贡献维度和解释指标构成。
+    return ["dimension_attribution", "metric_decomposition"]
 
 
 async def supervisor_reason(
@@ -116,11 +121,11 @@ async def supervisor_reason(
             1 for item in observations
             if item.get("action_name") == "change_inspection" and item.get("status") == "failed"
         )
-        if failures < 2 and "change_inspection" in allowed_actions:
+        if failures < 6 and "change_inspection" in allowed_actions:
             return {
                 "supervisor_decision": {
                     "action": "call_tool", "tool_name": "change_inspection",
-                    "reason": "变化检验技术失败，按有限重试协议重试一次",
+                    "reason": "变化检验技术失败，按最多六次尝试协议重试",
                 },
                 "step_count": state.get("step_count", 0) + 1,
             }
@@ -200,12 +205,20 @@ async def supervisor_reason(
         if next_action is None and "diagnosis" in preferences and "dimension_attribution" in allowed_actions:
             next_action = "dimension_attribution"
         if next_action:
+            budget_limit = min(skill.strategy.max_query_budget, state.get("sql_budget_limit", skill.strategy.max_query_budget))
+            # Keep 12 queries for metric decomposition and 2 queries for a
+            # Reserve change-inspection retry capacity and the metric
+            # decomposition allowance before multi-path attribution starts.
+            # With the current 100-query strategy this leaves 86 queries for
+            # attribution, so city-level branches are not cut off early.
+            reserve = 14 if budget_limit >= 60 and "metric_decomposition" in preferences and next_action == "dimension_attribution" else 0
             return {
                 "supervisor_decision": {
                     "action": "call_tool", "tool_name": next_action,
                     "reason": f"变化检验 ready，委派已授权的 {next_action} Agent",
                 },
                 "step_count": state.get("step_count", 0) + 1,
+                "sql_budget_reserve": reserve,
             }
     if len(observations) >= 3:
         return {

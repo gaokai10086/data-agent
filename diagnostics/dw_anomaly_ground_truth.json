@@ -1,0 +1,162 @@
+{
+  "seed": 20261123,
+  "database": "dw",
+  "backup": "/Users/gaokai/Desktop/CodeProjects/large_models/data-agent/diagnostics/dw_backups/dw_backup_20261123_110454.json",
+  "scenarios": [
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-01",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-02",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-03",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-04",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-05",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-06",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-07",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-08",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-09",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-10",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-11",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2025-12",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2026-01",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2026-02",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2026-03",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "monthly_baseline",
+      "period": "2026-04",
+      "sales": "1152001.85",
+      "orders": 1600,
+      "avg_order_amount": "720.00"
+    },
+    {
+      "scenario_id": "sales_decline_2026_06",
+      "period": "2026-05",
+      "sales": "983998.91",
+      "orders": 1200,
+      "avg_order_amount": "820.00"
+    },
+    {
+      "scenario_id": "sales_decline_2026_06",
+      "period": "2026-06",
+      "sales": "719799.80",
+      "orders": 1180,
+      "avg_order_amount": "610.00"
+    },
+    {
+      "scenario_id": "sales_decline_2026_08",
+      "period": "2026-07",
+      "sales": "1967994.87",
+      "orders": 2400,
+      "avg_order_amount": "820.00"
+    },
+    {
+      "scenario_id": "sales_decline_2026_08",
+      "period": "2026-08",
+      "sales": "943000.29",
+      "orders": 1150,
+      "avg_order_amount": "820.00"
+    },
+    {
+      "scenario_id": "sales_decline_2026_10",
+      "period": "2026-09",
+      "sales": "1367999.02",
+      "orders": 1800,
+      "avg_order_amount": "760.00"
+    },
+    {
+      "scenario_id": "sales_decline_2026_10",
+      "period": "2026-10",
+      "sales": "767000.54",
+      "orders": 1300,
+      "avg_order_amount": "590.00"
+    }
+  ],
+  "note": "ground truth is local only and not registered in Meta"
+}

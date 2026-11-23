@@ -137,7 +137,7 @@ class FaultInjectionGraphTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_partial_keeps_prior_observation(self):
         nodes, state, calls, decisions, pending, elapsed_ms = await self._run(fail_second=False)
-        self.assertEqual(nodes.count("action_executor"), 2)
+        self.assertEqual(nodes.count("action_executor"), 3)
         self.assertEqual(calls, 2)
         self.assertEqual(decisions, 1)
         self.assertEqual(pending, 0)
@@ -156,7 +156,7 @@ class FaultInjectionGraphTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_failed_keeps_prior_observation(self):
         nodes, state, calls, decisions, pending, elapsed_ms = await self._run(fail_second=True)
-        self.assertEqual(nodes.count("action_executor"), 2)
+        self.assertEqual(nodes.count("action_executor"), 3)
         self.assertEqual(calls, 2)
         self.assertEqual(decisions, 1)
         self.assertEqual(pending, 0)
@@ -168,7 +168,8 @@ class FaultInjectionGraphTest(unittest.IsolatedAsyncioTestCase):
                          ("completed", "partial", "execution_failed"))
         self.assertEqual(len(result["paths"]), 1)
         self.assertEqual(result["total_query_count"], 3)
-        self.assertEqual(state["supervisor_decision"]["action"], "finish")
+        self.assertEqual(state["supervisor_decision"]["action"], "call_tool")
+        self.assertEqual(state["supervisor_decision"]["tool_name"], "metric_decomposition")
         print("E", {"nodes": nodes, "child_nodes": observations[1]["evidence"]["nodes"],
                     "status": result["status"], "completion_status": result["completion_status"],
                     "stop_reason": result["stop_reason"], "queries": result["total_query_count"],

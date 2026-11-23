@@ -68,7 +68,7 @@ class DiagnosisMigrationTest(unittest.IsolatedAsyncioTestCase):
         state = attribution_state(task_type="hypothesis_analysis")
         state["raw_question"] = "分析渠道贡献和订单量客单价，并进一步诊断下降因素"
         attribution = fixture.attribution_result.model_dump(mode="json")
-        attribution["total_query_count"] = 18  # leave four queries from the shared 24-query budget
+        attribution["total_query_count"] = 18  # leave four queries from the explicitly supplied test budget
         state["observations"].append({"step": 2, "action_name": "dimension_attribution", "status": "completed",
                                       "completion_status": "complete", "attribution_result": attribution,
                                       "evidence": {"total_query_count": 18}})

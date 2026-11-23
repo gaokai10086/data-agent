@@ -112,7 +112,7 @@ class DimensionAttributionActionTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(observation["evidence"]["total_query_count"], 2)
         state["observations"] = result["observations"]
         reason = await supervisor_reason(state, runtime())
-        self.assertIn("attribution_partial", reason["supervisor_decision"]["reason"])
+        self.assertEqual(reason["supervisor_decision"]["tool_name"], "metric_decomposition")
 
     async def test_failed_child_is_structured(self):
         child = AttributionResult(

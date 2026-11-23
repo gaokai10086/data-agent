@@ -78,7 +78,9 @@ ActionExecutor = Callable[
 ]
 
 # 变化检验、两个专业分析及最多若干个成员范围补查；SQL 仍受 Skill 总预算约束。
-MAX_ACTION_EXECUTIONS = 10
+# Unified Main RootCause analysis-round ceiling. Dimension attribution and
+# metric decomposition consume the same parent-agent action budget.
+MAX_ACTION_EXECUTIONS = 100
 
 
 @dataclass(frozen=True)

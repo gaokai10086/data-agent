@@ -330,6 +330,8 @@ async def action_executor(
 
     used = int(sql_usage(observations)["total"])
     remaining = min(skill.strategy.max_query_budget, state.get("sql_budget_limit", skill.strategy.max_query_budget)) - used
+    if action_name == "dimension_attribution":
+        remaining -= int(state.get("sql_budget_reserve", 0) or 0)
     required = 4 if action_name in {"metric_decomposition", "scoped_metric_decomposition"} else 2
     if remaining < required:
         obs = _blocked_observation(step=step, action_name=action_name, reason="累计 SQL 预算不足", dedupe_key=signature)

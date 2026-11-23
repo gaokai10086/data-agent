@@ -22,6 +22,7 @@ class AnalysisResult(BaseModel):
     findings: list[dict[str, Any]] = Field(default_factory=list)
     hypotheses: list[dict[str, Any]] = Field(default_factory=list)
     stage_status: dict[str, str] = Field(default_factory=dict)
+    stage_reasons: dict[str, str] = Field(default_factory=dict)
     sql_usage: dict[str, Any] = Field(default_factory=dict)
     stop_reason: str | None = None
     completion_status: Literal["complete", "partial", "none"] = "none"
@@ -30,11 +31,15 @@ class AnalysisResult(BaseModel):
 def build_analysis_result(state: dict) -> AnalysisResult:
     observations = state.get("observations") or []
     refs: dict[str, list[int]] = {}
-    statuses: dict[str, str] = {}
+    stage_names = ("change_inspection", "dimension_attribution", "metric_decomposition", "business_diagnosis")
+    statuses: dict[str, str] = {name: "pending" for name in stage_names}
+    reasons: dict[str, str] = {}
     for index, item in enumerate(observations):
         name = item.get("action_name") or "unknown"
         refs.setdefault(name, []).append(index)
         statuses[name] = item.get("status") or "unknown"
+        if item.get("reason"):
+            reasons[name] = str(item["reason"])
     ready = next((item.get("inspection_outcome") for item in observations if item.get("action_name") == "change_inspection" and item.get("inspection_outcome")), None)
     overall = (ready or {}).get("overall_result") or {}
     metric = (ready or {}).get("metric_context") or {}
@@ -47,6 +52,15 @@ def build_analysis_result(state: dict) -> AnalysisResult:
     diagnosis = state.get("diagnosis_result") or {}
     if diagnosis:
         statuses["business_diagnosis"] = diagnosis.get("status") or "partial"
+        if diagnosis.get("stop_reason"):
+            reasons["business_diagnosis"] = str(diagnosis["stop_reason"])
+    observed_names = set(refs)
+    if "metric_decomposition" not in observed_names:
+        statuses["metric_decomposition"] = "skipped"
+        reasons.setdefault("metric_decomposition", "not_scheduled")
+    if "business_diagnosis" not in observed_names and not diagnosis:
+        statuses["business_diagnosis"] = "skipped"
+        reasons.setdefault("business_diagnosis", "not_requested_or_missing_scoped_evidence")
     evidence_ids = list(dict.fromkeys(diagnosis.get("evidence_ids") or [item.get("evidence_id") for item in state.get("diagnosis_evidence", []) if item.get("evidence_id")]))
     if not observations:
         completion = "none"
@@ -66,7 +80,7 @@ def build_analysis_result(state: dict) -> AnalysisResult:
         overall_verification=(ready or {}).get("verification"), observation_refs=refs,
         dimension_paths=paths, evidence_ids=evidence_ids,
         findings=diagnosis.get("findings") or [], hypotheses=diagnosis.get("hypotheses") or [],
-        stage_status=statuses, sql_usage=sql_usage(observations),
+        stage_status=statuses, stage_reasons=reasons, sql_usage=sql_usage(observations),
         stop_reason=state.get("stop_reason"), completion_status=completion,
     )
 

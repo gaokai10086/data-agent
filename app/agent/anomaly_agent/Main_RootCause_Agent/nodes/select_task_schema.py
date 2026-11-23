@@ -80,9 +80,10 @@ async def select_task_schema(
             },
         }
 
-    return {
-        "schema_result": {
-            "status": result.status,
-            "reason": result.reason,
-        },
-    }
+    # A bare comparative "为什么下降" question is still a valid anomaly
+    # analysis request. Keep the LLM as the primary classifier, but do not
+    # discard the request when it returns an unsupported/ambiguous status.
+    if "为什么" in state["raw_question"] and "dimension_attribution" in task_types:
+        schema = get_task_schema("dimension_attribution")
+        return {"schema_result": {"status": "matched", "reason": "通用异动问题回退到维度归因", "task_type": "dimension_attribution", "schema_name": schema.__name__}}
+    return {"schema_result": {"status": result.status, "reason": result.reason}}

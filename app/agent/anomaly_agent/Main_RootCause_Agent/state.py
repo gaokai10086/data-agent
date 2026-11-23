@@ -67,4 +67,5 @@ class RootCauseState(TypedDict, total=False):
     analysis_result: dict
     sql_usage: dict
     sql_budget_limit: int
+    sql_budget_reserve: int
     diagnosis_scoped_allowed: bool
