@@ -35,9 +35,11 @@ class AttributionToolCalculationTest(unittest.TestCase):
                 self.overall(current="15", comparison="10", change="5"),
             )
 
-    def test_null_aggregate_is_not_assumed_zero(self):
-        with self.assertRaisesRegex(ValueError, "NULL"):
-            DimensionPeriodComparisonTool._normalize_rows([{"dimension_value": "A", "value": None}], "2026-07")
+    def test_null_aggregate_is_normalized_to_zero(self):
+        self.assertEqual(
+            DimensionPeriodComparisonTool._normalize_rows([{"dimension_value": "A", "value": None}], "2026-07"),
+            {"A": Decimal("0")},
+        )
 
     def test_real_zero_is_preserved(self):
         self.assertEqual(

@@ -23,7 +23,7 @@ class SalesAmountSkillStrategyTest(unittest.TestCase):
         self.assertEqual(self.skill.strategy.dimension_source, "metric_context.dimensions")
         self.assertEqual(self.skill.strategy.max_analysis_rounds, 100)
         self.assertEqual(self.skill.strategy.max_dimensions, 100)
-        self.assertEqual(self.skill.strategy.max_query_budget, 100)
+        self.assertEqual(self.skill.strategy.max_query_budget, 150)
         self.assertEqual(self.skill.strategy.max_depth, 3)
         self.assertEqual(self.skill.strategy.max_attribution_tasks, 100)
         self.assertEqual(self.skill.strategy.max_concurrent_branches, 6)

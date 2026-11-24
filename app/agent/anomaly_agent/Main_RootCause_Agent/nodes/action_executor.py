@@ -328,10 +328,10 @@ async def action_executor(
             "stop_reason": "retry_exhausted",
         }
 
-    used = int(sql_usage(observations)["total"])
-    remaining = min(skill.strategy.max_query_budget, state.get("sql_budget_limit", skill.strategy.max_query_budget)) - used
-    if action_name == "dimension_attribution":
-        remaining -= int(state.get("sql_budget_reserve", 0) or 0)
+    usage = sql_usage(observations)
+    used_analysis = int(usage["total"]) - int((usage.get("by_action") or {}).get("change_inspection", 0))
+    analysis_limit = min(skill.strategy.max_query_budget, state.get("sql_budget_limit", skill.strategy.max_query_budget)) - 6
+    remaining = analysis_limit - used_analysis
     required = 4 if action_name in {"metric_decomposition", "scoped_metric_decomposition"} else 2
     if remaining < required:
         obs = _blocked_observation(step=step, action_name=action_name, reason="累计 SQL 预算不足", dedupe_key=signature)

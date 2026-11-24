@@ -1,0 +1,29 @@
+[
+  {
+    "id": "beijing",
+    "query": "查询2025年北京市7月的销售额",
+    "passed": true,
+    "sql": "SELECT COALESCE(SUM(o.pay_amount), 0) AS sales_amount\nFROM fact_order o\nLEFT JOIN dim_store s ON o.store_id = s.store_id\nWHERE o.order_status = '已完成'\n  AND s.city = '北京'\n  AND o.pay_time >= '2025-07-01 00:00:00'\n  AND o.pay_time < '2025-08-01 00:00:00'",
+    "expected": "62836.60",
+    "actual": "62836.60",
+    "values": [
+      {
+        "id": "1e8dcb1cb8a64b0d8533fb46047405a3:北京",
+        "value": "北京",
+        "aliases": [
+          "北京",
+          "北京市"
+        ],
+        "type": "enum",
+        "column_id": "1e8dcb1cb8a64b0d8533fb46047405a3",
+        "column_name": "city",
+        "table_id": "3",
+        "table_name": "dim_store",
+        "matched_text": "北京市"
+      }
+    ],
+    "retry_count": 0,
+    "filter_verified": true,
+    "latency_ms": 23918
+  }
+]

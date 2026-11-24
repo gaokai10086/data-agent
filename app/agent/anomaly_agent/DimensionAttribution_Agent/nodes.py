@@ -25,6 +25,7 @@ from app.agent.anomaly_agent.DimensionAttribution_Agent.tools import (
     DimensionPeriodComparisonTool,
 )
 from app.core.llm import get_context_llm
+from app.agent.anomaly_agent.DimensionAttribution_Agent.scheduler import DynamicTaskScheduler, RequestBudget, TaskExecutionResult, ParentEvidence
 
 
 _STOP_REASONS = {
@@ -327,7 +328,7 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
         payload = await tool.run(
             state["input"], runtime, dimension_column=decision.dimension_column,
             parent_scope=decision.parent_scope, task_id=decision.task_id, depth=decision.depth,
-            overall=_scoped_overall(state, decision.parent_scope),
+            overall=state.get("parent_overall") or _scoped_overall(state, decision.parent_scope),
             query_budget_remaining=remaining,
         )
         observation = AttributionObservation(
@@ -415,6 +416,8 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
                 ))
             ],
         }
+
+
     except Exception as exc:
         observation = AttributionObservation(
             observation_id=uuid.uuid4().hex, tool_name=tool.name, status="failed",
@@ -434,6 +437,67 @@ async def execute_attribution_tools(state: DimensionAttributionState, runtime=No
             }],
             "stop_reason": "execution_failed" if not pending else None,
         }
+
+
+async def execute_dynamic_scheduler(state: DimensionAttributionState, runtime=None) -> dict:
+    """Execute queued evidence-derived branches through the production scheduler."""
+    roots = list(state.get("pending_tasks", []))
+    if not roots:
+        return state
+    budget = RequestBudget(state["input"].skill_strategy.max_query_budget)
+    scheduler = DynamicTaskScheduler(max_workers=min(6, state["input"].skill_strategy.max_concurrent_branches), budget=budget)
+
+    evidence_by_task: dict[str, ParentEvidence] = {}
+    async def execute(task):
+        decision = AttributionDecision(action="execute_tool", tool_name="dimension_period_comparison",
+            dimension_column=task.dimension_column, parent_scope=task.parent_scope,
+            depth=task.depth, task_id=task.task_id, parent_task_id=task.parent_task_id,
+            reason="dynamic scheduler")
+        local = dict(state); local["decision"] = decision; local["pending_tasks"] = []
+        parent_evidence = evidence_by_task.get(task.task_id)
+        if parent_evidence and not parent_evidence.reconciled:
+            return TaskExecutionResult(task.task_id, task.parent_task_id, "blocked", error="parent_evidence_not_reconciled")
+        if parent_evidence:
+            local["parent_overall"] = SimpleNamespace(
+                current_value=Decimal(str(parent_evidence.target_value)),
+                comparison_value=Decimal(str(parent_evidence.comparison_value)),
+                change_amount=Decimal(str(parent_evidence.change_amount)),
+            )
+        out = await execute_attribution_tools(local, runtime)
+        ok = bool(out.get("observations") and out["observations"][-1].status == "ok")
+        children = tuple(out.get("pending_tasks", [])) if ok else ()
+        if ok:
+            path = out.get("paths", [])[-1]
+            rec = path.reconciliation
+            if not (rec.comparison_matches and rec.current_matches and rec.change_matches):
+                return TaskExecutionResult(task.task_id, task.parent_task_id, "failed", query_count=out.get("query_count", 0), error="parent_reconciliation_failed")
+            for child in children:
+                member = next((m for m in path.attributions if m.group_value == child.parent_scope[-1].member_value), None)
+                if member is not None:
+                    evidence_by_task[child.task_id] = ParentEvidence(
+                        parent_task_id=task.task_id,
+                        parent_scope=tuple(child.parent_scope),
+                        target_value=member.current_value,
+                        comparison_value=member.comparison_value,
+                        change_amount=member.change_amount,
+                        reconciled=True,
+                    )
+        return TaskExecutionResult(task.task_id, task.parent_task_id, "completed" if ok else "failed",
+            query_count=out.get("query_count", 0), result=out, children=children)
+
+    results = await scheduler.run(roots, task_id=lambda t: t.task_id, parent_id=lambda t: t.parent_task_id, execute=execute)
+    merged = dict(state)
+    merged.update({"pending_tasks": [], "observations": list(state.get("observations", [])),
+                   "paths": list(state.get("paths", [])), "abandoned_paths": list(state.get("abandoned_paths", [])),
+                   "analyzed_task_ids": list(state.get("analyzed_task_ids", [])), "query_count": state.get("query_count", 0)})
+    for item in results:
+        out = item.result or {}
+        if isinstance(out, dict):
+            merged["observations"].extend(out.get("observations", [])); merged["paths"].extend(out.get("paths", []))
+            merged["abandoned_paths"].extend(out.get("abandoned_paths", [])); merged["analyzed_task_ids"].extend(out.get("analyzed_task_ids", []))
+            merged["query_count"] += out.get("query_count", 0)
+    merged["stop_reason"] = "completed" if not merged["abandoned_paths"] else "execution_failed"
+    return merged
 
 
 def finalize_attribution(state: DimensionAttributionState) -> dict:

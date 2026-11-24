@@ -8,6 +8,20 @@ from typing import Awaitable, Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
+@dataclass(frozen=True)
+class ParentEvidence:
+    parent_task_id: str | None
+    parent_scope: tuple[object, ...]
+    target_value: object
+    comparison_value: object
+    change_amount: object
+    reconciled: bool
+
+@dataclass(frozen=True)
+class ScheduledTask(Generic[T]):
+    task: T
+    parent_evidence: ParentEvidence | None = None
+
 
 @dataclass(frozen=True)
 class TaskExecutionResult(Generic[T]):
@@ -75,9 +89,16 @@ class DynamicTaskScheduler(Generic[T]):
                 key = task_id(task)
                 started = monotonic()
                 try:
+                    if self.budget and not await self.budget.reserve(2):
+                        result = TaskExecutionResult(key, parent_id(task), "blocked", error="query_budget_exhausted")
+                        async with self._commit_lock:
+                            self._results[key] = result
+                        continue
                     self._active += 1
                     self.max_observed_concurrency = max(self.max_observed_concurrency, self._active)
                     result = await execute(task)
+                    if self.budget:
+                        await self.budget.settle(2, result.query_count)
                     if not result.elapsed_ms:
                         result = TaskExecutionResult(**{**result.__dict__, "elapsed_ms": (monotonic() - started) * 1000})
                     async with self._commit_lock:

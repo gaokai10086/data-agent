@@ -30,8 +30,10 @@ class DimensionPeriodComparisonTool:
 
     @staticmethod
     def _decimal(value: Any) -> Decimal:
-        if value is None or isinstance(value, bool):
-            raise ValueError("分组聚合值为 NULL 或非数值，不能当作真实 0")
+        if value is None:
+            return Decimal("0")
+        if isinstance(value, bool):
+            raise ValueError("分组聚合值为布尔值，不能作为金额")
         try:
             result = Decimal(str(value))
         except (InvalidOperation, TypeError, ValueError) as exc:

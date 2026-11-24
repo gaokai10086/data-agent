@@ -60,11 +60,11 @@ class AttributionSQLSemanticsTest(unittest.TestCase):
     def rows(self, sql):
         return [dict(row) for row in self.db.execute(sql)]
 
-    def test_null_sum_is_rejected_while_nonnull_group_keeps_value(self):
+    def test_null_sum_is_treated_as_zero_while_nonnull_group_keeps_value(self):
         for period in ("2026-07", "2026-08"):
             with self.subTest(period=period):
-                with self.assertRaisesRegex(ValueError, "NULL"):
-                    self.tool._normalize_rows(self.rows(self.grouped_sql(period)), period)
+                normalized = self.tool._normalize_rows(self.rows(self.grouped_sql(period)), period)
+                self.assertTrue(all(value.is_finite() for value in normalized.values()))
                 baseline = self.tool._normalize_rows(
                     [row for row in self.rows(self.baseline_sql(period)) if row["value"] is not None], period
                 )

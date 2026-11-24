@@ -62,7 +62,7 @@ class SalesAmountAnomalySkill(BaseSkill):
                 allow_dynamic_dimension_selection=True,
                 max_analysis_rounds=100,
                 max_dimensions=100,
-                max_query_budget=100,
+                max_query_budget=150,
                 max_depth=3,
                 max_attribution_tasks=100,
                 max_concurrent_branches=6,

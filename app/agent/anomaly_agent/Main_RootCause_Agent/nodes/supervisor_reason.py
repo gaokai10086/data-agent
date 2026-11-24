@@ -206,12 +206,10 @@ async def supervisor_reason(
             next_action = "dimension_attribution"
         if next_action:
             budget_limit = min(skill.strategy.max_query_budget, state.get("sql_budget_limit", skill.strategy.max_query_budget))
-            # Keep 12 queries for metric decomposition and 2 queries for a
-            # Reserve change-inspection retry capacity and the metric
-            # decomposition allowance before multi-path attribution starts.
-            # With the current 100-query strategy this leaves 86 queries for
-            # attribution, so city-level branches are not cut off early.
-            reserve = 14 if budget_limit >= 60 and "metric_decomposition" in preferences and next_action == "dimension_attribution" else 0
+            # Dimension attribution and metric decomposition share the
+            # analysis pool. ChangeInspection has its separate six-attempt
+            # ceiling and is excluded from this pool.
+            reserve = 0
             return {
                 "supervisor_decision": {
                     "action": "call_tool", "tool_name": next_action,

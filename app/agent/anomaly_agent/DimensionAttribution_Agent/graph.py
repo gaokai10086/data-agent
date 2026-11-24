@@ -5,6 +5,7 @@ from langgraph.graph import StateGraph
 
 from app.agent.anomaly_agent.DimensionAttribution_Agent.nodes import (
     execute_attribution_tools,
+    execute_dynamic_scheduler,
     finalize_attribution,
     main_reason,
 )
@@ -20,13 +21,17 @@ def route_after_reason(state: DimensionAttributionState) -> str:
 def route_after_tools(state: DimensionAttributionState) -> str:
     if state.get("stop_reason") or state.get("query_count", 0) >= state["input"].skill_strategy.max_query_budget:
         return "finalize_attribution"
-    return "main_reason"
+    # Every evidence-derived child, including a single child, enters the same
+    # request-level scheduler. The parent has already been validated by the
+    # preceding tool node, so the child can start immediately.
+    return "execute_dynamic_scheduler" if state.get("pending_tasks") else "main_reason"
 
 
 def build_dimension_attribution_graph():
     builder = StateGraph(DimensionAttributionState, context_schema=DataAgentContext)
     builder.add_node("main_reason", main_reason)
     builder.add_node("execute_attribution_tools", execute_attribution_tools)
+    builder.add_node("execute_dynamic_scheduler", execute_dynamic_scheduler)
     builder.add_node("finalize_attribution", finalize_attribution)
     builder.add_edge(START, "main_reason")
     builder.add_conditional_edges(
@@ -37,8 +42,9 @@ def build_dimension_attribution_graph():
     builder.add_conditional_edges(
         "execute_attribution_tools",
         route_after_tools,
-        {"main_reason": "main_reason", "finalize_attribution": "finalize_attribution"},
+        {"main_reason": "main_reason", "execute_dynamic_scheduler": "execute_dynamic_scheduler", "finalize_attribution": "finalize_attribution"},
     )
+    builder.add_edge("execute_dynamic_scheduler", "finalize_attribution")
     builder.add_edge("finalize_attribution", END)
     return builder.compile()
 
