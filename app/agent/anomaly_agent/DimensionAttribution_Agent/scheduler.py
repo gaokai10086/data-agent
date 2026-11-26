@@ -88,13 +88,17 @@ class DynamicTaskScheduler(Generic[T]):
                     return
                 key = task_id(task)
                 started = monotonic()
+                active_started = False
+                reserved = False
                 try:
                     if self.budget and not await self.budget.reserve(2):
                         result = TaskExecutionResult(key, parent_id(task), "blocked", error="query_budget_exhausted")
                         async with self._commit_lock:
                             self._results[key] = result
                         continue
+                    reserved = bool(self.budget)
                     self._active += 1
+                    active_started = True
                     self.max_observed_concurrency = max(self.max_observed_concurrency, self._active)
                     result = await execute(task)
                     if self.budget:
@@ -106,12 +110,17 @@ class DynamicTaskScheduler(Generic[T]):
                         for child in result.children:
                             await self.add(child, task_id=task_id)
                 except asyncio.CancelledError:
+                    if reserved and self.budget:
+                        await self.budget.settle(2, 0)
                     raise
                 except Exception as exc:
+                    if reserved and self.budget:
+                        await self.budget.settle(2, 0)
                     async with self._commit_lock:
                         self._results[key] = TaskExecutionResult(key, parent_id(task), "failed", error=str(exc), elapsed_ms=(monotonic() - started) * 1000)
                 finally:
-                    self._active -= 1
+                    if active_started:
+                        self._active -= 1
                     self._queued.discard(key)
                     self._seen.add(key)
                     self._queue.task_done()

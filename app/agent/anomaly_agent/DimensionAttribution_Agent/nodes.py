@@ -448,16 +448,45 @@ async def execute_dynamic_scheduler(state: DimensionAttributionState, runtime=No
     scheduler = DynamicTaskScheduler(max_workers=min(6, state["input"].skill_strategy.max_concurrent_branches), budget=budget)
 
     evidence_by_task: dict[str, ParentEvidence] = {}
+    # The first scheduler batch contains children created by the preceding
+    # `execute_attribution_tools` graph node.  Seed their evidence before they
+    # enter the queue; otherwise every child is treated as if it had no parent.
+    completed_paths = {path.task_id: path for path in state.get("paths", [])}
+    for task in roots:
+        if task.parent_task_id is None:
+            continue
+        parent_path = completed_paths.get(task.parent_task_id)
+        member_value = task.parent_scope[-1].member_value if task.parent_scope else None
+        member = next(
+            (item for item in (parent_path.attributions if parent_path else [])
+             if item.group_value == member_value),
+            None,
+        )
+        if member is not None:
+            evidence_by_task[task.task_id] = ParentEvidence(
+                parent_task_id=task.parent_task_id,
+                parent_scope=tuple(task.parent_scope),
+                target_value=member.current_value,
+                comparison_value=member.comparison_value,
+                change_amount=member.change_amount,
+                reconciled=True,
+            )
+
     async def execute(task):
         decision = AttributionDecision(action="execute_tool", tool_name="dimension_period_comparison",
             dimension_column=task.dimension_column, parent_scope=task.parent_scope,
             depth=task.depth, task_id=task.task_id, parent_task_id=task.parent_task_id,
             reason="dynamic scheduler")
-        local = dict(state); local["decision"] = decision; local["pending_tasks"] = []
+        local = dict(state)
+        local.update({"decision": decision, "pending_tasks": [], "observations": [],
+                      "paths": [], "decisions": [], "analyzed_task_ids": [],
+                      "abandoned_paths": [], "query_count": 0})
         parent_evidence = evidence_by_task.get(task.task_id)
-        if parent_evidence and not parent_evidence.reconciled:
+        if task.parent_task_id is not None and parent_evidence is None:
+            return TaskExecutionResult(task.task_id, task.parent_task_id, "blocked", error="parent_evidence_missing")
+        if parent_evidence is not None and not parent_evidence.reconciled:
             return TaskExecutionResult(task.task_id, task.parent_task_id, "blocked", error="parent_evidence_not_reconciled")
-        if parent_evidence:
+        if parent_evidence is not None:
             local["parent_overall"] = SimpleNamespace(
                 current_value=Decimal(str(parent_evidence.target_value)),
                 comparison_value=Decimal(str(parent_evidence.comparison_value)),
@@ -472,9 +501,16 @@ async def execute_dynamic_scheduler(state: DimensionAttributionState, runtime=No
             if not (rec.comparison_matches and rec.current_matches and rec.change_matches):
                 return TaskExecutionResult(task.task_id, task.parent_task_id, "failed", query_count=out.get("query_count", 0), error="parent_reconciliation_failed")
             for child in children:
-                member = next((m for m in path.attributions if m.group_value == child.parent_scope[-1].member_value), None)
+                canonical_child_id = DimensionPeriodComparisonTool.build_task_id(
+                    state["input"], child.dimension_column, child.parent_scope, child.depth,
+                )
+                if canonical_child_id != child.task_id:
+                    return TaskExecutionResult(task.task_id, task.parent_task_id, "failed",
+                        query_count=out.get("query_count", 0), error="child_task_id_not_canonical")
+                member_value = child.parent_scope[-1].member_value if child.parent_scope else None
+                member = next((m for m in path.attributions if m.group_value == member_value), None)
                 if member is not None:
-                    evidence_by_task[child.task_id] = ParentEvidence(
+                    evidence_by_task[canonical_child_id] = ParentEvidence(
                         parent_task_id=task.task_id,
                         parent_scope=tuple(child.parent_scope),
                         target_value=member.current_value,
@@ -482,6 +518,9 @@ async def execute_dynamic_scheduler(state: DimensionAttributionState, runtime=No
                         change_amount=member.change_amount,
                         reconciled=True,
                     )
+                else:
+                    return TaskExecutionResult(task.task_id, task.parent_task_id, "failed",
+                        query_count=out.get("query_count", 0), error="child_parent_member_evidence_missing")
         return TaskExecutionResult(task.task_id, task.parent_task_id, "completed" if ok else "failed",
             query_count=out.get("query_count", 0), result=out, children=children)
 

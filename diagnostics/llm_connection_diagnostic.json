@@ -1,0 +1,36 @@
+{
+  "provider": "deepseek",
+  "model_tier": "deepseek-v4-flash",
+  "base_url": "https://api.deepseek.com/v1",
+  "api_key": "sk-0...9569",
+  "checks": {
+    "config": {
+      "status": "ok",
+      "base_url": "https://api.deepseek.com/v1",
+      "api_key_present": true
+    },
+    "dns": {
+      "url": "https://api.deepseek.com/v1",
+      "host": "api.deepseek.com",
+      "port": 443,
+      "dns": "ok",
+      "addresses": [
+        "123.125.246.121",
+        "60.28.220.199"
+      ],
+      "elapsed_ms": 23.7
+    },
+    "https": {
+      "status": "ok",
+      "http_status": 200,
+      "elapsed_ms": 654.5,
+      "url": "https://api.deepseek.com/models"
+    },
+    "chat_completion": {
+      "status": "ok",
+      "content_preview": "ok",
+      "elapsed_ms": 2945.2
+    }
+  },
+  "status": "passed"
+}
